@@ -41,6 +41,19 @@ const QUICKDAPP_BUILD_RULES =
   `- Use window.__QUICK_DAPP_CONFIG__ for title/logo/details. Do NOT hardcode app names or logos.\n` +
   `- Fallback: config.title || 'My DApp'\n`
 
+// Design rules are intentionally lower priority than build/runtime correctness.
+const QUICKDAPP_DESIGN_RULES =
+  `DESIGN QUALITY RULES (LOWER PRIORITY THAN BUILD/WALLET/CONTRACT CORRECTNESS):\n` +
+  `- These design rules must NEVER override valid imports, file paths, React entry structure, ethers.js provider logic, contract ABI integration, transaction feedback, preview compatibility, or window.__QUICK_DAPP_CONFIG__ usage.\n` +
+  `- Explicit user design requirements are higher priority than these diversity rules. If the user asks for a specific style, language, layout, or tone, follow that request.\n` +
+  `- Do not use your first/default design idea. Before writing code, silently imagine 3 distinct visual directions that fit this contract, ABI, and user request.\n` +
+  `- Discard the most obvious/default direction, then choose one of the remaining directions and develop it to polished production quality.\n` +
+  `- The result should be modern, cohesive, and memorable, but still easy to use for smart contract interactions.\n` +
+  `- Avoid generic AI UI patterns: purple/blue gradient SaaS defaults, centered hero plus three cards, generic glassmorphism dashboards, identical card grids for every function, and vague marketing landing pages before the actual DApp.\n` +
+  `- Make the chosen direction visible through layout, typography, spacing, color system, component shape, empty states, hover/focus states, loading states, and transaction feedback.\n` +
+  `- Vary the visual direction across DApps: refined minimal, dense dashboard, editorial, playful, collectible, protocol-console, utility/admin, or other contract-appropriate approaches.\n` +
+  `- If a bold visual idea would reduce readability or make wallet/transaction controls harder to operate, choose a simpler design that preserves functionality.\n`
+
 // ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
@@ -217,7 +230,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
         contractName: args.contractName,
         workspaceReady: true,
         message: `DApp workspace "${workspaceSlug}" created successfully.\n\n` +
-          `Now proceed to generate the DApp files directly using file_write.\n\n` +
+          `Now proceed to generate the DApp files directly using write_file.\n\n` +
           `---\n` +
           `TASK: Generate a new DApp frontend\n` +
           `CONTRACT: ${args.contractName} at ${args.contractAddress} on chain ${args.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
@@ -237,12 +250,14 @@ export class GenerateDAppHandler extends BaseToolHandler {
             `- Adapt Figma dimensions to fluid/responsive code.\n`
             : '') +
           `\n${QUICKDAPP_BUILD_RULES}\n` +
+          `\n${QUICKDAPP_DESIGN_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
           `- All file paths are relative to workspace root. Use /index.html, /src/App.jsx etc.\n` +
           `- NEVER include workspace name "${workspaceSlug}" in paths. Wrong: ${workspaceSlug}/src/App.jsx. Correct: /src/App.jsx\n\n` +
           `STEPS:\n` +
-          `1. Write files using file_write: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css, /src/components/*.jsx\n` +
+          `1. Write files using write_file: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css, /src/components/*.jsx\n` +
           `2. Use ethers.js v6 (BrowserProvider, Contract). Embed full ABI and contract address in code.\n` +
+          `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
             `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
@@ -256,7 +271,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
             `- Store raw provider in a React ref for reuse in network switching.\n` +
             `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `3. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
+          `4. After ALL files written, call finalize_dapp_generation with workspaceName="${workspaceSlug}" and contractAddress="${args.contractAddress}"\n` +
           `---`
       })
 
@@ -488,7 +503,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       plugin.emit('generationProgress', { status: 'preparing', contractAddress: contractResolved.address, slug: targetWorkspace })
 
       // Build a concise file list (names only — no content in the main agent's context).
-      // The subagent will read file contents in its own isolated context via file_read,
+      // The subagent will read file contents in its own isolated context via read_file,
       // avoiding the context accumulation that causes "request entity too large" errors.
       const fileList = fileNames.join('\n')
       const description = typeof args.description === 'string' ? args.description : JSON.stringify(args.description)
@@ -508,6 +523,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
           `CONTRACT ADDRESS: ${contractResolved.address} on chain ${contractResolved.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
           `FILES IN WORKSPACE:\n${fileList}\n\n` +
           `${QUICKDAPP_BUILD_RULES}\n` +
+          `\n${QUICKDAPP_DESIGN_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
           `- All file paths are relative to workspace root. Use /src/App.jsx, NOT ${targetWorkspace}/src/App.jsx\n` +
           `- NEVER include workspace name in paths.\n\n` +
@@ -517,8 +533,9 @@ export class UpdateDAppHandler extends BaseToolHandler {
           `- You MAY restructure JSX layout, change CSS classes, and add new features.\n` +
           `- When returning a file, return the COMPLETE file content — not just the changed portion.\n\n` +
           `STEPS:\n` +
-          `1. Use file_read to read the files you need to modify\n` +
-          `2. Modify only the relevant files using file_write\n` +
+          `1. Use read_file to read the files you need to modify\n` +
+          `2. Modify only the relevant files using write_file\n` +
+          `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
           (isLocalVM
             ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
             `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
@@ -531,7 +548,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
             `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
             `- Store raw provider in a React ref for reuse in network switching.\n` +
             `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `3. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
+          `4. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
           `---`
       })
 
@@ -549,13 +566,13 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
 // ──────────────────────────────────────────────
 // Finalize DApp Generation Tool Handler
-// Called AFTER the agent writes all DApp files via file_write.
+// Called AFTER the agent writes all DApp files via write_file.
 // Handles config update, dappGenerated event, and auto-open.
 // ──────────────────────────────────────────────
 
 export class FinalizeDAppGenerationHandler extends BaseToolHandler {
   name = 'finalize_dapp_generation'
-  description = 'Finalize a DApp after ALL files have been written using file_write. This updates the config, notifies the UI, and opens the DApp preview. MUST be called after generate_dapp + file_write sequence is complete.'
+  description = 'Finalize a DApp after ALL files have been written using write_file. This updates the config, notifies the UI, and opens the DApp preview. MUST be called after generate_dapp + write_file sequence is complete.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -602,7 +619,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         await new Promise(r => setTimeout(r, 500))
       }
 
-      // Update config status
+      // Update config status — defensively restore sourceWorkspace if agent overwrote it
       try {
         const configContent = await plugin.call('fileManager', 'readFile', 'dapp.config.json')
         if (configContent) {
@@ -610,6 +627,38 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
           config.status = 'created'
           config.processingStartedAt = null
           config.updatedAt = Date.now()
+
+          // Defensive: restore sourceWorkspace if missing (agent may have overwritten config)
+          if (!config.sourceWorkspace) {
+            console.warn(`[QuickDapp][FINALIZE] sourceWorkspace MISSING from config — attempting restore from mapping files`)
+            try {
+              const mappingsDir = '.deploys/dapp-mappings'
+              const exists = await plugin.call('fileManager', 'exists', mappingsDir)
+              if (exists) {
+                const mappingFiles = await plugin.call('fileManager', 'readdir', mappingsDir)
+                if (mappingFiles) {
+                  for (const filePath of Object.keys(mappingFiles)) {
+                    const fileName = filePath.split('/').pop()
+                    if (!fileName) continue
+                    try {
+                      const content = await plugin.call('fileManager', 'readFile', `${mappingsDir}/${fileName}`)
+                      const mapping = JSON.parse(content)
+                      if (mapping.dappWorkspace === workspaceName && mapping.sourceWorkspace) {
+                        config.sourceWorkspace = { name: mapping.sourceWorkspace }
+                        console.log(`[QuickDapp][FINALIZE] Restored sourceWorkspace="${mapping.sourceWorkspace}" from mapping file`)
+                        break
+                      }
+                    } catch { /* skip unreadable mapping */ }
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('[QuickDapp][FINALIZE] Could not restore sourceWorkspace from mappings:', e)
+            }
+          } else {
+            console.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
+          }
+
           await plugin.call('fileManager', 'writeFile', 'dapp.config.json', JSON.stringify(config, null, 2))
           console.log('[QuickDapp] Config updated to created')
         }
@@ -895,7 +944,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_dapp',
-      description: 'Set up a new DApp workspace from a deployed smart contract. Returns generation instructions — you MUST then write each DApp file using file_write, then call finalize_dapp_generation.',
+      description: 'Set up a new DApp workspace from a deployed smart contract. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
       inputSchema: new GenerateDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
@@ -903,7 +952,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'finalize_dapp_generation',
-      description: 'Finalize a DApp after ALL files have been written using file_write. Updates config, refreshes dashboard, and opens DApp preview. MUST be called after generate_dapp + file_write sequence.',
+      description: 'Finalize a DApp after ALL files have been written using write_file. Updates config, refreshes dashboard, and opens DApp preview. MUST be called after generate_dapp + write_file sequence.',
       inputSchema: new FinalizeDAppGenerationHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
