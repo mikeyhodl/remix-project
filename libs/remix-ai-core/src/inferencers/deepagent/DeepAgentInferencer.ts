@@ -88,7 +88,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.plugin = plugin
     this.event = new EventEmitter()
     this.fallbackInferencer = fallbackInferencer
-    this.streamEventHandler = new StreamEventHandler(this.event)
+    this.streamEventHandler = new StreamEventHandler(this.event, () => this.sessionThreadId)
 
     // Store model selection (default to mistral-medium-latest which is the system default)
     this.modelSelection = modelSelection || {
@@ -339,7 +339,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const responsePromise = this.runAgent(messages, params)
 
       responsePromise.then(response => {
-        this.event.emit('onStreamComplete', response)
+        this.event.emit('onStreamComplete', { content: response, threadId: this.sessionThreadId })
         this.event.emit('onInferenceDone')
       }).catch(error => {
         if (error?.name === 'AbortError' || error?.message?.includes('cancelled')) {
@@ -485,7 +485,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       let finalMessageFromChain = ''
       for await (const event of eventStream) {
         if (this.currentAbortController?.signal.aborted) {
-          this.event.emit('onStreamComplete', fullResponse)
+          this.event.emit('onStreamComplete', { content: fullResponse, threadId: this.sessionThreadId })
           break
         }
 
@@ -556,7 +556,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
                 : event.data.chunk.content.map((c: any) => c.text || '').join('')
               if (content) {
                 fullResponse += content
-                this.event.emit('onStreamResult', { content, isIntermediate: false, source: 'retry' })
+                this.event.emit('onStreamResult', { content, isIntermediate: false, source: 'retry', threadId: this.sessionThreadId })
               }
             }
           }
@@ -601,7 +601,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         this.event.emit('onStreamResult', {
           content: errorMessage,
           isIntermediate: false,
-          source: 'error'
+          source: 'error',
+          threadId: this.sessionThreadId
         })
         fullResponse += errorMessage
         return fullResponse
@@ -611,7 +612,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     } finally {
       this.streamEventHandler.stopInactivityTracking()
       this.currentAbortController = null
-      this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end' })
+      this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end', threadId: this.sessionThreadId })
     }
   }
 

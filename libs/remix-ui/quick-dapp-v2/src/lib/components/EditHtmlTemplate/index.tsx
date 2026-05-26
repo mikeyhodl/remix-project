@@ -52,6 +52,7 @@ function EditHtmlTemplate(): JSX.Element {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const builderRef = useRef<InBrowserVite | null>(null);
+  const runBuildRef = useRef<(showNotification?: boolean) => Promise<void>>();
 
   const [notificationModal, setNotificationModal] = useState({
     show: false,
@@ -99,7 +100,7 @@ function EditHtmlTemplate(): JSX.Element {
           });
         }
 
-        setTimeout(() => runBuild(true), 500);
+        setTimeout(() => runBuildRef.current?.(true), 500);
       }
     };
 
@@ -442,6 +443,9 @@ window.addEventListener('unhandledrejection', function(e) {
     setIsBuilding(false);
   }
 
+  // Keep runBuildRef updated so event handlers always call the latest version
+  runBuildRef.current = runBuild;
+
   const handleOpenAIAssistant = async () => {
     if (!activeDapp || !plugin) return;
     console.log('[QuickDapp] Opening AI Assistant for DApp update:', activeDapp.slug);
@@ -536,7 +540,7 @@ window.addEventListener('unhandledrejection', function(e) {
       if (isVM && !isCurrentProviderVM) {
         return;
       }
-      setTimeout(() => runBuild(false), 100);
+      setTimeout(() => runBuildRef.current?.(false), 100);
     }
   }, [isBuilderReady, isAiUpdating, activeDapp?.slug, isCurrentProviderVM]);
 
