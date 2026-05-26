@@ -31,8 +31,22 @@ export class LangSmithTracingManager {
     return LangSmithTracingManager.instance
   }
 
+  private isTracingAllowed(): boolean {
+    if (typeof window === 'undefined') return false
+
+    // Keep LangSmith disabled by default. Opt-in with:
+    // localStorage.setItem('deepagent_langsmith_enabled', 'true')
+    return window.localStorage?.getItem('deepagent_langsmith_enabled') === 'true'
+  }
+
   initialize(projectName?: string): void {
     try {
+      if (!this.isTracingAllowed()) {
+        this.disable()
+        console.log('[LangSmith] Tracing disabled (opt-in required)')
+        return
+      }
+
       const authToken = typeof window !== 'undefined'
         ? window.localStorage?.getItem('remix_access_token')
         : undefined

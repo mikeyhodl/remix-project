@@ -6,7 +6,7 @@ import HomeTabRecentWorkspaces from './components/homeTabRecentWorkspaces'
 import HomeTabRecentWorkspacesElectron from './components/homeTabRecentWorkspacesElectron'
 import HomeTabScamAlert from './components/homeTabScamAlert'
 import HomeTabFeaturedPlugins from './components/homeTabFeaturedPlugins'
-import { appActionTypes, AppContext, appPlatformTypes, platformContext } from '@remix-ui/app'
+import { appActionTypes, AppContext, appPlatformTypes, platformContext, useAuth } from '@remix-ui/app'
 import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { HomeTabFileElectron } from './components/homeTabFileElectron'
@@ -40,8 +40,9 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   })
 
   const [isTerminalHidden, setIsTerminalHidden] = useState<boolean>(false)
-  const [hasAuditorPermission, setHasAuditorPermission] = useState<boolean>(true)
-  const [hasSkillsPermission, setHasSkillsPermission] = useState<boolean>(true)
+  const { features } = useAuth()
+  const hasAuditorPermission = features['ai:auditor']?.is_enabled === true
+  const hasSkillsPermission = features['ai:skills']?.is_enabled === true
 
   useEffect(() => {
     plugin.call('theme', 'currentTheme').then((theme) => {
@@ -72,19 +73,6 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
     })
     plugin.on('terminal', 'terminalPanelHidden', () => {
       setIsTerminalHidden(true)
-    })
-
-    // Check permissions for AI features
-    plugin.call('auth', 'hasPermission', 'ai:auditor').then((hasPermission) => {
-      setHasAuditorPermission(hasPermission)
-    }).catch(() => {
-      setHasAuditorPermission(false)
-    })
-
-    plugin.call('auth', 'hasPermission', 'ai:skills').then((hasPermission) => {
-      setHasSkillsPermission(hasPermission)
-    }).catch(() => {
-      setHasSkillsPermission(false)
     })
   }, [])
 

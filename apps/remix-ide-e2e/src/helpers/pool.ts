@@ -21,7 +21,13 @@
 
 require('dotenv').config()
 
-const API_URL = process.env.REMIX_API_URL || 'https://api.remix.live'
+// IMPORTANT: keep in sync with the base the browser passes to
+// `initEndpoints(...)` in apps/remix-ide/src/app/components/preload.tsx.
+// While the app is hard-pinned to staging there, the Node-side pool
+// helper must point at the same host or browser checkout succeeds and
+// Node release fails with an opaque `fetch failed`.
+// TODO: drop the staging default once the app stops hard-coding it.
+const API_URL = process.env.REMIX_API_URL || 'https://tokens.staging.remix.live'
 const API_KEY = process.env.E2E_POOL_API_KEY || ''
 const POOL_BASE = `${API_URL}/sso/test/pool`
 
@@ -132,7 +138,11 @@ export async function releaseAccount(sessionId?: string): Promise<void> {
       console.log(`[Pool] Cleanup: DB=${data.cleaned.db?.nonCascadeDeleted || 0} rows, S3=${data.cleaned.s3?.workspaceObjects || 0} objects, Redis=${data.cleaned.redis?.keysDeleted || 0} keys`)
     }
   } catch (error: any) {
-    console.error('[Pool] Release error:', error.message)
+    // undici wraps the underlying reason in `cause` (ENOTFOUND, ECONNRESET,
+    // certificate errors, etc.). Surface it so misconfigured URLs are
+    // diagnosable without re-running with a debugger.
+    const causeMsg = error?.cause?.code || error?.cause?.message || error?.cause
+    console.error(`[Pool] Release error against ${POOL_BASE}/release:`, error.message, causeMsg ? `(cause: ${causeMsg})` : '')
   } finally {
     _activeSession = null
   }

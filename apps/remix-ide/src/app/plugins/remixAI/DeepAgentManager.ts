@@ -63,6 +63,12 @@ export class DeepAgentManager {
 
       plugin.deepAgentEnabled = true
 
+      ;(plugin as any).traceDeepAgentLifecycle?.('manager.enable:success', 'DeepAgentInferencer constructed + initialized', {
+        provider: plugin.selectedModel?.provider,
+        modelId: plugin.selectedModelId
+      })
+      ;(plugin as any).publishRouteStatus?.()
+
       // Store settings
       localStorage.setItem('deepagent_enabled', 'true')
 
@@ -77,6 +83,11 @@ export class DeepAgentManager {
       console.error('[RemixAI Plugin] Failed to enable DeepAgent:', error)
       plugin.deepAgentEnabled = false
       plugin.deepAgentInferencer = null
+      ;(plugin as any).traceDeepAgentLifecycle?.('manager.enable:failed', 'caught error inside DeepAgentManager.enable()', {
+        errorMessage: (error as any)?.message,
+        errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
+      })
+      ;(plugin as any).publishRouteStatus?.()
       throw error
     }
   }
@@ -92,6 +103,9 @@ export class DeepAgentManager {
 
     plugin.deepAgentEnabled = false
     plugin.deepAgentInferencer = null
+
+    ;(plugin as any).traceDeepAgentLifecycle?.('manager.disable', 'DeepAgentManager.disable() called', {})
+    ;(plugin as any).publishRouteStatus?.()
 
     // Store settings
     localStorage.setItem('deepagent_enabled', 'false')
@@ -204,8 +218,20 @@ export class DeepAgentManager {
     const plugin = this.deps.plugin
     // Use actual plugin state - default is enabled, localStorage is only set when explicitly changed
     const deepAgentEnabled = plugin.deepAgentEnabled || plugin.deepAgentInferencer !== null
+    // Guard against a transient null selectedModel (e.g. auth-state change racing
+    // with the model picker). Without this, the unguarded `plugin.selectedModel.provider`
+    // reads below throw a TypeError that the catch block converts into a permanent
+    // `deepAgentEnabled = false`, breaking DeepAgent until the page is reloaded.
+    const hasSelectedModel = !!(plugin.selectedModel && plugin.selectedModelId)
 
-    if (deepAgentEnabled && plugin.remixMCPServer) {
+    ;(plugin as any).traceDeepAgentLifecycle?.('manager.reinitialize:enter', 'reinitialize() entered — evaluating prereqs', {
+      computedDeepAgentEnabled: deepAgentEnabled,
+      hasRemixMCPServer: !!plugin.remixMCPServer,
+      hasSelectedModel,
+      willProceed: !!(deepAgentEnabled && plugin.remixMCPServer && hasSelectedModel)
+    })
+
+    if (deepAgentEnabled && plugin.remixMCPServer && hasSelectedModel) {
       try {
         console.log('[RemixAI Plugin] Reinitializing DeepAgent after MCP server reset...')
 
@@ -236,6 +262,12 @@ export class DeepAgentManager {
         await plugin.deepAgentInferencer.initialize()
         plugin.deepAgentEnabled = true
 
+        ;(plugin as any).traceDeepAgentLifecycle?.('manager.reinitialize:success', 'DeepAgent reinitialized', {
+          provider: plugin.selectedModel?.provider,
+          modelId: plugin.selectedModelId
+        })
+        ;(plugin as any).publishRouteStatus?.()
+
         // Set up event listeners (reset flag first)
         this.deps.eventBridge.resetSetup()
         this.deps.setupDeepAgentEventListeners()
@@ -245,6 +277,11 @@ export class DeepAgentManager {
         console.error('[RemixAI Plugin] Failed to reinitialize DeepAgent:', error)
         plugin.deepAgentEnabled = false
         plugin.deepAgentInferencer = null
+        ;(plugin as any).traceDeepAgentLifecycle?.('manager.reinitialize:failed', 'caught error inside DeepAgentManager.reinitialize()', {
+          errorMessage: (error as any)?.message,
+          errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
+        })
+        ;(plugin as any).publishRouteStatus?.()
       }
     }
   }

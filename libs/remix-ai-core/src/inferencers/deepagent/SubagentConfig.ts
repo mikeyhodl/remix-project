@@ -52,14 +52,22 @@ export async function buildSubagentConfigs(
 ): Promise<(SubAgent | CompiledSubAgent)[]> {
   // Check permissions
   const plugin = filesystemBackend.plugin
-  const hasAuditorPermission = await plugin.call('auth', 'hasPermission', 'ai:auditor')
-  const hasTheGraphPermission = await plugin.call('auth', 'hasPermission', 'mcp:thegraph')
-  const hasEtherscanPermission = await plugin.call('auth', 'hasPermission', 'mcp:etherscan')
-  const hasAlchemyPermission = await plugin.call('auth', 'hasPermission', 'mcp:alchemy')
-  const hasWebSearchPermission = await plugin.call('auth', 'hasPermission', 'mcp:web-search')
-  const hasCirclePermission = await plugin.call('auth', 'hasPermission', 'mcp:circle')
-  const hasOZpermission = await plugin.call('auth', 'hasPermission', 'mcp:openzeppelin')
-  const hasQuickdappPermission = await plugin.call('auth', 'hasPermission', 'dapp:quickdapp')
+  const hasFeature = async (feature: string): Promise<boolean> => {
+    try {
+      return !!(await plugin.call('assistantState', 'hasFeature', feature))
+    } catch {
+      return false
+    }
+  }
+
+  const hasAuditorPermission = await hasFeature('ai:auditor')
+  const hasTheGraphPermission = await hasFeature('mcp:thegraph')
+  const hasEtherscanPermission = await hasFeature('mcp:etherscan')
+  const hasAlchemyPermission = await hasFeature('mcp:alchemy')
+  const hasWebSearchPermission = await hasFeature('mcp:web-search')
+  const hasCirclePermission = await hasFeature('mcp:circle')
+  const hasOZpermission = await hasFeature('mcp:openzeppelin')
+  const hasQuickdappPermission = await hasFeature('dapp:quickdapp')
 
   const etherscanTools = getEtherscanToolsForEtherscanSpecialist(tools)
   const theGraphTools = getTheGraphToolsForTheGraphSpecialist(tools)
@@ -73,6 +81,11 @@ export async function buildSubagentConfigs(
   const webSearchTools = getWebSearchToolsForWebSearchSpecialist(tools)
   const conversionTools = getConversionToolsForConversionSpecialist(tools)
   const classifierTools = getToolForClassifierSpecialist(tools)
+  // Merge in fileOperationTools (file_write, file_read, directory_list, …) the same
+  // way Solidity Engineer / Comprehensive Auditor do — the QUICKDAPP_SPECIALIST
+  // prompt explicitly tells the LLM to "use file_write for implementation", so
+  // file_* tools must be exposed. Without these the specialist also cannot emit
+  // per-file tool cards ("Writing index.html…") during DApp generation.
   const quickDappTools = getQuickDappToolsForQuickDappSpecialist(tools)
   const solidityCompilerTools = getToolForSolidityCompiler(tools)
   const deployerTools = getToolsForDeployer(tools)

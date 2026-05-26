@@ -2,11 +2,12 @@ import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
 import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
-import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig } from '@remix/remix-ai-core';
+import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
-import { AIModel, getDefaultModel, getModelById, IUserApiKeyConfig } from '@remix/remix-ai-core';
+import { AIModel } from '@remix/remix-ai-core';
+import { aiErrorFromException, parseAIErrorEnvelope } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
 import { Registry } from '@remix-project/remix-lib'
@@ -30,7 +31,8 @@ const profile = {
     'setAutoMode', 'getAutoModeStatus',
     'clearCaches', 'cancelRequest',
     'getAllowedModels', 'setModelAccess',
-    'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy'
+    'isUsingOwnApiKey', 'getApiKeyStatus', 'fallbackToProxy',
+    'getRouteStatus'
   ],
   events: [
     'modelChanged',
@@ -38,7 +40,8 @@ const profile = {
     'codeExplainRequested', 'errorExplainRequested', 'vulnerabilityCheckRequested',
     'codeCompletionUsed', 'workspaceGenerated',
     'mcpEnabled', 'mcpDisabled',
-    'apiKeyModeChanged', 'onApiKeyError'
+    'apiKeyModeChanged', 'onApiKeyError',
+    'routeStatusChanged'
   ],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
@@ -60,8 +63,12 @@ export class RemixAIPlugin extends Plugin {
   contractor: ContractAgent | null = null
   workspaceAgent: workspaceAgent | null = null
   modelAccess: any
-  selectedModel: AIModel = getDefaultModel() // default model
-  selectedModelId: string = getDefaultModel().id
+  // Model selection is API-driven — sourced from /permissions via the
+  // assistantState plugin. Starts null; the activation hook subscribes
+  // to `assistantState.stateChanged` and populates with the row flagged
+  // `is_default: true`. Never substitute a literal model id here.
+  selectedModel: AIModel | null = null
+  selectedModelId: string = ''
   assistantThreadId: string = ''
   useRemoteInferencer:boolean = true
   completionAgent: CodeCompletionAgent | null = null
@@ -70,6 +77,21 @@ export class RemixAIPlugin extends Plugin {
   mcpEnabled: boolean = false
   remixMCPServer: RemixMCPServer | null = null
   deepAgentInferencer: DeepAgentInferencer | null = null
+
+  /**
+   * Bound bearer-token provider for MCPInferencer / MCPClient. Returns
+   * the user's current JWT (refreshed on every call) or null when the
+   * user is anonymous. We pass the bound function — not the raw
+   * `this.call` — so MCPClient stays plugin-engine-agnostic.
+   */
+  public readonly getMcpAuthToken = async (): Promise<string | null> => {
+    try {
+      const token = await this.call('auth' as any, 'getToken')
+      return typeof token === 'string' && token.length > 0 ? token : null
+    } catch {
+      return null
+    }
+  }
   deepAgentEnabled: boolean = false
   private pendingDeepAgentThreadId: string | null = null
 
@@ -84,7 +106,7 @@ export class RemixAIPlugin extends Plugin {
     super(profile)
     this.eventBridge = new DeepAgentEventBridge()
     this.mcpManager = new MCPServerManager(this as any)
-    this.permissionChecker = new PermissionChecker()
+    this.permissionChecker = new PermissionChecker(this as any)
     this.deepAgentEnabled = true
 
     this.modelManager = new ModelManager({
@@ -120,6 +142,163 @@ export class RemixAIPlugin extends Plugin {
     this.eventBridge.setupListeners(this.deepAgentInferencer, this as any)
   }
 
+  /**
+   * Single source of truth for diagnosing "why did this request go to
+   * solcoder/remote?". Emits a tagged console.group with every prereq
+   * we evaluate in the routing decision plus the current lifecycle
+   * state for DeepAgent / MCP / model selection.
+   *
+   * NOTE: investigation only — does not change behavior.
+   */
+  public traceRouteDecision(stage: string, extra: Record<string, any> = {}): void {
+    try {
+      const card = {
+        stage,
+        timestamp: new Date().toISOString(),
+        chosenRoute:
+          this.mcpEnabled && !!this.mcpInferencer
+            ? 'mcp'
+            : (this.deepAgentEnabled && !!this.deepAgentInferencer ? 'deepagent' : 'remote'),
+        mcp: {
+          mcpEnabled: this.mcpEnabled,
+          hasMcpInferencer: !!this.mcpInferencer,
+          mcpServersCount: this.mcpServers?.length ?? 0,
+          hasRemixMCPServer: !!this.remixMCPServer
+        },
+        deepAgent: {
+          deepAgentEnabled: this.deepAgentEnabled,
+          hasDeepAgentInferencer: !!this.deepAgentInferencer,
+          pendingThreadId: this.pendingDeepAgentThreadId
+        },
+        model: {
+          selectedModelId: this.selectedModelId,
+          selectedProvider: this.selectedModel?.provider ?? null,
+          requiredFeature: this.selectedModel?.requiredFeature ?? null,
+          available: this.selectedModel?.available ?? null
+        },
+        remote: {
+          hasRemoteInferencer: !!this.remoteInferencer
+        },
+        extra
+      }
+      // eslint-disable-next-line no-console
+      console.group(`[route-trace][${stage}] chosen=${card.chosenRoute}`)
+      // eslint-disable-next-line no-console
+      console.log(card)
+      if (card.chosenRoute === 'remote') {
+        // Make the fallback impossible to miss — also dump a stack
+        // snippet so we can see who is calling us.
+        // eslint-disable-next-line no-console
+        console.warn('[route-trace][SOLCODER-FALLBACK] DeepAgent/MCP unavailable, falling back to remote (solcoder).')
+        // eslint-disable-next-line no-console
+        console.warn('[route-trace][SOLCODER-FALLBACK] reason flags:', {
+          mcpEnabledButNoInferencer: this.mcpEnabled && !this.mcpInferencer,
+          deepAgentEnabledButNoInferencer: this.deepAgentEnabled && !this.deepAgentInferencer,
+          deepAgentDisabled: !this.deepAgentEnabled,
+          mcpDisabled: !this.mcpEnabled
+        })
+        try { throw new Error('route-trace stack') } catch (e: any) {
+          // eslint-disable-next-line no-console
+          console.warn('[route-trace][SOLCODER-FALLBACK] stack:\n' + (e?.stack || '').split('\n').slice(0, 12).join('\n'))
+        }
+      }
+      // eslint-disable-next-line no-console
+      console.groupEnd()
+    } catch { /* logging must never throw */ }
+  }
+
+  /**
+   * Tag every transition that toggles DeepAgent on/off so we can
+   * reconstruct, from the console, why a later request fell back to
+   * solcoder. `reason` is a short label, `extra` should include the
+   * key state values (selectedModel, hasRemixMCPServer, error).
+   */
+  public traceDeepAgentLifecycle(event: string, reason: string, extra: Record<string, any> = {}): void {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[deepagent-lifecycle]', {
+        event,
+        reason,
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasDeepAgentInferencer: !!this.deepAgentInferencer,
+        selectedModelId: this.selectedModelId,
+        selectedProvider: this.selectedModel?.provider ?? null,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        hasMcpInferencer: !!this.mcpInferencer,
+        mcpEnabled: this.mcpEnabled,
+        timestamp: new Date().toISOString(),
+        extra
+      })
+    } catch { /* logging must never throw */ }
+  }
+
+  // ─── Route status (UI readiness signal) ─────────────────────────────
+  // The UI shows a small badge / disables input based on this. It is
+  // recomputed whenever the underlying state changes; `publishRouteStatus`
+  // is called from every code path that mutates a relevant field.
+  private _lastRouteStatus: string | null = null
+
+  /**
+   * Compute the current chat route status for the UI:
+   *  - 'initializing': prereqs are still settling (no selectedModel yet, or
+   *    DeepAgent is enabled but its inferencer hasn't been built yet).
+   *  - 'agent'       : DeepAgent path is live (subagents + tools).
+   *  - 'tools'       : MCP-only path is live (tools, no subagents).
+   *  - 'chat'        : plain remote/ollama path (no tools, no subagents).
+   */
+  public getRouteStatus(): {
+    route: 'initializing' | 'agent' | 'tools' | 'chat'
+    ready: boolean
+    details: Record<string, any>
+    } {
+    const hasModel = !!(this.selectedModel && this.selectedModelId)
+    const hasDeepAgent = !!(this.deepAgentEnabled && this.deepAgentInferencer)
+    const hasMcp = !!(this.mcpEnabled && this.mcpInferencer)
+    // DeepAgent prereqs known to the plugin: model + remixMCPServer + flag.
+    // If the flag is on and we have the prereqs but the inferencer isn't
+    // built yet, treat the route as "initializing" instead of falling back
+    // to 'chat' — this is the window where the UI should hold the user back.
+    const deepAgentSettling = this.deepAgentEnabled && !!this.remixMCPServer && hasModel && !this.deepAgentInferencer
+    let route: 'initializing' | 'agent' | 'tools' | 'chat'
+    if (!hasModel || deepAgentSettling) {
+      route = 'initializing'
+    } else if (hasDeepAgent) {
+      route = 'agent'
+    } else if (hasMcp) {
+      route = 'tools'
+    } else {
+      route = 'chat'
+    }
+    return {
+      route,
+      ready: route !== 'initializing',
+      details: {
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasDeepAgentInferencer: !!this.deepAgentInferencer,
+        mcpEnabled: this.mcpEnabled,
+        hasMcpInferencer: !!this.mcpInferencer,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        selectedModelId: this.selectedModelId,
+        selectedProvider: this.selectedModel?.provider ?? null
+      }
+    }
+  }
+
+  /**
+   * Recompute the route status and emit `routeStatusChanged` if it changed.
+   * Safe to call from any lifecycle hook; no-op if status is unchanged.
+   */
+  public publishRouteStatus(): void {
+    try {
+      const status = this.getRouteStatus()
+      const key = `${status.route}|${status.ready}`
+      if (key !== this._lastRouteStatus) {
+        this._lastRouteStatus = key
+        this.emit('routeStatusChanged', status)
+      }
+    } catch { /* never throw */ }
+  }
+
   private async getLocalizedMessage(key: string): Promise<string> {
     try {
       const locale = await this.call('locale', 'currentLocale')
@@ -142,21 +321,96 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async onActivation(): Promise<void> {
-    const { hasBasicMcp, isBetaUser } = await this.checkMCPAccess()
+    const { hasBasicMcp, hasWebSearch } = await this.checkMCPAccess()
+    let mcpPermissionSyncInFlight = false
 
-    if (isBetaUser) {
-      console.log('[RemixAI Plugin] Beta user detected at startup, using claude-sonnet-4-6')
-      const betaModel = getModelById('claude-sonnet-4-6')
-      if (betaModel) {
-        this.selectedModelId = 'claude-sonnet-4-6'
-        this.selectedModel = betaModel
+    // Resolve the initial model from /permissions — NO client-side defaults
+    // and NO beta-user hardcode. The backend's `is_default: true` row wins.
+    // If permissions haven't loaded yet, subscribe and wait; downstream
+    // calls (DeepAgent enable, completion, etc.) all gate on `selectedModel`.
+    const applyDefaultFromState = async (): Promise<void> => {
+      try {
+        const def: AIModel | null = await this.call('assistantState' as any, 'getDefaultModel')
+        // The anonymous placeholder (id: '__signin__') is marked
+        // `available: false` — it exists only so the picker can render a
+        // "Sign in" row. The plugin must NEVER commit to it; otherwise
+        // we end up sending `model: "__signin__"` to the backend.
+        if (!def || !def.id || def.available === false) {
+          console.log('[RemixAI Plugin] /permissions has no usable default model yet — waiting for stateChanged', { id: def?.id, available: def?.available })
+          return
+        }
+        // Re-apply when:
+        //   - we don't have a selection yet, OR
+        //   - the current selection is the anonymous placeholder / an
+        //     unavailable row (e.g. permissions just flipped from anon
+        //     → authed and we still hold '__signin__').
+        // Don't clobber a real user pick.
+        const currentIsUsable = !!this.selectedModel && this.selectedModel.available !== false
+        if (this.selectedModelId && currentIsUsable) {
+          return
+        }
+        console.log('[RemixAI Plugin] Initial/refreshed default model from /permissions:', def.provider, def.id)
+        this.selectedModel = def
+        this.selectedModelId = def.id
+        this.emit('modelChanged', def.id)
+        // Push the new selection through the standard setModel flow so
+        // GenerationParams/CompletionParams pick up the provider+model
+        // and DeepAgent (if enabled) reinitialises.
+        try {
+          await this.setModel(def.id)
+        } catch (e) {
+          console.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
+        }
+        // If DeepAgent is intended-on but wasn't initialised at startup
+        // because selectedModel was null, do it now.
+        if (this.deepAgentEnabled && !this.deepAgentInferencer && this.remixMCPServer) {
+          try {
+            await this.deepAgentManager.enable()
+          } catch (e) {
+            console.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
+          }
+        }
+      } catch (e) {
+        console.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
       }
-    } else {
-      console.log('[RemixAI Plugin] Non-beta user at startup, using default model')
-      const defaultModel = getDefaultModel()
-      this.selectedModelId = defaultModel.id
-      this.selectedModel = defaultModel
     }
+
+    // Auth can flip before /permissions has fully hydrated in assistantState.
+    // When that happens, refreshMCPServersOnAuthChange() may run with a stale
+    // snapshot and keep the default-only server set. Re-run the MCP refresh
+    // once permissions are definitively ready so mcp:basicExternal is applied
+    // without requiring a hard reload.
+    const syncMcpServersFromReadyPermissions = async (snap?: any): Promise<void> => {
+      if (mcpPermissionSyncInFlight) return
+
+      const permissionsState = snap?.permissionsState
+      const isAuthenticated = !!snap?.isAuthenticated
+
+      // Only run once the permissions payload is ready for an authenticated user.
+      if (!isAuthenticated || permissionsState !== 'ready') return
+
+      mcpPermissionSyncInFlight = true
+      try {
+        await this.refreshMCPServersOnAuthChange({ isAuthenticated: true })
+      } catch (e) {
+        console.warn('[RemixAI Plugin] MCP sync from ready permissions failed', e)
+      } finally {
+        mcpPermissionSyncInFlight = false
+      }
+    }
+
+    await applyDefaultFromState()
+    this.on('assistantState' as any, 'stateChanged', (snap: any) => {
+      void applyDefaultFromState()
+      void syncMcpServersFromReadyPermissions(snap)
+    })
+
+    // Listen for tool-approval responses forwarded by the assistant UI as engine events.
+    // The UI cannot use plugin.call() here because remixAI's request queue is busy with
+    // the in-flight answer() call that is awaiting this very approval.
+    this.on('remixaiassistant' as any, 'toolApprovalResponse', (response: { requestId: string; approved: boolean; modifiedArgs?: Record<string, any>; timedOut?: boolean }) => {
+      this.deepAgentManager.respondToToolApproval(response)
+    })
 
     await this.initialize()
     this.completionAgent = new CodeCompletionAgent(this)
@@ -165,11 +419,20 @@ export class RemixAIPlugin extends Plugin {
     this.contractor = ContractAgent.getInstance(this)
     this.workspaceAgent = workspaceAgent.getInstance(this)
 
-    this.mcpServers = [...mcpDefaultServersConfig.defaultServers, ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : [])]
+    // Web Search MUST be gated on `mcp:web-search` — see PermissionChecker.
+    // Including it unconditionally fires an anonymous request to /web-search
+    // and the gateway returns 401, polluting the console and flagging the
+    // session. The post-login `refreshMCPServersOnAuthChange` flow re-adds it
+    // once permissions hydrate.
+    this.mcpServers = [
+      ...mcpDefaultServersConfig.defaultServers,
+      ...(hasBasicMcp ? mcpBasicServersConfig.defaultServers : []),
+      ...(hasWebSearch ? mcpWebSearchServersConfig.defaultServers : [])
+    ]
 
     // Initialize MCP inferencer if we have servers and remixMCPServer exists
     if (this.mcpServers.length > 0 && this.remixMCPServer) {
-      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer, this.getMcpAuthToken);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
         console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
       });
@@ -199,7 +462,14 @@ export class RemixAIPlugin extends Plugin {
     const allTools = await this.mcpInferencer?.getAllTools();
     console.log('[RemixAI Plugin] MCP tools available after wait:', allTools);
 
-    if (this.deepAgentEnabled && this.remixMCPServer) {
+    this.traceDeepAgentLifecycle('onActivation:preInitCheck', 'evaluating prereqs before constructing DeepAgentInferencer', {
+      deepAgentEnabled: this.deepAgentEnabled,
+      hasRemixMCPServer: !!this.remixMCPServer,
+      hasSelectedModel: !!this.selectedModel,
+      selectedModelId: this.selectedModelId,
+      willInitialize: !!(this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId)
+    })
+    if (this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId) {
       try {
         console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
         console.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
@@ -242,8 +512,20 @@ export class RemixAIPlugin extends Plugin {
         console.error('[RemixAI Plugin] Failed to initialize DeepAgent:', error)
         this.deepAgentEnabled = false
         this.deepAgentInferencer = null
+        this.traceDeepAgentLifecycle('onActivation:initFailed', 'caught error during DeepAgentInferencer construction/initialize', {
+          errorMessage: (error as any)?.message,
+          errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
+        })
       }
+    } else {
+      this.traceDeepAgentLifecycle('onActivation:initSkipped', 'prereqs missing — DeepAgent not constructed at activation', {
+        deepAgentEnabled: this.deepAgentEnabled,
+        hasRemixMCPServer: !!this.remixMCPServer,
+        hasSelectedModel: !!this.selectedModel,
+        selectedModelId: this.selectedModelId
+      })
     }
+    this.publishRouteStatus()
   }
 
   async initialize(remoteModel?:IRemoteModel){
@@ -255,7 +537,14 @@ export class RemixAIPlugin extends Plugin {
       this.isInferencing = false
     })
 
-    await this.setModel(this.selectedModelId)
+    // Only push the model to the inference layer once /permissions has
+    // resolved one. Without an id the picker is empty and downstream
+    // setModel would throw — we let the assistantState subscription do it.
+    if (this.selectedModelId) {
+      await this.setModel(this.selectedModelId)
+    } else {
+      console.log('[RemixAI Plugin] initialize: no selectedModelId yet, deferring setModel until /permissions loads')
+    }
 
     this.aiIsActivated = true
 
@@ -274,6 +563,66 @@ export class RemixAIPlugin extends Plugin {
     return true
   }
 
+  /**
+   * Wrap an AI inferencer call with the assistant-state lifecycle:
+   *   - `requireReady({feature})` — opens planManager with the right reason
+   *      when the user is anonymous, unverified, feature-gated or in cooldown.
+   *      Returns `null` from the AI method when the gate refuses.
+   *   - `reportRequestStarted` before the call.
+   *   - `reportRequestSucceeded` on success.
+   *   - `reportError(parsedAIError)` on failure (then re-throws).
+   *
+   * `assistantState` calls are individually try/catch-wrapped so the legacy
+   * path keeps working when the plugin is disabled (e.g. tests).
+   */
+  private getSelectedModelRequiredFeature(): string | undefined {
+    const feature = this.selectedModel?.requiredFeature
+    return feature && feature.length > 0 ? feature : undefined
+  }
+
+  private async withAssistantGate<T>(feature: string | undefined, run: () => Promise<T>): Promise<T | null> {
+    try {
+      const ready = feature
+        ? await this.call('assistantState' as any, 'requireReady', { feature })
+        : await this.call('assistantState' as any, 'requireReady')
+      if (!ready) return null
+    } catch { /* assistantState not active — fall through */ }
+    try { await this.call('assistantState' as any, 'reportRequestStarted') } catch { /* noop */ }
+    try {
+      const result = await run()
+      try { await this.call('assistantState' as any, 'reportRequestSucceeded') } catch { /* noop */ }
+      return result
+    } catch (e: any) {
+      const status = e?.response?.status ?? e?.status ?? 0
+      const responseBody = e?.response?.data ?? e?.data
+      // Only run parseAIErrorEnvelope on an actual response body. If we
+      // don't have one (e.g. plain Error from langchain with the body
+      // stringified into .message as "403 {json}"), aiErrorFromException
+      // is the right tool — it knows how to peel that wrapper apart.
+      const aiError = responseBody && typeof responseBody === 'object'
+        ? parseAIErrorEnvelope(responseBody, status)
+        : aiErrorFromException(e)
+      try { await this.call('assistantState' as any, 'reportError', aiError) } catch { /* noop */ }
+      // Stamp the parsed envelope on the thrown error so the UI catch
+      // block (and any other consumer) doesn't need to re-parse the raw
+      // response. Critical for inferencer paths that throw plain Errors
+      // (MCP tool failures, SSE error frames, network down) — without
+      // this the UI saw `error.message` and showed nothing useful.
+      try {
+        if (e && typeof e === 'object') {
+          ;(e as any).aiError = aiError
+          // Also synthesise the .response.data.error shape that legacy
+          // catch sites look for, so they don't accidentally swallow
+          // the error as "no envelope, ignore".
+          if (!(e as any).response) (e as any).response = { status: aiError.status, data: { error: aiError } }
+          else if (!(e as any).response.data) (e as any).response.data = { error: aiError }
+          else if (!(e as any).response.data.error) (e as any).response.data.error = aiError
+        }
+      } catch { /* defensive — never let stamping crash error propagation */ }
+      throw e
+    }
+  }
+
   async basic_prompt(prompt: string) {
     const option = { ...GenerationParams }
     option.stream = false
@@ -283,75 +632,158 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {
-    if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      return this.deepAgentInferencer.code_generation(prompt, params)
-    } else if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.code_generation(prompt, params)
-    } else {
-      return await this.remoteInferencer.code_generation(prompt, params)
-    }
+    return this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('code_generation', { promptLen: prompt?.length ?? 0 })
+      // Explicit MCP toggle wins over DeepAgent — the user opted in to the
+      // MCP-enriched solcoder path and that's what they expect to run.
+      if (this.mcpEnabled && this.mcpInferencer){
+        return this.mcpInferencer.code_generation(prompt, params)
+      } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return this.deepAgentInferencer.code_generation(prompt, params)
+      } else {
+        return await this.remoteInferencer.code_generation(prompt, params)
+      }
+    })
   }
 
   async code_completion(prompt: string, promptAfter: string, params:IParams=CompletionParams): Promise<any> {
     this.emit('codeCompletionUsed')
-    if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
-    params.provider = 'mistralai' // default provider for code completion
-    const currentFileName = await this.call('fileManager', 'getCurrentFile')
-    const contextfiles = await this.completionAgent.getContextFiles(prompt)
-    return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
+    return this.withAssistantGate('ai:completion', async () => {
+      if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
+      params.provider = 'mistralai' // default provider for code completion
+      const currentFileName = await this.call('fileManager', 'getCurrentFile')
+      const contextfiles = await this.completionAgent.getContextFiles(prompt)
+      return await this.remoteInferencer.code_completion(prompt, promptAfter, contextfiles, currentFileName, params)
+    })
   }
 
   async answer(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('chatMessageSent')
-    let newPrompt = await this.codeExpAgent.chatCommand(prompt)
-    // add workspace context
-    newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
-    let result
-    if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      result = await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
-    } else if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.answer(prompt, params)
-    } else {
-      result = await this.remoteInferencer.answer(newPrompt, params)
-    }
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('answer', { promptLen: prompt?.length ?? 0 })
+      let newPrompt = await this.codeExpAgent.chatCommand(prompt)
+      // add workspace context
+      newPrompt = !this.workspaceAgent.ctxFiles ? newPrompt : "Using the following context: ```\n" + this.workspaceAgent.ctxFiles + "```\n\n" + newPrompt
+      // Single source of truth for which backend handled this turn.
+      // `/solcoder` = simple chat, `/langchain` = DeepAgent (multi-POST),
+      // `mcp` = MCP-enriched solcoder. Without this it's nearly impossible
+      // to tell from DevTools which path produced any given error.
+      // Explicit MCP toggle wins over DeepAgent — when the user flips the
+      // MCP Enhancement checkbox they expect the MCP-enriched solcoder
+      // route, not the langchain DeepAgent flow.
+      const mcpRouteCheck = this.mcpEnabled && !!this.mcpInferencer
+      const deepAgentRouteCheck = this.deepAgentEnabled && !!this.deepAgentInferencer
+      const remoteRouteCheck = !!this.remoteInferencer
+      const route = mcpRouteCheck
+        ? 'mcp'
+        : (deepAgentRouteCheck ? 'deepagent' : 'remote')
+      const routeFlow = {
+        selectedRoute: route,
+        checks: [
+          {
+            step: 1,
+            name: 'mcpEnabled && hasMcpInferencer',
+            mcpEnabled: this.mcpEnabled,
+            hasMcpInferencer: !!this.mcpInferencer,
+            passed: mcpRouteCheck
+          },
+          {
+            step: 2,
+            name: 'deepAgentEnabled && hasDeepAgentInferencer',
+            deepAgentEnabled: this.deepAgentEnabled,
+            hasDeepAgentInferencer: !!this.deepAgentInferencer,
+            passed: deepAgentRouteCheck
+          },
+          {
+            step: 3,
+            name: 'hasRemoteInferencer (fallback)',
+            hasRemoteInferencer: remoteRouteCheck,
+            passed: remoteRouteCheck
+          }
+        ],
+        prompt: {
+          originalLength: prompt?.length ?? 0,
+          transformedLength: newPrompt?.length ?? 0,
+          workspaceContextChars: this.workspaceAgent?.ctxFiles?.length ?? 0,
+          hasWorkspaceContext: !!this.workspaceAgent?.ctxFiles
+        },
+        model: {
+          provider: this.selectedModel?.provider ?? '?',
+          id: this.selectedModel?.id ?? '?',
+          requestedProvider: params?.provider ?? '?',
+          requestedModel: params?.model ?? '?'
+        },
+        params: {
+          stream: !!params?.stream,
+          stream_result: !!params?.stream_result,
+          return_stream_response: !!params?.return_stream_response,
+          threadId: params?.threadId ?? ''
+        }
+      }
+      console.log('[answer][route-flow]', routeFlow)
+      if (!remoteRouteCheck && route === 'remote') {
+        console.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
+      }
+      if (route === 'deepagent') {
+        console.log('[answer][route-flow] dispatch=deepagent.answer')
+        return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
+      } else if (route === 'mcp'){
+        console.log('[answer][route-flow] dispatch=mcp.answer')
+        return await this.mcpInferencer.answer(prompt, params)
+      } else {
+        console.log('[answer][route-flow] dispatch=remote.answer')
+        return await this.remoteInferencer.answer(newPrompt, params)
+      }
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async code_explaining(prompt: string, context: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('codeExplainRequested')
-    let result
-    if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      result = await this.deepAgentInferencer.code_explaining(prompt, context, params)
-    } else if (this.mcpEnabled && this.mcpInferencer){
-      return this.mcpInferencer.code_explaining(prompt, context, params)
-    } else {
-      result = await this.remoteInferencer.code_explaining(prompt, context, params)
-    }
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      this.traceRouteDecision('code_explaining', { promptLen: prompt?.length ?? 0, contextLen: context?.length ?? 0 })
+      // Explicit MCP toggle wins over DeepAgent — see answer() for rationale.
+      if (this.mcpEnabled && this.mcpInferencer){
+        return await this.mcpInferencer.code_explaining(prompt, context, params)
+      } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        return await this.deepAgentInferencer.code_explaining(prompt, context, params)
+      } else {
+        return await this.remoteInferencer.code_explaining(prompt, context, params)
+      }
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async error_explaining(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('errorExplainRequested')
-    let localFilesImports = ""
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      // NOTE: error_explaining ALWAYS goes to remote (solcoder) by design.
+      this.traceRouteDecision('error_explaining', { hardcodedRoute: 'remote', promptLen: prompt?.length ?? 0 })
+      let localFilesImports = ""
 
-    // Get local imports from the workspace restrict to 5 most relevant files
-    const relevantFiles = this.workspaceAgent.getRelevantLocalFiles(prompt, 5);
+      // Get local imports from the workspace restrict to 5 most relevant files
+      const relevantFiles = this.workspaceAgent.getRelevantLocalFiles(prompt, 5);
 
-    for (const file in relevantFiles) {
-      localFilesImports += `\n\nFileName: ${file}\n\n${relevantFiles[file]}`
-    }
-    localFilesImports = localFilesImports + "\n End of local files imports.\n\n"
-    prompt = localFilesImports ? `Using the following local imports: ${localFilesImports}\n\n` + prompt : prompt
-    const result = await this.remoteInferencer.error_explaining(prompt, params)
+      for (const file in relevantFiles) {
+        localFilesImports += `\n\nFileName: ${file}\n\n${relevantFiles[file]}`
+      }
+      localFilesImports = localFilesImports + "\n End of local files imports.\n\n"
+      const finalPrompt = localFilesImports ? `Using the following local imports: ${localFilesImports}\n\n` + prompt : prompt
+      return await this.remoteInferencer.error_explaining(finalPrompt, params)
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
 
   async vulnerability_check(prompt: string, params: IParams=GenerationParams): Promise<any> {
     this.emit('vulnerabilityCheckRequested')
-    const result = await this.remoteInferencer.vulnerability_check(prompt, params)
+    const result = await this.withAssistantGate(this.getSelectedModelRequiredFeature(), async () => {
+      // NOTE: vulnerability_check ALWAYS goes to remote (solcoder) by design.
+      this.traceRouteDecision('vulnerability_check', { hardcodedRoute: 'remote', promptLen: prompt?.length ?? 0 })
+      return await this.remoteInferencer.vulnerability_check(prompt, params)
+    })
     if (result && params.terminal_output) this.call('terminal', 'log', { type: 'aitypewriterwarning', value: result })
     return result
   }
@@ -367,8 +799,8 @@ export class RemixAIPlugin extends Plugin {
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
-    params.provider = 'anthropic' // enforce all generation to be only on anthropic
-    params.model = 'claude-haiku-4-5'
+    params.provider = 'mistralai' // enforce all generation to be only on anthropic
+    params.model = 'mistral-medium-latest'
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
@@ -413,6 +845,9 @@ export class RemixAIPlugin extends Plugin {
   async generateWorkspace (userPrompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
+    if (!this.selectedModel) {
+      throw new Error('[remixAIPlugin.generateWorkspace] No selectedModel — wait for /permissions to load before invoking the workspace agent.')
+    }
     params.provider = this.selectedModel.provider
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'WorkspaceAgentEdit', isClick: false })
@@ -456,15 +891,28 @@ export class RemixAIPlugin extends Plugin {
   }
 
   async code_insertion(msg_pfx: string, msg_sfx: string, params:IParams=CompletionParams): Promise<any> {
-    if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
+    return this.withAssistantGate('ai:completion', async () => {
+      if (this.completionAgent.indexer == null || this.completionAgent.indexer == undefined) await this.completionAgent.indexWorkspace()
 
-    params.provider = 'mistralai' // default provider for code completion
-    const currentFileName = await this.call('fileManager', 'getCurrentFile')
-    const contextfiles = await this.completionAgent.getContextFiles(msg_pfx)
-    return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
+      params.provider = 'mistralai' // default provider for code completion
+      const currentFileName = await this.call('fileManager', 'getCurrentFile')
+      const contextfiles = await this.completionAgent.getContextFiles(msg_pfx)
+      return await this.remoteInferencer.code_insertion( msg_pfx, msg_sfx, contextfiles, currentFileName, params)
+    })
   }
 
-  chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
+  async chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
+    // Gate before we pipe anything to the chat — otherwise the user bubble
+    // appears for a request we already know we won't honor (and the
+    // downstream null result crashes the chat with "cannot read body").
+    try {
+      const requiredFeature = this.getSelectedModelRequiredFeature()
+      const ready = requiredFeature
+        ? await this.call('assistantState' as any, 'requireReady', { feature: requiredFeature })
+        : await this.call('assistantState' as any, 'requireReady')
+      if (!ready) return
+    } catch { /* assistantState not active — fall through to legacy path */ }
+
     if (this.chatRequestBuffer == null){
       this.chatRequestBuffer = {
         fn_name: fn,
@@ -517,6 +965,9 @@ export class RemixAIPlugin extends Plugin {
 
   async getAssistantProvider(){
     // Legacy method for backwards compatibility
+    if (!this.selectedModel) {
+      throw new Error('[remixAIPlugin.getAssistantProvider] No selectedModel \u2014 /permissions has not resolved a default model yet.')
+    }
     return this.selectedModel.provider
   }
 
@@ -539,8 +990,9 @@ export class RemixAIPlugin extends Plugin {
   async getModelAccess(): Promise<string[]> {
     const models = await this.permissionChecker.getModelAccess()
     if (models.length > 0) return models
-    // Fallback: default model + ollama
-    return [getDefaultModel().id, 'ollama']
+    // No literal fallback. Empty list is a valid signal: the picker will
+    // show locked rows and clicking opens the planManager.
+    return []
   }
 
   async getOllamaModels(): Promise<string[]> {
@@ -583,13 +1035,14 @@ export class RemixAIPlugin extends Plugin {
   async enableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = true;
     this.emit('mcpEnabled')
+    this.publishRouteStatus()
 
     if (!this.mcpServers || this.mcpServers.length === 0) {
       return;
     }
 
     if (!this.mcpInferencer) {
-      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer);
+      this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer, this.getMcpAuthToken);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
       })
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
@@ -612,6 +1065,7 @@ export class RemixAIPlugin extends Plugin {
   async disableMCPEnhancement(): Promise<void> {
     this.mcpEnabled = false;
     this.emit('mcpDisabled')
+    this.publishRouteStatus()
 
     if (this.mcpInferencer) {
       for (const server of this.mcpServers) {
@@ -685,7 +1139,7 @@ export class RemixAIPlugin extends Plugin {
     return this.mcpManager.refreshOnAuthChange(authState)
   }
 
-  private async checkMCPAccess(): Promise<{ hasBasicMcp: boolean; isBetaUser: boolean }> {
+  private async checkMCPAccess(): Promise<{ hasBasicMcp: boolean; hasWebSearch: boolean; isBetaUser: boolean }> {
     return this.permissionChecker.checkMCPAccess()
   }
 

@@ -3,7 +3,7 @@
 import { ICompletions,
   IParams, ChatEntry, AIRequestType, IRemoteModel } from './types/types'
 import { ModelType } from './types/constants'
-import { InsertionParams, CompletionParams, GenerationParams, AssistantParams, AIModel, AVAILABLE_MODELS, getDefaultModel, getModelById } from './types/models'
+import { InsertionParams, CompletionParams, GenerationParams, AssistantParams, AIModel, ANONYMOUS_FALLBACK_MODELS, ANONYMOUS_PLACEHOLDER_MODEL, OLLAMA_MODEL, getModelById, parseAIModelsFromPermissions } from './types/models'
 import { buildChatPrompt } from './prompts/promptBuilder'
 import { RemoteInferencer } from './inferencers/remote/remoteInference'
 import { OllamaInferencer } from './inferencers/local/ollamaInferencer'
@@ -14,7 +14,7 @@ import { isOllamaAvailable, getBestAvailableModel, listModels, discoverOllamaHos
 import { FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS } from './inferencers/local/fimModelConfig'
 import { ChatHistory } from './prompts/chat'
 import { ChatCommandParser } from './helpers/chatCommandParser'
-import { mcpDefaultServersConfig, mcpBasicServersConfig } from './config/mcpDefaultServers'
+import { mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from './config/mcpDefaultServers'
 import { ChatHistoryStorageManager } from './storage/storageManager'
 import { IndexedDBChatHistoryBackend } from './storage/indexedDBBackend'
 import { WeightedToolSelector, IChatMessage } from './services/weightedToolSelector'
@@ -25,8 +25,8 @@ export {
   FIMModelManager, FIMModelConfig, FIM_MODEL_CONFIGS, createRemixMCPServer,
   InsertionParams, CompletionParams, GenerationParams, AssistantParams,
   ChatEntry, AIRequestType, ChatHistory, resetOllamaHostOnSettingsChange,
-  mcpDefaultServersConfig, mcpBasicServersConfig,
-  AIModel, AVAILABLE_MODELS, getDefaultModel, getModelById,
+  mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig,
+  AIModel, ANONYMOUS_FALLBACK_MODELS, ANONYMOUS_PLACEHOLDER_MODEL, OLLAMA_MODEL, getModelById, parseAIModelsFromPermissions,
   ChatHistoryStorageManager, IndexedDBChatHistoryBackend,
   WeightedToolSelector, IChatMessage
 }
@@ -41,6 +41,8 @@ export * from './agents/securityAgent'
 export * from './agents/contractAgent'
 export * from './agents/workspaceAgent'
 export * from './storage'
+export * from './state/assistant-machine'
+export * from './state/ai-error'
 export * from './inferencers/deepagent'
 export { onDeepAgentApiKeysChanged, onApiKeysChange } from './inferencers/deepagent/deepAgentSettingsEvents'
 export * from './types/deepagent'

@@ -40,6 +40,15 @@ export interface PromptAreaProps {
   autoModeEnabled?: boolean
   handleLoadSkills?: () => void
   usingOwnApiKey?: boolean
+  aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
+  aiRouteReady?: boolean
+  // When false the composer renders an explicit "Sign in" CTA in place
+  // of the disabled send button. Without this hint the user just sees a
+  // greyed-out paper plane and an "Initialising agents…" placeholder —
+  // both technically accurate but confusing because the route will
+  // never become ready until they authenticate.
+  isAuthenticated?: boolean
+  onSignIn?: () => void
 }
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
@@ -64,7 +73,11 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   modelSelectorBtnRef,
   autoModeEnabled,
   handleLoadSkills,
-  usingOwnApiKey
+  usingOwnApiKey,
+  aiRoute = 'chat',
+  aiRouteReady = true,
+  isAuthenticated = true,
+  onSignIn
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
 
@@ -74,6 +87,19 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
   }, [input])
+
+  // The composer has three resting states:
+  //   1. ready              → normal send/stop affordance
+  //   2. !ready & authed    → disabled send (agents still booting)
+  //   3. !ready & anonymous → sign-in CTA (no amount of waiting fixes it)
+  // We split state 3 out so the user doesn't sit there waiting on a
+  // route that can never become ready until they authenticate.
+  const needsSignIn = !aiRouteReady && !isAuthenticated && !!onSignIn
+  const placeholderText = needsSignIn
+    ? 'Sign in to chat with RemixAI…'
+    : aiRouteReady
+      ? 'Ask me anything about your code or generate new contracts...'
+      : 'Initialising agents…'
 
   return (
     <>
@@ -112,7 +138,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
               value={input}
-              disabled={isStreaming}
+              disabled={isStreaming || !aiRouteReady}
               onChange={e => {
                 setInput(e.target.value)
               }}
@@ -121,9 +147,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   e.preventDefault()
                   setInput(prev => prev + '\n')
                 } else
-                if (e.key === 'Enter' && !isStreaming) handleSend()
+                if (e.key === 'Enter' && !isStreaming && aiRouteReady) handleSend()
               }}
-              placeholder="Ask me anything about your code or generate new contracts..."
+              placeholder={placeholderText}
             />
             <div className="d-flex flex-row align-items-center">
               {/* <div className="d-flex flex-row align-items-center"> */}
@@ -131,11 +157,12 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 onClick={handleSetModel}
                 className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
                 data-assist-btn="assistant-selector-btn"
+                data-id="ai-model-selector-btn"
                 ref={modelBtnRef}
               >
                 <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
                   <span className="text-nowrap">
-                    {autoModeEnabled ? 'Auto Mode' : (selectedModel?.name || 'Select Model')}
+                    {autoModeEnabled ? 'Auto Mode' : (selectedModel?.displayName || 'Select Model')}
                   </span>
                   {usingOwnApiKey && (
                     <CustomTooltip tooltipText="Using your own API key">
@@ -149,6 +176,40 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                       </span>
                     </CustomTooltip>
                   )}
+                  <CustomTooltip
+                    tooltipText={
+                      aiRoute === 'agent'
+                        ? 'DeepAgent ready — subagents + tools available'
+                        : aiRoute === 'tools'
+                          ? 'MCP tools ready (no subagents)'
+                          : aiRoute === 'chat'
+                            ? 'Plain chat — no tools or subagents'
+                            : 'Initialising agents — please wait'
+                    }
+                  >
+                    <span
+                      className={`badge ms-2 ${
+                        aiRoute === 'agent'
+                          ? 'bg-success'
+                          : aiRoute === 'tools'
+                            ? 'bg-info'
+                            : aiRoute === 'chat'
+                              ? 'bg-secondary'
+                              : 'bg-warning'
+                      }`}
+                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden' }}
+                      data-id="ai-route-status"
+                      data-route={aiRoute}
+                    >
+                      {aiRoute === 'agent'
+                        ? 'Agent'
+                        : aiRoute === 'tools'
+                          ? 'Tools'
+                          : aiRoute === 'chat'
+                            ? 'Chat'
+                            : 'Initialising…'}
+                    </span>
+                  </CustomTooltip>
                   <span className={showModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                 </div>
               </button>
@@ -161,7 +222,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   data-assist-btn="assistant-selector-btn"
                 >
                   <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
-                    <span>{selectedModel?.name || 'Select Model'}</span>
+                    <span>{selectedModel?.displayName || 'Select Model'}</span>
                     <span className={showOllamaModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                   </div>
                 </button>
@@ -170,10 +231,19 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               { !isRecording ? <PromptDefault
                 handleRecording={handleRecord}
                 isRecording={isRecording}
+                // Only render the cancel/stop affordance for an actual
+                // in-flight inference. When the route is merely "not
+                // ready yet" (e.g. anonymous user, agents still booting)
+                // we must show the disabled send button instead — a
+                // stop button that cancels nothing is broken UX and
+                // confused users into thinking the assistant was stuck.
                 isStreaming={isStreaming}
+                disabled={!aiRouteReady}
                 handleSend={handleSend}
                 themeTracker={themeTracker}
                 handleCancel={stopRequest}
+                showSignIn={needsSignIn}
+                onSignIn={onSignIn}
               /> : <PromptActiveButtons
                 handleRecordingStoppage={handleRecord}
                 isStreaming={isStreaming}
