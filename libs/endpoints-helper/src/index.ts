@@ -47,8 +47,7 @@ export type EndpointUrls = {
   ccipRead: string;
   learneth: string;
   rss: string;
-  langchain: string;
-  langsmith: string;
+  langchain: string
 };
 
 /** Service key → path segment mapping (no leading slash) */

@@ -407,7 +407,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         streamingThreadIdRef.current = threadId
       }
 
-      // Validate threadId matches the current streaming session to prevent stale events
       if (threadId && streamingThreadIdRef.current && threadId !== streamingThreadIdRef.current) {
         console.log('[RemixAI Assistant] Ignoring stream chunk from different session:', threadId, '!==', streamingThreadIdRef.current)
         return
@@ -434,7 +433,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const finalText = typeof data === 'string' ? data : data.content
       const threadId = typeof data === 'object' ? data.threadId : undefined
 
-      // Validate threadId matches the current streaming session
       if (threadId && streamingThreadIdRef.current && threadId !== streamingThreadIdRef.current) {
         console.log('[RemixAI Assistant] Ignoring stream complete from different session:', threadId, '!==', streamingThreadIdRef.current)
         return
@@ -476,7 +474,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle tool call events from DeepAgent
     const handleToolCall = (data: { toolName: string; toolInput?: any; toolUIString?: string; toolOutput?: any; status: 'start' | 'end'; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         console.log('[RemixAI Assistant] Ignoring tool call from different session:', data.threadId, '!==', streamingThreadIdRef.current)
         return
@@ -523,7 +520,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent start events
     const handleSubagentStart = (data: { id: string; name: string; task: string; status: string; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -542,7 +538,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -567,7 +562,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task start events
     const handleTaskStart = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -585,7 +579,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task complete events
     const handleTaskComplete = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -603,7 +596,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle todo update events from DeepAgent's write_todos tool
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -621,7 +613,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle error events - mark current todo as failed
     const handleTodoError = (data: { error: string; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -652,7 +643,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle agent error events - display error message
     const handleAgentError = (data: { message: string; timestamp: number; type: string; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
@@ -677,7 +667,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle API errors (rate limits, quota exceeded, etc.)
     const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches the current streaming session
       if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
