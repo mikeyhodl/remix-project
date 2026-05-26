@@ -128,8 +128,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const uiToolCallbackRef = useRef<((isExecuting: boolean, toolName?: string, toolArgs?: Record<string, any>) => void) | null>(null)
   const wasInitializingRef = useRef(props.isInitializing)
   const streamingAssistantIdRef = useRef<string | null>(null)
-  // Ref to track current conversation for validating streaming events from old conversations
-  const currentConversationIdRef = useRef<string | null>(props.currentConversationId || null)
+  // Ref to track the threadId of the current streaming session for validating events
+  const streamingThreadIdRef = useRef<string | null>(null)
   if (props.isInitializing) wasInitializingRef.current = true
 
   // Audio transcription hook
@@ -228,9 +228,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // When switching conversations, clean up any in-flight streaming / pending approvals.
   const prevConversationIdRef = useRef(props.currentConversationId)
   useEffect(() => {
-    // Always update the ref so handlers can validate threadId
-    currentConversationIdRef.current = props.currentConversationId || null
-
     if (prevConversationIdRef.current === props.currentConversationId) return
     prevConversationIdRef.current = props.currentConversationId
 
@@ -256,6 +253,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // 3. Stop the spinner so the new conversation starts clean
     setIsStreaming(false)
     streamingAssistantIdRef.current = null
+    streamingThreadIdRef.current = null // Reset streaming threadId when switching conversations
     if (clearToolTimeoutRef.current) {
       clearTimeout(clearToolTimeoutRef.current)
       clearToolTimeoutRef.current = null
@@ -404,9 +402,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const subagentName = typeof data === 'object' ? data.subagentName : undefined
       const threadId = typeof data === 'object' ? data.threadId : undefined
 
-      // Validate threadId matches current conversation to prevent stale events from old conversations
-      if (threadId && currentConversationIdRef.current && threadId !== currentConversationIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring stream chunk from different conversation:', threadId, '!==', currentConversationIdRef.current)
+      // On first chunk, capture the threadId for this streaming session
+      if (threadId && !streamingThreadIdRef.current) {
+        streamingThreadIdRef.current = threadId
+      }
+
+      // Validate threadId matches the current streaming session to prevent stale events
+      if (threadId && streamingThreadIdRef.current && threadId !== streamingThreadIdRef.current) {
+        console.log('[RemixAI Assistant] Ignoring stream chunk from different session:', threadId, '!==', streamingThreadIdRef.current)
         return
       }
 
@@ -431,9 +434,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const finalText = typeof data === 'string' ? data : data.content
       const threadId = typeof data === 'object' ? data.threadId : undefined
 
-      // Validate threadId matches current conversation to prevent stale events from old conversations
-      if (threadId && currentConversationIdRef.current && threadId !== currentConversationIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring stream complete from different conversation:', threadId, '!==', currentConversationIdRef.current)
+      // Validate threadId matches the current streaming session
+      if (threadId && streamingThreadIdRef.current && threadId !== streamingThreadIdRef.current) {
+        console.log('[RemixAI Assistant] Ignoring stream complete from different session:', threadId, '!==', streamingThreadIdRef.current)
         return
       }
 
@@ -468,13 +471,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
       setIsStreaming(false)
       streamingAssistantIdRef.current = null
+      streamingThreadIdRef.current = null // Reset streaming threadId when complete
     }
 
     // Handle tool call events from DeepAgent
     const handleToolCall = (data: { toolName: string; toolInput?: any; toolUIString?: string; toolOutput?: any; status: 'start' | 'end'; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring tool call from different conversation:', data.threadId, '!==', currentConversationIdRef.current)
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
+        console.log('[RemixAI Assistant] Ignoring tool call from different session:', data.threadId, '!==', streamingThreadIdRef.current)
         return
       }
 
@@ -519,9 +523,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent start events
     const handleSubagentStart = (data: { id: string; name: string; task: string; status: string; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring subagent start from different conversation:', data.threadId, '!==', currentConversationIdRef.current)
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
 
@@ -539,9 +542,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring subagent complete from different conversation:', data.threadId, '!==', currentConversationIdRef.current)
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
 
@@ -565,8 +567,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task start events
     const handleTaskStart = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.log('[RemixAI Assistant] Task started:', data)
@@ -583,8 +585,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task complete events
     const handleTaskComplete = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.log('[RemixAI Assistant] Task completed:', data)
@@ -601,8 +603,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle todo update events from DeepAgent's write_todos tool
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.log('[RemixAI Assistant] Todo list updated:', data)
@@ -619,8 +621,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle error events - mark current todo as failed
     const handleTodoError = (data: { error: string; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.log('[RemixAI Assistant] Todo error received:', data)
@@ -650,8 +652,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle agent error events - display error message
     const handleAgentError = (data: { message: string; timestamp: number; type: string; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.error('[RemixAI Assistant] Agent error:', data)
@@ -675,8 +677,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle API errors (rate limits, quota exceeded, etc.)
     const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number; threadId?: string }) => {
-      // Validate threadId matches current conversation
-      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+      // Validate threadId matches the current streaming session
+      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
         return
       }
       console.error('[RemixAI Assistant] API error:', data)

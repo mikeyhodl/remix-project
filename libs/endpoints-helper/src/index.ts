@@ -86,8 +86,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   ccipRead: 'ccip-read',
   learneth: 'learneth',
   rss: 'rss',
-  langchain: 'langchain',
-  langsmith: 'langsmith',
+  langchain: 'langchain'
 
 };
 
@@ -150,8 +149,7 @@ const defaultUrls: EndpointUrls = {
   ccipRead: 'https://quickdapp-ccip.api.remix.live',
   learneth: 'https://learneth.api.remix.live',
   rss: 'https://rss.api.remix.live',
-  langchain: 'https://langchain.api.remix.live',
-  langsmith: 'https://langsmith.api.remix.live',
+  langchain: 'https://langchain.api.remix.live'
 };
 
 // --- Resolution ---

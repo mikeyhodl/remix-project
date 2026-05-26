@@ -15,6 +15,26 @@ export interface AIModel {
 export const AVAILABLE_MODELS: AIModel[] = [
   // Default free model (no auth required)
   {
+    id: 'ministral-3b-latest',
+    name: 'Mistral 3B',
+    provider: 'mistralai',
+    description: 'super fast and efficient for basic tasks',
+    requiresAuth: false,
+    isDefault: false,
+    category: 'general',
+    capabilities: ['chat', 'code']
+  },
+  {
+    id: 'ministral-8b-latest',
+    name: 'Mistral 8B',
+    provider: 'mistralai',
+    description: 'Fast ',
+    requiresAuth: false,
+    isDefault: false,
+    category: 'general',
+    capabilities: ['chat', 'code']
+  },
+  {
     id: 'mistral-medium-latest',
     name: 'Mistral Medium (Free)',
     provider: 'mistralai',

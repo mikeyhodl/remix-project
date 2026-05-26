@@ -32,7 +32,6 @@ import './AsyncLocalStorageInit'
 import { createModelInstance } from './ModelFactory'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
-import { langSmithTracing } from './LangSmithTracing'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
@@ -145,7 +144,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       await this.createAgentWithTools(this.tools)
-      await langSmithTracing.initialize('Remix-IDE')
     } catch (error: any) {
       console.error('[DeepAgentInferencer] Initialization failed:', error)
       throw new DeepAgentError(
@@ -464,12 +462,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      // Get LangSmith tracing callbacks if enabled
-      const tracingCallbacks = langSmithTracing.getCallbacks()
-      if (tracingCallbacks.length > 0) {
-        console.log('[DeepAgent] LangSmith tracing enabled, adding callbacks')
-      }
-
       const eventStream = this.agent.streamEvents(
         {
           messages: langchainMessages
@@ -480,8 +472,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
             thread_id: this.sessionThreadId
           },
           subgraphs: true,
-          signal: this.currentAbortController?.signal,
-          callbacks: tracingCallbacks
+          signal: this.currentAbortController?.signal
         }
       )
 
@@ -547,8 +538,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
               version: 'v2',
               configurable: { thread_id: this.sessionThreadId },
               subgraphs: true,
-              signal: this.currentAbortController?.signal,
-              callbacks: langSmithTracing.getCallbacks()
+              signal: this.currentAbortController?.signal
             }
           )
           for await (const event of retryStream) {
