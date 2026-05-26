@@ -69,7 +69,14 @@ function EditHtmlTemplate(): JSX.Element {
     if (!plugin) return;
 
     const onDappUpdated = (data: any) => {
-      if (activeDapp && data.slug === activeDapp.slug) {
+      const isMatchingDapp = activeDapp && (
+        data.slug === activeDapp.slug ||
+        data.slug === activeDapp.workspaceName ||
+        data.workspaceName === activeDapp.workspaceName
+      );
+
+      if (isMatchingDapp) {
+        console.log('[EditHtmlTemplate] dappGenerated received for current dapp:', data.slug);
         dispatch({
           type: 'SET_DAPP_PROCESSING',
           payload: { slug: activeDapp.slug, isProcessing: false }
@@ -100,14 +107,20 @@ function EditHtmlTemplate(): JSX.Element {
           });
         }
 
+        // Trigger preview refresh after files are written
         setTimeout(() => runBuildRef.current?.(true), 500);
       }
     };
 
     const onDappError = (errorData: any) => {
       const errorSlug = errorData?.slug;
-      // Only handle errors for this DApp
-      if (activeDapp && (!errorSlug || errorSlug === activeDapp.slug)) {
+      const isMatchingError = activeDapp && (
+        !errorSlug ||
+        errorSlug === activeDapp.slug ||
+        errorSlug === activeDapp.workspaceName
+      );
+
+      if (isMatchingError) {
         const errorMessage = errorData?.error || errorData || 'Unknown Error';
         dispatch({
           type: 'SET_DAPP_PROCESSING',
@@ -543,6 +556,36 @@ window.addEventListener('unhandledrejection', function(e) {
       setTimeout(() => runBuildRef.current?.(false), 100);
     }
   }, [isBuilderReady, isAiUpdating, activeDapp?.slug, isCurrentProviderVM]);
+
+  // File change listener: auto-refresh preview when DApp files are modified
+  const fileChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!plugin || !activeDapp || !isBuilderReady) return;
+
+    const onFileChanged = (filePath: string) => {
+      if (!filePath.match(/\.(jsx?|tsx?|html|css)$/)) return;
+
+      if (isAiUpdating) return;
+
+      console.log('[EditHtmlTemplate] File changed, scheduling preview refresh:', filePath);
+
+      if (fileChangeDebounceRef.current) {
+        clearTimeout(fileChangeDebounceRef.current);
+      }
+      fileChangeDebounceRef.current = setTimeout(() => {
+        runBuildRef.current?.(false);
+      }, 800);
+    };
+
+    plugin.on('fileManager', 'fileSaved', onFileChanged);
+
+    return () => {
+      if (fileChangeDebounceRef.current) {
+        clearTimeout(fileChangeDebounceRef.current);
+      }
+      try { plugin.off('fileManager', 'fileSaved', onFileChanged); } catch (e) {}
+    };
+  }, [plugin, activeDapp?.workspaceName, isBuilderReady, isAiUpdating]);
 
   // Detect when blockchain VM is ready via contextChanged event (debounced).
   // Uses plugin.on (passive event) instead of plugin.call (blocked by engine queue).
