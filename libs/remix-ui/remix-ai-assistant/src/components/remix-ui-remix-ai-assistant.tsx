@@ -618,7 +618,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     // Handle error events - mark current todo as failed
-    const handleTodoError = (data: { error: string; timestamp: number }) => {
+    const handleTodoError = (data: { error: string; timestamp: number; threadId?: string }) => {
+      // Validate threadId matches current conversation
+      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+        return
+      }
       console.log('[RemixAI Assistant] Todo error received:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -645,7 +649,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     // Handle agent error events - display error message
-    const handleAgentError = (data: { message: string; timestamp: number; type: string }) => {
+    const handleAgentError = (data: { message: string; timestamp: number; type: string; threadId?: string }) => {
+      // Validate threadId matches current conversation
+      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+        return
+      }
       console.error('[RemixAI Assistant] Agent error:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -666,7 +674,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     // Handle API errors (rate limits, quota exceeded, etc.)
-    const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number }) => {
+    const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number; threadId?: string }) => {
+      // Validate threadId matches current conversation
+      if (data.threadId && currentConversationIdRef.current && data.threadId !== currentConversationIdRef.current) {
+        return
+      }
       console.error('[RemixAI Assistant] API error:', data)
       setIsStreaming(false)
 

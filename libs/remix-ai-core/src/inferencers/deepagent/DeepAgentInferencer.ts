@@ -203,12 +203,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.event.emit('onAgentError', {
       message: errorMessage,
       timestamp: Date.now(),
-      type: error?.name || 'Error'
+      type: error?.name || 'Error',
+      threadId: this.sessionThreadId
     })
 
     this.event.emit('onTodoError', {
       error: errorMessage,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      threadId: this.sessionThreadId
     })
 
     console.log('[DeepAgentInferencer] Emitted error to todos:', errorMessage)
@@ -355,7 +357,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
             retryable,
             retryAfter,
             originalError: error?.message,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            threadId: this.sessionThreadId
           })
 
           // Emit error to update todo list with failed status
@@ -582,7 +585,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         retryable,
         retryAfter,
         originalError: error?.message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        threadId: this.sessionThreadId
       })
 
       // Emit API key specific error for UI handling
@@ -701,7 +705,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       retryable,
       retryAfter,
       originalError: error?.message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      threadId: this.sessionThreadId
     })
 
     // Emit API key specific error for UI handling
