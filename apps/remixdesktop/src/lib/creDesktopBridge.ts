@@ -42,7 +42,7 @@ interface CREImportAck {
 }
 
 /** Origins allowed to connect to the CRE bridge */
-const ALLOWED_ORIGINS = [
+const ALLOWED_ORIGINS: Array<string | RegExp> = [
   'https://cre.solange.dev'
 ]
 
