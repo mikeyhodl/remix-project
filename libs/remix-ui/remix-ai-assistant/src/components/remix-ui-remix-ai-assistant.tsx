@@ -328,7 +328,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // 3. Stop the spinner so the new conversation starts clean
     setIsStreaming(false)
     streamingAssistantIdRef.current = null
-    streamingThreadIdRef.current = null // Reset streaming threadId when switching conversations
     if (clearToolTimeoutRef.current) {
       clearTimeout(clearToolTimeoutRef.current)
       clearToolTimeoutRef.current = null
@@ -618,10 +617,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle tool call events from DeepAgent
     const handleToolCall = (data: { toolName: string; toolInput?: any; toolUIString?: string; toolOutput?: any; status: 'start' | 'end'; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        console.log('[RemixAI Assistant] Ignoring tool call from different session:', data.threadId, '!==', streamingThreadIdRef.current)
-        return
-      }
 
       console.log('[RemixAI Assistant] Tool call event:', data)
       const assistantId = streamingAssistantIdRef.current
@@ -664,11 +659,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent start events
     const handleSubagentStart = (data: { id: string; name: string; task: string; status: string; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-
-      console.log('[RemixAI Assistant] Subagent started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -682,11 +672,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-
-      console.log('[RemixAI Assistant] Subagent completed:', data)
       // Finalize the subagent's own bubble: clear streaming flags so the
       // "Comprehensive Auditor is responding…" indicator goes away.
       const sub = streamingSubagentBubbleRef.current
@@ -723,10 +708,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task start events
     const handleTaskStart = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-      console.log('[RemixAI Assistant] Task started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -740,10 +721,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task complete events
     const handleTaskComplete = (data: { id: string; name: string; status: string; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-      console.log('[RemixAI Assistant] Task completed:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -757,10 +734,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle todo update events from DeepAgent's write_todos tool
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-      console.log('[RemixAI Assistant] Todo list updated:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -774,10 +747,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle error events - mark current todo as failed
     const handleTodoError = (data: { error: string; timestamp: number; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-      console.log('[RemixAI Assistant] Todo error received:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m => {
@@ -804,9 +773,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle agent error events - display error message
     const handleAgentError = (data: { message: string; timestamp: number; type: string; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
       console.error('[RemixAI Assistant] Agent error:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -828,10 +794,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle API errors (rate limits, quota exceeded, etc.)
     const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number; threadId?: string }) => {
-      if (data.threadId && streamingThreadIdRef.current && data.threadId !== streamingThreadIdRef.current) {
-        return
-      }
-      console.error('[RemixAI Assistant] API error:', data)
       setIsStreaming(false)
 
       if (streamingAssistantIdRef.current) {
