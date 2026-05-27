@@ -53,6 +53,7 @@ function DeployPortraitView() {
   }, [])
 
   const selectedContract = useMemo(() => {
+    //@ts-ignore
     return widgetState.contracts.contractList[widgetState.selectedContractIndex] || null
   }, [widgetState.contracts.contractList, widgetState.selectedContractIndex])
 
@@ -453,6 +454,7 @@ function DeployPortraitView() {
               </Dropdown>
               <ContractKebabMenu
                 show={isContractMenuOpen && contractKebabIconRef.current !== null}
+                //@ts-ignore
                 target={contractKebabIconRef.current}
                 onHide={() => setIsContractMenuOpen(false)}
                 onCopyABI={getABI}
@@ -562,7 +564,7 @@ function DeployPortraitView() {
               selectedContract?.isUpgradeable && selectedContract?.deployOptions && selectedContract.deployOptions.inputs && selectedContract.deployOptions.inputs.length > 0 && deployWithProxy && (
                 <div className='border-top mt-3'>
                   {
-                    selectedContract.deployOptions.inputs.map((input, index) => {
+                    selectedContract.deployOptions.inputs.map((input: any, index: number) => {
                       const isExpanded = expandedProxyInputs.has(index)
                       const currentValue = proxyInputValues[index] || ''
                       return (
