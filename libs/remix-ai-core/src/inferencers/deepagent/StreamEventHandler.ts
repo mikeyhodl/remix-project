@@ -35,14 +35,17 @@ export class StreamEventHandler {
     totalCacheCreationTokens: 0,
     turnCount: 0
   }
+  private getThreadId: () => string
 
-  constructor(eventEmitter: EventEmitter) {
+  constructor(eventEmitter: EventEmitter, threadIdGetter: () => string) {
     this.event = eventEmitter
+    this.getThreadId = threadIdGetter
     this.inactivityTimeout = new InactivityTimeoutManager(INACTIVITY_TIMEOUT_MS, () => {
       console.warn('[DeepAgent] No activity for 10 seconds, handling timeout...')
       this.event.emit('onInactivityTimeout', {
         message: 'No response received for 10 seconds',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        threadId: this.getThreadId()
       })
     })
   }
@@ -119,7 +122,8 @@ export class StreamEventHandler {
         id: event.run_id,
         name: agent_name,
         task: event.data?.input?.task || 'Processing...',
-        status: 'running'
+        status: 'running',
+        threadId: this.getThreadId()
       })
     }
 
@@ -128,7 +132,8 @@ export class StreamEventHandler {
       this.event.emit('onTaskStart', {
         id: event.run_id,
         name: event.name || 'Planning',
-        status: 'started'
+        status: 'started',
+        threadId: this.getThreadId()
       })
     }
 
@@ -149,7 +154,8 @@ export class StreamEventHandler {
         id: event.run_id,
         name: subagent.name,
         status: 'completed',
-        duration
+        duration,
+        threadId: this.getThreadId()
       })
       this.activeSubagents.delete(event.run_id)
     }
@@ -200,7 +206,8 @@ export class StreamEventHandler {
         isIntermediate: this.isIntermediatePhase,
         source: event.metadata?.langgraph_node || 'agent',
         isSubagent: true,
-        subagentName: agent_name
+        subagentName: agent_name,
+        threadId: this.getThreadId()
       })
     } else {
       this.event.emit('onStreamResult', {
@@ -208,7 +215,8 @@ export class StreamEventHandler {
         isIntermediate: this.isIntermediatePhase,
         source: event.metadata?.langgraph_node || 'agent',
         isSubagent: false,
-        subagentName: ''
+        subagentName: '',
+        threadId: this.getThreadId()
       })
     }
 
@@ -263,7 +271,8 @@ export class StreamEventHandler {
       turnCount: this.tokenUsage.turnCount,
       timestamp: Date.now(),
       agentName: agent_name || 'main',
-      isSubagent: is_subagent
+      isSubagent: is_subagent,
+      threadId: this.getThreadId()
     })
 
     return ''
@@ -274,7 +283,7 @@ export class StreamEventHandler {
     const toolInput = JSON.parse(event.data?.input.input || '{}')
     const toolUIString = resolveToolUIString(toolName, toolInput)
     console.log('[StreamEventHandler] Tool call started:', toolName, toolInput, '| UI:', toolUIString)
-    this.event.emit('onToolCall', { toolName, toolInput, toolUIString, status: 'start' })
+    this.event.emit('onToolCall', { toolName, toolInput, toolUIString, status: 'start', threadId: this.getThreadId() })
 
     console.log('[StreamEventHandler] Checking for todo updates in tool input...', toolInput.todos)
     if (toolName === 'write_todos' && toolInput?.todos) {
@@ -294,12 +303,13 @@ export class StreamEventHandler {
       const currentTodoUIString = currentTodoIndex >= 0 ? (todos[currentTodoIndex]?.activeForm || currentTodoContent) : undefined
 
       console.log('[StreamEventHandler] Todo list updated:', todos, 'Current index:', currentTodoIndex, 'Current todo:', currentTodoContent)
-      this.event.emit('onToolCall', { toolName: currentTodoContent, toolInput: { }, toolUIString: currentTodoUIString || currentTodoContent, status: 'start' }) // just for UI
+      this.event.emit('onToolCall', { toolName: currentTodoContent, toolInput: { }, toolUIString: currentTodoUIString || currentTodoContent, status: 'start', threadId: this.getThreadId() }) // just for UI
 
       this.event.emit('onTodoUpdate', {
         todos: todos,
         currentTodoIndex: currentTodoIndex,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        threadId: this.getThreadId()
       })
     }
 
@@ -309,7 +319,7 @@ export class StreamEventHandler {
   private handleToolEnd(event: any): string {
     const toolName = event.name
     console.log('[StreamEventHandler] Tool call ended:', toolName)
-    this.event.emit('onToolCall', { toolName, toolInput: {}, toolUIString: '', status: 'end' })
+    this.event.emit('onToolCall', { toolName, toolInput: {}, toolUIString: '', status: 'end', threadId: this.getThreadId() })
     return ''
   }
 
