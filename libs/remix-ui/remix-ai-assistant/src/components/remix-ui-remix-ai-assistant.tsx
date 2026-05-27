@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger } from '@remix/remix-ai-core'
 import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -120,7 +120,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setHitlAutoAccept(prev => {
       const next = !prev
       localStorage.setItem(HITL_AUTO_ACCEPT_KEY, String(next))
-      console.log('[HITL] Auto-accept toggled:', next)
+      remixAILogger.log('[HITL] Auto-accept toggled:', next)
       return next
     })
   }, [])
@@ -201,7 +201,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       await props.plugin.call(action.plugin as any, action.method as any, ...args)
       if (action.dismissOnClick) dismissChatNotice()
     } catch (e) {
-      console.warn('[remix-ai-assistant] chat notice action failed', action, e)
+      remixAILogger.warn('[remix-ai-assistant] chat notice action failed', action, e)
     }
   }, [dismissChatNotice, props.plugin])
 
@@ -240,7 +240,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     },
     onError: (error) => {
-      console.error('Audio transcription error:', error)
+      remixAILogger.error('Audio transcription error:', error)
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -345,7 +345,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       await props.plugin.call('remixAI', 'setModel', modelName)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_success', value: modelName, isClick: false })
     } catch (error: any) {
-      console.warn('Failed to set model:', error)
+      remixAILogger.warn('Failed to set model:', error)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_failed', value: `${modelName}|${error.message || 'unknown'}`, isClick: false })
     }
     trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'ollama_model_selected_final', value: modelName, isClick: true })
@@ -354,7 +354,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme')
       .then((theme) => setThemeTracker(theme))
-      .catch((error: any) => console.log(error))
+      .catch((error: any) => remixAILogger.log(error))
 
     props.plugin.on('theme', 'themeChanged', (theme: any) => {
       setThemeTracker(theme)
@@ -377,14 +377,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         }
         await props.plugin.call('remixAI', 'setModelAccess', modelAccess)
       } catch (error) {
-        console.warn('[RemixAI Assistant UI] Failed to get initial model from plugin:', error)
+        remixAILogger.warn('[RemixAI Assistant UI] Failed to get initial model from plugin:', error)
       }
     }
 
     initializeModel()
 
     const handleModelChanged = async (modelId: string) => {
-      console.log('[RemixAI Assistant UI] Model changed to:', modelId)
+      remixAILogger.log('[RemixAI Assistant UI] Model changed to:', modelId)
       const model = availableModels.find(m => m.id === modelId)
       if (model) {
         setSelectedModelId(modelId)
@@ -400,7 +400,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         const isUsingOwn = await props.plugin.call('remixAI', 'isUsingOwnApiKey')
         setUsingOwnApiKey(!!isUsingOwn)
       } catch (error) {
-        console.warn('[RemixAI Assistant] Failed to check API key status:', error)
+        remixAILogger.warn('[RemixAI Assistant] Failed to check API key status:', error)
       }
     }
     checkApiKeyStatus()
@@ -411,7 +411,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     props.plugin.on('remixAI', 'apiKeyModeChanged', handleApiKeyModeChanged)
 
     const handleApiKeyError = (error: ApiKeyErrorEvent) => {
-      console.error('[RemixAI Assistant] API key error:', error)
+      remixAILogger.error('[RemixAI Assistant] API key error:', error)
       setApiKeyError(error)
     }
     props.plugin.on('remixAI', 'onApiKeyError', handleApiKeyError)
@@ -438,7 +438,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         const status = await props.plugin.call('remixAI', 'getRouteStatus' as any)
         if (!cancelled && status) handleRouteStatusChanged(status as any)
       } catch (err) {
-        if (!cancelled) console.warn('[RemixAI Assistant] getRouteStatus failed:', err)
+        if (!cancelled) remixAILogger.warn('[RemixAI Assistant] getRouteStatus failed:', err)
       }
     })()
     return () => {
@@ -461,9 +461,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       refreshTimeout = setTimeout(async () => {
         isRefreshing = true
         if (authState.isAuthenticated) {
-          console.log('Auth state changed to authenticated, refreshing model access...')
+          remixAILogger.log('Auth state changed to authenticated, refreshing model access...')
         } else {
-          console.log('Auth state changed to logged out, refreshing model access. Model selection will clear until /permissions resolves.')
+          remixAILogger.log('Auth state changed to logged out, refreshing model access. Model selection will clear until /permissions resolves.')
           // No literal default to switch to — clear the selection. The
           // picker shows ANONYMOUS_FALLBACK_MODELS while logged out.
           setSelectedModelId('')
@@ -620,7 +620,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle tool call events from DeepAgent
     const handleToolCall = (data: { toolName: string; toolInput?: any; toolUIString?: string; toolOutput?: any; status: 'start' | 'end' }) => {
-      console.log('[RemixAI Assistant] Tool call event:', data)
+      remixAILogger.log('[RemixAI Assistant] Tool call event:', data)
       const assistantId = streamingAssistantIdRef.current
       if (!assistantId) return
 
@@ -661,7 +661,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent start events
     const handleSubagentStart = (data: { id: string; name: string; task: string; status: string }) => {
-      console.log('[RemixAI Assistant] Subagent started:', data)
+      remixAILogger.log('[RemixAI Assistant] Subagent started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -675,7 +675,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number }) => {
-      console.log('[RemixAI Assistant] Subagent completed:', data)
+      remixAILogger.log('[RemixAI Assistant] Subagent completed:', data)
       // Finalize the subagent's own bubble: clear streaming flags so the
       // "Comprehensive Auditor is responding…" indicator goes away.
       const sub = streamingSubagentBubbleRef.current
@@ -712,7 +712,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task start events
     const handleTaskStart = (data: { id: string; name: string; status: string }) => {
-      console.log('[RemixAI Assistant] Task started:', data)
+      remixAILogger.log('[RemixAI Assistant] Task started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -726,7 +726,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task complete events
     const handleTaskComplete = (data: { id: string; name: string; status: string }) => {
-      console.log('[RemixAI Assistant] Task completed:', data)
+      remixAILogger.log('[RemixAI Assistant] Task completed:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -740,7 +740,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle todo update events from DeepAgent's write_todos tool
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number }) => {
-      console.log('[RemixAI Assistant] Todo list updated:', data)
+      remixAILogger.log('[RemixAI Assistant] Todo list updated:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -754,7 +754,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle error events - mark current todo as failed
     const handleTodoError = (data: { error: string; timestamp: number }) => {
-      console.log('[RemixAI Assistant] Todo error received:', data)
+      remixAILogger.log('[RemixAI Assistant] Todo error received:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m => {
@@ -781,7 +781,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle agent error events - display error message
     const handleAgentError = (data: { message: string; timestamp: number; type: string }) => {
-      console.error('[RemixAI Assistant] Agent error:', data)
+      remixAILogger.error('[RemixAI Assistant] Agent error:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
@@ -802,7 +802,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle API errors (rate limits, quota exceeded, etc.)
     const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number }) => {
-      console.error('[RemixAI Assistant] API error:', data)
+      remixAILogger.error('[RemixAI Assistant] API error:', data)
       setIsStreaming(false)
 
       if (streamingAssistantIdRef.current) {
@@ -866,10 +866,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const refreshModels = async () => {
       try {
         const models = await props.plugin.call('assistantState' as any, 'getAvailableModels')
-        console.log('[remix-ai-assistant] getAvailableModels →',
+        remixAILogger.log('[remix-ai-assistant] getAvailableModels →',
           Array.isArray(models) ? models.map((m: any) => `${m.id}(${m.available ? 'on' : 'off'})`).join(', ') : models)
         if (Array.isArray(models) && models.length > 0) setAvailableModels(models)
-      } catch (e) { console.warn('[remix-ai-assistant] getAvailableModels failed', e) }
+      } catch (e) { remixAILogger.warn('[remix-ai-assistant] getAvailableModels failed', e) }
     }
     const refreshFeatures = async () => {
       try {
@@ -884,7 +884,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       } catch { /* assistantState not active — ignore */ }
     }
     const onAssistantStateChange = (snap: any) => {
-      console.log('[remix-ai-assistant] stateChanged event received', {
+      remixAILogger.log('[remix-ai-assistant] stateChanged event received', {
         availability: snap?.availability,
         permissionsState: snap?.permissionsState,
         isAuthenticated: snap?.isAuthenticated,
@@ -916,16 +916,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
-      console.log('[Assistant UI] approval requested', request.toolName, request.requestId)
+      remixAILogger.log('[Assistant UI] approval requested', request.toolName, request.requestId)
       if (hitlAutoAcceptRef.current) {
         try {
           ;(props.plugin as any).respondToToolApproval({
             requestId: request.requestId,
             approved: true
           })
-          console.log('[HITL][AutoAccept] approved', request.requestId)
+          remixAILogger.log('[HITL][AutoAccept] approved', request.requestId)
         } catch (err: any) {
-          console.error('[HITL][AutoAccept] Failed to auto-approve:', err)
+          remixAILogger.error('[HITL][AutoAccept] Failed to auto-approve:', err)
         }
         return
       }
@@ -935,7 +935,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // DApp update review: listen for post-update file changes
     const handleDappUpdateCompleted = (data: { slug: string; files: Record<string, string>; backups: Record<string, string> }) => {
-      console.log('[DAppReview] Update completed for:', data.slug, '- files:', Object.keys(data.files).length)
+      remixAILogger.log('[DAppReview] Update completed for:', data.slug, '- files:', Object.keys(data.files).length)
       // Find the latest assistant message (may or may not be streaming) and attach review data
       setMessages(prev => {
         // Find the last assistant message to attach the review to
@@ -1067,7 +1067,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const { proposedContent, requestId } = approval
     const { filePath } = approval
     if (!filePath || !proposedContent) {
-      console.warn('[HITL][Review] Cannot open review — missing filePath or proposedContent')
+      remixAILogger.warn('[HITL][Review] Cannot open review — missing filePath or proposedContent')
       return
     }
 
@@ -1092,7 +1092,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       await props.plugin.call('editor', 'showCustomDiff', normalizedPath, proposedContent)
 
     } catch (err) {
-      console.error('[HITL][Review] Failed to open showCustomDiff:', err)
+      remixAILogger.error('[HITL][Review] Failed to open showCustomDiff:', err)
       // Fallback: reset reviewing state so the modal buttons are usable again
       setReviewingApprovals(prev => {
         const next = new Set(prev)
@@ -1115,7 +1115,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         finalContent = await props.plugin.call('editor', 'getText')
 
       } catch (err) {
-        console.warn('[HITL][Review] Could not read editor text, using proposedContent as fallback')
+        remixAILogger.warn('[HITL][Review] Could not read editor text, using proposedContent as fallback')
       }
 
       // Send approval with the final content as modifiedArgs
@@ -1152,7 +1152,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   const handleApproveToolAction = useCallback(async (approval: ToolApprovalRequest, options?: { modifiedArgs?: Record<string, any>; enableAutoAccept?: boolean }) => {
     if (!approval) return
-    console.log('[Assistant UI] handleApproveToolAction', approval.toolName, approval.requestId)
+    remixAILogger.log('[Assistant UI] handleApproveToolAction', approval.toolName, approval.requestId)
 
     // Close DiffEditor tab if the user had opened a Review
     if (reviewingApprovals.has(approval.requestId)) {
@@ -1162,7 +1162,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           await props.plugin.call('editor', 'closeDiffSession', session.id)
         }
       } catch (err) {
-        console.warn('[HITL] Failed to close diff sessions:', err)
+        remixAILogger.warn('[HITL] Failed to close diff sessions:', err)
       }
     }
 
@@ -1170,7 +1170,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     if (options?.enableAutoAccept && !hitlAutoAcceptRef.current) {
       setHitlAutoAccept(true)
       localStorage.setItem(HITL_AUTO_ACCEPT_KEY, 'true')
-      console.log('[HITL] Auto-accept ENABLED from approval modal')
+      remixAILogger.log('[HITL] Auto-accept ENABLED from approval modal')
     }
 
     try {
@@ -1179,9 +1179,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         approved: true,
         modifiedArgs: options?.modifiedArgs
       })
-      console.log('[Assistant UI] respondToToolApproval emitted', approval.requestId)
+      remixAILogger.log('[Assistant UI] respondToToolApproval emitted', approval.requestId)
     } catch (err) {
-      console.error('[Assistant UI] respondToToolApproval threw', approval.requestId, err)
+      remixAILogger.error('[Assistant UI] respondToToolApproval threw', approval.requestId, err)
     }
     removeApproval(approval.requestId)
   }, [props.plugin, removeApproval, reviewingApprovals])
@@ -1197,7 +1197,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           await props.plugin.call('editor', 'closeDiffSession', session.id)
         }
       } catch (err) {
-        console.warn('[HITL] Failed to close diff sessions:', err)
+        remixAILogger.warn('[HITL] Failed to close diff sessions:', err)
       }
     }
 
@@ -1228,7 +1228,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           await props.plugin.call('editor', 'closeDiffSession', session.id)
         }
       } catch (err) {
-        console.warn('[HITL] Failed to close diff sessions:', err)
+        remixAILogger.warn('[HITL] Failed to close diff sessions:', err)
       }
     }
 
@@ -1253,7 +1253,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           await props.plugin.call('editor', 'closeDiffSession', session.id)
         }
       } catch (err) {
-        console.warn('[HITL] Failed to close diff sessions:', err)
+        remixAILogger.warn('[HITL] Failed to close diff sessions:', err)
       }
     }
 
@@ -1278,12 +1278,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         await props.plugin.call('editor', 'closeDiffSession', session.id)
       }
     } catch (err) {
-      console.warn('[DAppReview] Failed to close diff sessions:', err)
+      remixAILogger.warn('[DAppReview] Failed to close diff sessions:', err)
     }
   }, [props.plugin])
 
   const handleDappReviewAcceptAll = useCallback(async (msgId: string) => {
-    console.log('[DAppReview] Accept all for message:', msgId)
+    remixAILogger.log('[DAppReview] Accept all for message:', msgId)
     await closeDiffSessions()
     // Remove review data entirely so the card disappears
     setMessages(prev =>
@@ -1300,7 +1300,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     if (!msg?.dappUpdateReview) return
     const { backups, workspaceName } = msg.dappUpdateReview
 
-    console.log('[DAppReview] Reverting', Object.keys(backups).length, 'files in', workspaceName)
+    remixAILogger.log('[DAppReview] Reverting', Object.keys(backups).length, 'files in', workspaceName)
 
     // Close diff editors first
     await closeDiffSessions()
@@ -1323,16 +1323,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           if (originalContent === '') {
             try {
               await props.plugin.call('fileManager', 'remove', normalizedPath)
-              console.log('[DAppReview] Deleted new file:', normalizedPath)
+              remixAILogger.log('[DAppReview] Deleted new file:', normalizedPath)
             } catch (e) {
-              console.warn('[DAppReview] Could not delete:', normalizedPath)
+              remixAILogger.warn('[DAppReview] Could not delete:', normalizedPath)
             }
           } else {
             await props.plugin.call('fileManager', 'writeFile', normalizedPath, originalContent)
-            console.log('[DAppReview] Reverted:', normalizedPath)
+            remixAILogger.log('[DAppReview] Reverted:', normalizedPath)
           }
         } catch (e: any) {
-          console.error('[DAppReview] Failed to revert file:', normalizedPath, e?.message)
+          remixAILogger.error('[DAppReview] Failed to revert file:', normalizedPath, e?.message)
         }
       }
 
@@ -1344,16 +1344,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             : m
         )
       )
-      console.log('[DAppReview] All files reverted in', workspaceName)
+      remixAILogger.log('[DAppReview] All files reverted in', workspaceName)
     } catch (e: any) {
-      console.error('[DAppReview] Revert failed:', e?.message)
+      remixAILogger.error('[DAppReview] Revert failed:', e?.message)
     }
   }, [messages, props.plugin, closeDiffSessions])
 
   const handleDappReviewViewDiff = useCallback(async (filePath: string, newContent: string, oldContent: string) => {
     try {
       const normalizedPath = filePath.replace(/^\/+/, '')
-      console.log('[DAppReview] Opening diff for:', normalizedPath)
+      remixAILogger.log('[DAppReview] Opening diff for:', normalizedPath)
 
       // showCustomDiff compares current file content against proposed content.
       // Since the new content is already on disk, temporarily write old content
@@ -1367,7 +1367,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       await props.plugin.call('fileManager', 'open', normalizedPath)
       await props.plugin.call('editor', 'showCustomDiff', normalizedPath, newContent)
     } catch (err) {
-      console.error('[DAppReview] Failed to show diff:', err)
+      remixAILogger.error('[DAppReview] Failed to show diff:', err)
     }
   }, [props.plugin])
 
@@ -1546,7 +1546,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           ? await props.plugin.call('remixAI', 'ProcessChatRequestBuffer', GenerationParams)
           : await props.plugin.call('remixAI', 'answer', trimmed, GenerationParams)
 
-        console.log('Received response from plugin:', response)
+        remixAILogger.log('Received response from plugin:', response)
 
         // Handle langchain/deepagent mode: response is plain text
         if (typeof response === 'string') {
@@ -1769,7 +1769,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         // DO NOT call it here as it would stop the spinner before the response completes
       }
       catch (error: any) {
-        console.error('Error sending prompt:', error)
+        remixAILogger.error('Error sending prompt:', error)
         setIsStreaming(false)
         abortControllerRef.current = null
 
@@ -1892,7 +1892,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         try {
           await props.plugin.call('remixAI', 'disableMCPEnhancement')
         } catch (error) {
-          console.warn('Failed to disable MCP enhancement:', error)
+          remixAILogger.warn('Failed to disable MCP enhancement:', error)
         }
         return
       }
@@ -1904,7 +1904,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           await props.plugin.call('remixAI', 'disableMCPEnhancement')
         }
       } catch (error) {
-        console.warn('Failed to toggle MCP enhancement:', error)
+        remixAILogger.warn('Failed to toggle MCP enhancement:', error)
       }
     }
     if (mcpEnhanced !== null) { // Only call when state is initialized
@@ -1948,7 +1948,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                     sentiment: 'none'
                   }])
                 } catch (error) {
-                  console.warn('Failed to set default model:', error)
+                  remixAILogger.warn('Failed to set default model:', error)
                 }
               }
             }
@@ -1973,18 +1973,18 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 setSelectedModelId(def.id)
                 setSelectedModel(def)
               } else {
-                console.warn('[RemixAI Assistant UI] Ollama unavailable and no API default model yet — leaving picker empty')
+                remixAILogger.warn('[RemixAI Assistant UI] Ollama unavailable and no API default model yet — leaving picker empty')
                 setSelectedModelId('')
                 setSelectedModel(null)
               }
             } catch (e) {
-              console.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama fallback', e)
+              remixAILogger.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama fallback', e)
               setSelectedModelId('')
               setSelectedModel(null)
             }
           }
         } catch (error: any) {
-          console.warn('Failed to fetch Ollama models:', error)
+          remixAILogger.warn('Failed to fetch Ollama models:', error)
           setOllamaModels([])
           setMessages(prev => [...prev, {
             id: crypto.randomUUID(),
@@ -2004,12 +2004,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               setSelectedModelId(def.id)
               setSelectedModel(def)
             } else {
-              console.warn('[RemixAI Assistant UI] Ollama errored and no API default model yet — leaving picker empty')
+              remixAILogger.warn('[RemixAI Assistant UI] Ollama errored and no API default model yet — leaving picker empty')
               setSelectedModelId('')
               setSelectedModel(null)
             }
           } catch (e) {
-            console.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama error fallback', e)
+            remixAILogger.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama error fallback', e)
             setSelectedModelId('')
             setSelectedModel(null)
           }
@@ -2035,7 +2035,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         await props.plugin.call('remixAI', 'setAutoMode', true)
         trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'auto_mode_enabled', isClick: true })
       } catch (error) {
-        console.warn('Failed to enable auto mode:', error)
+        remixAILogger.warn('Failed to enable auto mode:', error)
       }
       // When the user toggles back to Auto after explicitly picking a
       // model (e.g. Opus → Auto), reset the underlying selection to the
@@ -2051,13 +2051,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           try {
             await props.plugin.call('remixAI', 'setModel', def.id)
           } catch (e) {
-            console.warn('[remix-ai-assistant] setModel(default) failed when entering Auto Mode', e)
+            remixAILogger.warn('[remix-ai-assistant] setModel(default) failed when entering Auto Mode', e)
           }
         } else {
-          console.warn('[remix-ai-assistant] Auto Mode requested but /permissions has no usable default model yet', def)
+          remixAILogger.warn('[remix-ai-assistant] Auto Mode requested but /permissions has no usable default model yet', def)
         }
       } catch (e) {
-        console.warn('[remix-ai-assistant] assistantState.getDefaultModel failed when entering Auto Mode', e)
+        remixAILogger.warn('[remix-ai-assistant] assistantState.getDefaultModel failed when entering Auto Mode', e)
       }
       setShowModelSelector(false)
       return
@@ -2066,7 +2066,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       try {
         await props.plugin.call('remixAI', 'setAutoMode', false)
       } catch (error) {
-        console.warn('Failed to disable auto mode:', error)
+        remixAILogger.warn('Failed to disable auto mode:', error)
       }
     }
 
@@ -2084,7 +2084,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Always update assistantChoice to match the selected model's provider
     setAssistantChoice(model.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
-    console.log('Setting assistant choice to:', model.provider)
+    remixAILogger.log('Setting assistant choice to:', model.provider)
 
     if (model.provider === 'ollama') {
       try {
@@ -2092,14 +2092,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         setOllamaModels(models)
         setShowOllamaModelSelector(true)
       } catch (err) {
-        console.error('Ollama not available:', err)
+        remixAILogger.error('Ollama not available:', err)
       }
     } else {
       try {
         await props.plugin.call('remixAI', 'setModel', modelId)
         trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
       } catch (error) {
-        console.warn('Failed to set model:', error)
+        remixAILogger.warn('Failed to set model:', error)
       }
     }
 
@@ -2704,7 +2704,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                         setApiKeyError(null)
                         setUsingOwnApiKey(false)
                       } catch (error) {
-                        console.error('Failed to fallback to proxy:', error)
+                        remixAILogger.error('Failed to fallback to proxy:', error)
                       }
                     }}
                   >

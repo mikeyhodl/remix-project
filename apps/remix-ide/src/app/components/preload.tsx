@@ -29,6 +29,22 @@ function isProbablyMobile() {
 
 const NO_MOBILE_REDIRECT_KEY = 'remix.nomobileredirect'
 
+function isPreloadDebugEnabled(): boolean {
+  try {
+    return localStorage.getItem('remix-preload-debug') === 'true' || localStorage.getItem('remix-storage-debug') === 'true'
+  } catch {
+    return false
+  }
+}
+
+function logPreload(...args: any[]): void {
+  if (isPreloadDebugEnabled()) console.log(...args)
+}
+
+function errorPreload(...args: any[]): void {
+  if (isPreloadDebugEnabled()) console.error(...args)
+}
+
 /**
  * Check whether the user has opted out of the mobile redirect.
  *
@@ -168,7 +184,7 @@ export const Preload = (props: PreloadProps) => {
         return
       }
     } catch (e) {
-      console.error('Error detecting mobile device:', e)
+      errorPreload('Error detecting mobile device:', e)
     }
 
     initEndpoints(STAGING_URL).then(() => import('../../app'))
@@ -184,7 +200,7 @@ export const Preload = (props: PreloadProps) => {
       })
       .catch((err) => {
         trackMatomoEvent?.({ category: 'App', action: 'PreloadError', name: err && err.message, isClick: false })
-        console.error('Error loading Remix:', err)
+        errorPreload('Error loading Remix:', err)
         setError(true)
       })
   }
@@ -210,7 +226,7 @@ export const Preload = (props: PreloadProps) => {
       testBlockStorage.current ? null : localStorageFileSystem.current
     ])
     if (fsLoaded) {
-      console.log(fsLoaded.name + ' activated')
+      logPreload(fsLoaded.name + ' activated')
       trackMatomoEvent?.({ category: 'Storage', action: 'activate', name: fsLoaded.name, isClick: false })
       loadAppComponent()
     } else {
@@ -260,7 +276,7 @@ export const Preload = (props: PreloadProps) => {
     try {
       showRemixTips()
     } catch (e) {
-      console.log(e)
+      logPreload(e)
     }
 
     return () => {
