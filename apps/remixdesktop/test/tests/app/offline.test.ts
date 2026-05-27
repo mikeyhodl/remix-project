@@ -26,9 +26,17 @@ module.exports = {
     browser
       .hideToolTips()
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
-      .perform((done) => {
-        openTemplatesExplorer(browser, done)
-      })
+      .click('*[data-id="workspacesSelect"]')
+      .pause(2000)
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
+      .waitForElementVisible('*[data-id="template-explorer-template-container"]')
+      .click('*[data-id="template-explorer-template-container"]')
+      .waitForElementPresent('*[data-id="template-card-remixDefault-0"]')
+      .click('*[data-id="template-card-remixDefault-0"]')
+      .waitForElementVisible('*[data-id="workspace-details-section"]')
+      .waitForElementVisible('*[data-id="validateWorkspaceButton"]')
+      .click('*[data-id="validateWorkspaceButton"]')
       .pause(3000)
       .windowHandles(function (result) {
         console.log(result.value)
