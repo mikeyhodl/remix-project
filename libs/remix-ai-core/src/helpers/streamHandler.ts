@@ -1,3 +1,4 @@
+import { remixAILogger } from './logger'
 import { JsonStreamParser, IAIStreamResponse } from '../types/types';
 
 function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
@@ -41,7 +42,7 @@ function trackTokenUsage(usage: any, provider?: string, modelId?: string) {
       }
     }
   } catch (error) {
-    console.log('Token usage tracking error:', error);
+    remixAILogger.log('Token usage tracking error:', error);
   }
 }
 
@@ -105,7 +106,7 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
           }
         }
       } catch (error) {
-        console.error('Error parsing JSON:', error);
+        remixAILogger.error('Error parsing JSON:', error);
         const errorMessage = "Network Error: Unable to process the AI response. Please try again";
         cb(errorMessage);
         done_cb?.(errorMessage);
@@ -117,7 +118,7 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
       done_cb(resultText);
     }
   } catch (error) {
-    console.error('Error processing stream response:', error);
+    remixAILogger.error('Error processing stream response:', error);
   }
 };
 
@@ -151,7 +152,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   try {
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      console.log('reader')
+      remixAILogger.log('reader')
       // Check if aborted
       if (abortSignal?.aborted) {
         reader.cancel();
@@ -265,8 +266,8 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
               }
             }
           } catch (e) {
-            console.error("⚠️ OpenAI Stream parse error:", e);
-            console.error("Problematic JSON string:", jsonStr);
+            remixAILogger.error("⚠️ OpenAI Stream parse error:", e);
+            remixAILogger.error("Problematic JSON string:", jsonStr);
             const errorMessage = "Network Error: Unable to process the AI response. Please try again";
             cb(errorMessage);
             done_cb?.(errorMessage, threadId);
@@ -277,7 +278,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
     }
   } catch (error) {
     if (error.name !== 'AbortError') {
-      console.error('Error processing OpenAI stream:', error);
+      remixAILogger.error('Error processing OpenAI stream:', error);
     }
   }
 }
@@ -368,8 +369,8 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
               continue
             }
           } catch (e) {
-            console.error("MistralAI Stream parse error:", e);
-            console.error("Problematic JSON string:", jsonStr);
+            remixAILogger.error("MistralAI Stream parse error:", e);
+            remixAILogger.error("Problematic JSON string:", jsonStr);
             const errorMessage = "Network Error: Unable to process the AI response. Please try again";
             cb(errorMessage);
             done_cb?.(errorMessage, threadId);
@@ -380,7 +381,7 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
     }
   } catch (error) {
     if (error.name !== 'AbortError') {
-      console.error('Error processing MistralAI stream:', error);
+      remixAILogger.error('Error processing MistralAI stream:', error);
     }
   }
 }
@@ -500,8 +501,8 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
               resultText += json.delta.text;
             }
           } catch (e) {
-            console.error("Anthropic Stream parse error:", e);
-            console.error("Problematic JSON string:", jsonStr);
+            remixAILogger.error("Anthropic Stream parse error:", e);
+            remixAILogger.error("Problematic JSON string:", jsonStr);
             const errorMessage = "Network Error: Unable to process the AI response. Please try again";
             cb(errorMessage);
             done_cb?.(errorMessage, "");
@@ -512,7 +513,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
     }
   } catch (error) {
     if (error.name !== 'AbortError') {
-      console.error('Error processing Anthropic stream:', error);
+      remixAILogger.error('Error processing Anthropic stream:', error);
     }
   }
 }
@@ -620,8 +621,8 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
             return;
           }
         } catch (parseError) {
-          console.error("Ollama Stream parse error:", parseError);
-          console.error("Problematic JSON line:", line);
+          remixAILogger.error("Ollama Stream parse error:", parseError);
+          remixAILogger.error("Problematic JSON line:", line);
           const errorMessage = "Network Error: Unable to process the AI response. Please try again";
           cb(errorMessage);
           done_cb?.(errorMessage);
@@ -633,7 +634,7 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
     trackTokenUsage(usage, 'ollama', modelId);
     done_cb?.(resultText);
   } catch (error) {
-    console.error("Ollama Stream error:", error);
+    remixAILogger.error("Ollama Stream error:", error);
     trackTokenUsage(usage, 'ollama', modelId);
     done_cb?.(resultText);
   }

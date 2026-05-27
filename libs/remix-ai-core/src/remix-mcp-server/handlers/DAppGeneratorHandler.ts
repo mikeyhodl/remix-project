@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * DApp Generator Tool Handlers for Remix MCP Server
  *
@@ -189,19 +190,19 @@ export class GenerateDAppHandler extends BaseToolHandler {
         })
         workspaceSlug = wsResult.workspaceName
       } catch (wsErr: any) {
-        console.error('[QuickDapp] createDappWorkspace failed:', wsErr?.message || wsErr)
+        remixAILogger.error('[QuickDapp] createDappWorkspace failed:', wsErr?.message || wsErr)
         return this.createErrorResult(`Failed to create DApp workspace: ${wsErr.message}`)
       }
 
       // Open dashboard so React UI is mounted and event listeners are ready
       try {
-        console.log('[QuickDapp] Opening dashboard...')
+        remixAILogger.log('[QuickDapp] Opening dashboard...')
         await plugin.call('manager' as any, 'activatePlugin', 'quick-dapp-v2')
         await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
         await new Promise(r => setTimeout(r, 300))
-        console.log('[QuickDapp] Dashboard opened')
+        remixAILogger.log('[QuickDapp] Dashboard opened')
       } catch (e: any) {
-        console.warn('[QuickDapp] Dashboard focus failed (non-critical):', e?.message)
+        remixAILogger.warn('[QuickDapp] Dashboard focus failed (non-critical):', e?.message)
       }
 
       // Notify React UI that a new DApp is being created (sets processing spinner on card)
@@ -276,7 +277,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       })
 
     } catch (error: any) {
-      console.error('[GenerateDApp] Generation failed:', error)
+      remixAILogger.error('[GenerateDApp] Generation failed:', error)
       plugin.emit('dappGenerationError', {
         slug: undefined,
         error: error.message
@@ -350,7 +351,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
     }
 
     // Auto-resolve from workspace config
-    console.log('[QuickDapp] Auto-resolving contract info from dapp.config.json...')
+    remixAILogger.log('[QuickDapp] Auto-resolving contract info from dapp.config.json...')
     try {
       const configContent = await plugin.call('filePanel' as any, 'readFileFromWorkspace', workspaceName, 'dapp.config.json')
       if (configContent) {
@@ -360,11 +361,11 @@ export class UpdateDAppHandler extends BaseToolHandler {
           abi: args.contractAbi || config.contract?.abi,
           chainId: args.chainId || config.contract?.chainId
         })
-        console.log('[QuickDapp] \u2713 Resolved:', { address: resolved.address, chainId: resolved.chainId, abiLength: resolved.abi?.length })
+        remixAILogger.log('[QuickDapp] \u2713 Resolved:', { address: resolved.address, chainId: resolved.chainId, abiLength: resolved.abi?.length })
         return resolved
       }
     } catch (e: any) {
-      console.warn('[QuickDapp] \u26a0 Failed to read dapp.config.json from', workspaceName, ':', e?.message)
+      remixAILogger.warn('[QuickDapp] \u26a0 Failed to read dapp.config.json from', workspaceName, ':', e?.message)
     }
 
     return this.validateContractInfo({
@@ -430,25 +431,25 @@ export class UpdateDAppHandler extends BaseToolHandler {
             const content = await plugin.call('fileManager' as any, 'readFile', filePath)
             // Safety: skip if content is undefined, null, or not a string
             if (content === undefined || content === null || typeof content !== 'string') {
-              console.warn(`[QuickDapp] Skipping file with invalid content: ${filePath} (type: ${typeof content})`)
+              remixAILogger.warn(`[QuickDapp] Skipping file with invalid content: ${filePath} (type: ${typeof content})`)
               continue
             }
             let virtualPath = filePath
             if (!virtualPath.startsWith('/')) virtualPath = '/' + virtualPath
             files[virtualPath] = content
           } catch (e) {
-            console.warn(`[QuickDapp] Skipping unreadable file: ${filePath}`)
+            remixAILogger.warn(`[QuickDapp] Skipping unreadable file: ${filePath}`)
           }
         }
       }
     } catch (e) {
-      console.error(`[QuickDapp] readWorkspaceFiles error at ${currentPath}:`, e)
+      remixAILogger.error(`[QuickDapp] readWorkspaceFiles error at ${currentPath}:`, e)
     }
   }
 
   async execute(args: UpdateDAppArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log('[QuickDapp] UpdateDAppHandler.execute() START', {
+      remixAILogger.log('[QuickDapp] UpdateDAppHandler.execute() START', {
         address: args.contractAddress,
         workspace: args.workspaceName,
         descriptionType: typeof args.description,
@@ -458,16 +459,16 @@ export class UpdateDAppHandler extends BaseToolHandler {
       const targetWorkspace = args.workspaceName
 
       if (!targetWorkspace) {
-        console.error('[QuickDapp] workspaceName is missing!')
+        remixAILogger.error('[QuickDapp] workspaceName is missing!')
         return this.createErrorResult('workspaceName is required for update_dapp. Use list_dapps first to get the workspace name.')
       }
 
       // Switch to target workspace
       try {
         const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
-        console.log('[QuickDapp] Current workspace:', currentWs?.name)
+        remixAILogger.log('[QuickDapp] Current workspace:', currentWs?.name)
         if (currentWs?.name !== targetWorkspace) {
-          console.log(`[QuickDapp] Switching to workspace: ${targetWorkspace}`)
+          remixAILogger.log(`[QuickDapp] Switching to workspace: ${targetWorkspace}`)
           await plugin.call('filePanel' as any, 'switchToWorkspace', {
             name: targetWorkspace,
             isLocalhost: false,
@@ -476,7 +477,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
         } else {
         }
       } catch (e: any) {
-        console.error('[QuickDapp] Failed to switch workspace:', e?.message)
+        remixAILogger.error('[QuickDapp] Failed to switch workspace:', e?.message)
         return this.createErrorResult(`Failed to switch to workspace ${targetWorkspace}: ${e.message}`)
       }
 
@@ -486,9 +487,9 @@ export class UpdateDAppHandler extends BaseToolHandler {
         const currentFiles: Record<string, string> = {}
         await this.readWorkspaceFiles(plugin, '/', currentFiles)
         fileNames = Object.keys(currentFiles)
-        console.log(`[QuickDapp] Found ${fileNames.length} files in workspace`)
+        remixAILogger.log(`[QuickDapp] Found ${fileNames.length} files in workspace`)
       } catch (e: any) {
-        console.warn('[QuickDapp] Failed to list files:', e?.message)
+        remixAILogger.warn('[QuickDapp] Failed to list files:', e?.message)
       }
 
       if (fileNames.length === 0) {
@@ -553,7 +554,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       })
 
     } catch (error: any) {
-      console.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
+      remixAILogger.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
       plugin.emit('dappGenerationError', {
         slug: args.workspaceName,
         error: error.message
@@ -606,12 +607,12 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
     const { workspaceName, contractAddress, isUpdate } = args
 
     try {
-      console.log(`[QuickDapp] FinalizeDAppGeneration: slug=${workspaceName}, isUpdate=${!!isUpdate}`)
+      remixAILogger.log(`[QuickDapp] FinalizeDAppGeneration: slug=${workspaceName}, isUpdate=${!!isUpdate}`)
 
       // Ensure we're in the correct workspace
       const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
       if (currentWs?.name !== workspaceName) {
-        console.warn(`[QuickDapp] Workspace drift: ${currentWs?.name} → ${workspaceName}. Switching...`)
+        remixAILogger.warn(`[QuickDapp] Workspace drift: ${currentWs?.name} → ${workspaceName}. Switching...`)
         await plugin.call('filePanel' as any, 'switchToWorkspace', {
           name: workspaceName,
           isLocalhost: false,
@@ -630,7 +631,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
 
           // Defensive: restore sourceWorkspace if missing (agent may have overwritten config)
           if (!config.sourceWorkspace) {
-            console.warn(`[QuickDapp][FINALIZE] sourceWorkspace MISSING from config — attempting restore from mapping files`)
+            remixAILogger.warn(`[QuickDapp][FINALIZE] sourceWorkspace MISSING from config — attempting restore from mapping files`)
             try {
               const mappingsDir = '.deploys/dapp-mappings'
               const exists = await plugin.call('fileManager', 'exists', mappingsDir)
@@ -645,7 +646,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
                       const mapping = JSON.parse(content)
                       if (mapping.dappWorkspace === workspaceName && mapping.sourceWorkspace) {
                         config.sourceWorkspace = { name: mapping.sourceWorkspace }
-                        console.log(`[QuickDapp][FINALIZE] Restored sourceWorkspace="${mapping.sourceWorkspace}" from mapping file`)
+                        remixAILogger.log(`[QuickDapp][FINALIZE] Restored sourceWorkspace="${mapping.sourceWorkspace}" from mapping file`)
                         break
                       }
                     } catch { /* skip unreadable mapping */ }
@@ -653,17 +654,17 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
                 }
               }
             } catch (e) {
-              console.warn('[QuickDapp][FINALIZE] Could not restore sourceWorkspace from mappings:', e)
+              remixAILogger.warn('[QuickDapp][FINALIZE] Could not restore sourceWorkspace from mappings:', e)
             }
           } else {
-            console.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
+            remixAILogger.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
           }
 
           await plugin.call('fileManager', 'writeFile', 'dapp.config.json', JSON.stringify(config, null, 2))
-          console.log('[QuickDapp] Config updated to created')
+          remixAILogger.log('[QuickDapp] Config updated to created')
         }
       } catch (configErr) {
-        console.warn('[QuickDapp] Config update failed (non-critical):', configErr)
+        remixAILogger.warn('[QuickDapp] Config update failed (non-critical):', configErr)
       }
 
       // Emit dappGenerated event — triggers UI refresh
@@ -672,7 +673,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         slug: workspaceName,
         isUpdate: !!isUpdate
       })
-      console.log('[QuickDapp] dappGenerated emitted')
+      remixAILogger.log('[QuickDapp] dappGenerated emitted')
 
       // Note: In agent-driven flow, file writes are already approved via HITL.
       // No separate review card (onDappUpdateCompleted) is needed.
@@ -682,9 +683,9 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         await plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
         await plugin.call('quick-dapp-v2' as any, 'openDapp', workspaceName)
         await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
-        console.log('[QuickDapp] Auto-open complete')
+        remixAILogger.log('[QuickDapp] Auto-open complete')
       } catch (e: any) {
-        console.warn('[QuickDapp] Auto-open failed (non-critical):', e?.message)
+        remixAILogger.warn('[QuickDapp] Auto-open failed (non-critical):', e?.message)
       }
 
       return this.createSuccessResult({
@@ -693,7 +694,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         message: `✅ DApp "${workspaceName}" finalized. Config updated, dashboard refreshed, and DApp preview opened.`
       })
     } catch (error: any) {
-      console.error('[QuickDapp] finalize_dapp_generation failed:', error)
+      remixAILogger.error('[QuickDapp] finalize_dapp_generation failed:', error)
       plugin.emit('dappGenerationError', {
         slug: workspaceName,
         error: error.message
@@ -722,16 +723,16 @@ export class ListDAppsHandler extends BaseToolHandler {
 
   async execute(_args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log('[QuickDapp] ListDAppsHandler.execute() — scanning workspaces directly via filePanel')
+      remixAILogger.log('[QuickDapp] ListDAppsHandler.execute() — scanning workspaces directly via filePanel')
 
       // Use filePanel directly to avoid auto-activating quick-dapp-v2 plugin
       // (plugin.call to an inactive plugin auto-activates it, which opens its UI tab)
       let allWorkspaces: any[]
       try {
         allWorkspaces = await plugin.call('filePanel' as any, 'getWorkspacesForPlugin')
-        console.log('[QuickDapp] Total workspaces:', allWorkspaces?.length || 0)
+        remixAILogger.log('[QuickDapp] Total workspaces:', allWorkspaces?.length || 0)
       } catch (e: any) {
-        console.error('[QuickDapp] Failed to get workspaces:', e?.message)
+        remixAILogger.error('[QuickDapp] Failed to get workspaces:', e?.message)
         return this.createErrorResult(`Failed to list workspaces: ${e.message}`)
       }
 
@@ -746,7 +747,7 @@ export class ListDAppsHandler extends BaseToolHandler {
         .map((ws: any) => typeof ws === 'string' ? ws : ws.name)
         .filter((name: string) => name && name.startsWith('dapp-'))
 
-      console.log('[QuickDapp] Found', dappWorkspaces.length, 'dapp-* workspaces')
+      remixAILogger.log('[QuickDapp] Found', dappWorkspaces.length, 'dapp-* workspaces')
 
       const dapps: any[] = []
       for (const wsName of dappWorkspaces) {
@@ -770,12 +771,12 @@ export class ListDAppsHandler extends BaseToolHandler {
             createdAt: config.createdAt || 0
           })
         } catch (e) {
-          console.warn('[QuickDapp] Failed to read config for', wsName)
+          remixAILogger.warn('[QuickDapp] Failed to read config for', wsName)
         }
       }
 
       dapps.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      console.log('[QuickDapp] list_dapps returned', dapps.length, 'dapps')
+      remixAILogger.log('[QuickDapp] list_dapps returned', dapps.length, 'dapps')
 
       if (dapps.length === 0) {
         return this.createSuccessResult({
@@ -793,7 +794,7 @@ export class ListDAppsHandler extends BaseToolHandler {
         message: `Found ${dapps.length} DApp(s). Present this list to the user and ask which one they want to work with. Include the DApp name, contract name, contract address, and status for each.`
       })
     } catch (error: any) {
-      console.error('[QuickDapp] list_dapps failed:', error)
+      remixAILogger.error('[QuickDapp] list_dapps failed:', error)
       return this.createErrorResult(`Failed to list DApps: ${error.message}`)
     }
   }
@@ -830,7 +831,7 @@ export class FetchFigmaDesignHandler extends BaseToolHandler {
 
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log('[QuickDapp] fetch_figma_design called:', args.figmaUrl)
+      remixAILogger.log('[QuickDapp] fetch_figma_design called:', args.figmaUrl)
 
       // Parse Figma URL to extract file key
       const patterns = [
@@ -912,7 +913,7 @@ export class FetchFigmaDesignHandler extends BaseToolHandler {
         ? rawJson.substring(0, maxJsonLength) + '\n... [truncated for token limit]'
         : rawJson
 
-      console.log(`[QuickDapp] Figma design fetched: ${figmaData.name}, size: ${rawJson.length}`)
+      remixAILogger.log(`[QuickDapp] Figma design fetched: ${figmaData.name}, size: ${rawJson.length}`)
 
       return this.createSuccessResult({
         success: true,
@@ -922,7 +923,7 @@ export class FetchFigmaDesignHandler extends BaseToolHandler {
         message: `Figma design "${figmaData.name}" loaded successfully. Use the design data above to match the layout, colors, and typography when generating DApp files.`
       })
     } catch (error: any) {
-      console.error('[QuickDapp] fetch_figma_design failed:', error)
+      remixAILogger.error('[QuickDapp] fetch_figma_design failed:', error)
       return this.createErrorResult(`Failed to fetch Figma design: ${error.message}`)
     }
   }

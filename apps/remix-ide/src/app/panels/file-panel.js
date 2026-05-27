@@ -63,6 +63,7 @@ const profile = {
 export default class Filepanel extends ViewPlugin {
   constructor(appManager, contentImport) {
     super(profile)
+    this.debug = false
     this.registry = Registry.getInstance()
     this.fileProviders = this.registry.get('fileproviders').api
     this.fileManager = this.registry.get('filemanager').api
@@ -78,6 +79,22 @@ export default class Filepanel extends ViewPlugin {
     this.currentWorkspaceMetadata = null
 
     this.expandPath = []
+  }
+
+  warn(...args) {
+    if (this.isDebugEnabled()) console.warn(...args)
+  }
+
+  isDebugEnabled() {
+    try {
+      return this.debug || localStorage.getItem('remix-file-panel-debug') === 'true'
+    } catch (_) {
+      return this.debug
+    }
+  }
+
+  log(...args) {
+    if (this.isDebugEnabled()) console.log(...args)
   }
 
   setDispatch(dispatch) {
@@ -196,7 +213,7 @@ export default class Filepanel extends ViewPlugin {
       const content = await window.remixFileSystem.readFile(fullPath, 'utf8')
       return content
     } catch (e) {
-      console.warn('[FilePanel] readFileFromWorkspace error:', e.message)
+      this.warn('[FilePanel] readFileFromWorkspace error:', e.message)
       throw e
     }
   }
@@ -215,7 +232,7 @@ export default class Filepanel extends ViewPlugin {
       const fullPath = `${workspaceProvider.workspacesPath}/${dirName}/${filePath}`.replace(/\/\//g, '/')
       return await window.remixFileSystem.exists(fullPath)
     } catch (e) {
-      console.warn('[FilePanel] existsInWorkspace error:', e.message)
+      this.warn('[FilePanel] existsInWorkspace error:', e.message)
       return false
     }
   }
@@ -322,7 +339,7 @@ export default class Filepanel extends ViewPlugin {
     if (workspace.name !== ' - connect to localhost - ') {
       localStorage.setItem('currentWorkspace', workspace.name)
     }
-    console.log('setting workspace', workspace)
+    this.log('setting workspace', workspace)
     this.emit('setWorkspace', workspace)
   }
 

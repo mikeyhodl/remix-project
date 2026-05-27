@@ -6,6 +6,7 @@
  */
 
 import { initializePaddle, Paddle, PaddleEventData, CheckoutEventNames } from '@paddle/paddle-js'
+import { planManagerLogger, setPlanManagerLoggingEnabled } from './plan-manager-logger'
 
 type Environment = 'sandbox' | 'production'
 
@@ -66,8 +67,8 @@ function logPaddleScriptTags(): void {
   try {
     const scripts = Array.from(document.getElementsByTagName('script'))
     const paddleScripts = scripts.filter(s => (s.src || '').toLowerCase().includes('paddle'))
-    console.log(`[Paddle] script tags found: ${paddleScripts.length}`)
-    paddleScripts.forEach((s, i) => console.log(`  [${i}]`, s.src))
+    planManagerLogger.log(`[Paddle] script tags found: ${paddleScripts.length}`)
+    paddleScripts.forEach((s, i) => planManagerLogger.log(`  [${i}]`, s.src))
   } catch {
     // Ignore if document not available (SSR)
   }
@@ -77,9 +78,10 @@ function logPaddleScriptTags(): void {
  * Debug: Log current Paddle state
  */
 function debugPaddleStatus(): void {
+  setPlanManagerLoggingEnabled(true)
   const w = globalThis as { Paddle?: Paddle }
   const hasGlobal = !!w.Paddle
-  console.log('[Paddle][debug] key:', cache.key,
+  planManagerLogger.log('[Paddle][debug] key:', cache.key,
     'hasInstance:', !!cache.instance,
     'hasPromise:', !!cache.promise,
     'globalThis.Paddle:', hasGlobal)
@@ -135,7 +137,7 @@ export async function initPaddle(
 
   // Store the key (allows re-init if env/token changes)
   cache.key = key
-  console.log('[Paddle] Initializing singleton for key:', key)
+  planManagerLogger.log('[Paddle] Initializing singleton for key:', key)
   debugPaddleStatus()
 
   cache.promise = initializePaddle({
@@ -146,16 +148,16 @@ export async function initPaddle(
       try {
         cache.listeners?.forEach((listener) => listener(event))
       } catch (e) {
-        console.error('[Paddle] Event listener error:', e)
+        planManagerLogger.error('[Paddle] Event listener error:', e)
       }
 
       // Log notable events
       if (event.name === CheckoutEventNames.CHECKOUT_COMPLETED) {
-        console.log('[Paddle] ✅ Checkout completed')
+        planManagerLogger.log('[Paddle] ✅ Checkout completed')
       } else if (event.name === CheckoutEventNames.CHECKOUT_CLOSED) {
-        console.log('[Paddle] 🚪 Checkout closed')
+        planManagerLogger.log('[Paddle] 🚪 Checkout closed')
       } else if (event.name === CheckoutEventNames.CHECKOUT_PAYMENT_FAILED) {
-        console.warn('[Paddle] ❌ Payment failed:', event.data)
+        planManagerLogger.warn('[Paddle] ❌ Payment failed:', event.data)
       }
     }
   })
@@ -166,13 +168,13 @@ export async function initPaddle(
         throw new Error('Paddle.js not available')
       }
       cache.instance = resolved
-      console.log('[Paddle] ✅ Instance ready')
+      planManagerLogger.log('[Paddle] ✅ Instance ready')
       return resolved
     })
     .catch((e) => {
       // Clear promise to allow retry on next call
       cache.promise = undefined
-      console.error('[Paddle] Init failed:', e)
+      planManagerLogger.error('[Paddle] Init failed:', e)
       throw e
     })
 
@@ -201,16 +203,16 @@ export function openCheckoutWithTransaction(
   }
 ): void {
   if (!paddle) {
-    console.error('[Paddle] Cannot open checkout - Paddle not initialized')
+    planManagerLogger.error('[Paddle] Cannot open checkout - Paddle not initialized')
     return
   }
 
   if (!transactionId) {
-    console.error('[Paddle] Cannot open checkout - No transaction ID provided')
+    planManagerLogger.error('[Paddle] Cannot open checkout - No transaction ID provided')
     return
   }
 
-  console.log('[Paddle] Opening checkout for transaction:', transactionId)
+  planManagerLogger.log('[Paddle] Opening checkout for transaction:', transactionId)
 
   paddle.Checkout.open({
     transactionId,
@@ -248,16 +250,16 @@ export function openCheckout(
   }
 ): void {
   if (!paddle) {
-    console.error('[Paddle] Cannot open checkout - Paddle not initialized')
+    planManagerLogger.error('[Paddle] Cannot open checkout - Paddle not initialized')
     return
   }
 
   if (!priceId) {
-    console.error('[Paddle] Cannot open checkout - No price ID provided')
+    planManagerLogger.error('[Paddle] Cannot open checkout - No price ID provided')
     return
   }
 
-  console.log('[Paddle] Opening checkout for price:', priceId)
+  planManagerLogger.log('[Paddle] Opening checkout for price:', priceId)
 
   paddle.Checkout.open({
     items: [{ priceId, quantity: 1 }],

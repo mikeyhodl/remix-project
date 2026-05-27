@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import { Plugin } from '@remixproject/engine'
 import EventEmitter from 'events'
 import { ToolApprovalRequest, ToolApprovalResponse } from '../../types/humanInTheLoop'
@@ -100,7 +101,7 @@ export class RemixFilesystemBackend {
       // Return success immediately — approval will come later via flush
       return { occurrences }
     } catch (err) {
-      console.error('[HITL][Backend] edit() error:', err)
+      remixAILogger.error('[HITL][Backend] edit() error:', err)
       return { error: err.message }
     }
   }
@@ -203,7 +204,7 @@ export class RemixFilesystemBackend {
       try {
         const currentWs = await this.plugin.call('filePanel' as any, 'getCurrentWorkspace')
         if (currentWs?.name && normalizedPath.startsWith(currentWs.name + '/')) {
-          console.warn(`[QuickDapp] Stripping workspace prefix from path: ${normalizedPath}`)
+          remixAILogger.warn(`[QuickDapp] Stripping workspace prefix from path: ${normalizedPath}`)
           normalizedPath = normalizedPath.substring(currentWs.name.length)
         }
       } catch (e) { /* ignore workspace check failure */ }
@@ -231,7 +232,7 @@ export class RemixFilesystemBackend {
 
       return { success: true }
     } catch (error) {
-      console.error('[HITL][Backend] write_file ERROR:', path, error)
+      remixAILogger.error('[HITL][Backend] write_file ERROR:', path, error)
       return { error: `Failed to write file ${path}: ${error.message}` }
     }
   }
@@ -282,7 +283,7 @@ export class RemixFilesystemBackend {
 
       return { success: true }
     } catch (error) {
-      console.error('[HITL][Backend] edit_file() ERROR:', error)
+      remixAILogger.error('[HITL][Backend] edit_file() ERROR:', error)
       return { error: `Failed to edit file ${path}: ${error.message}` }
     }
   }

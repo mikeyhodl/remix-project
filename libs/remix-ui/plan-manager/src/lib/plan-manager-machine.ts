@@ -33,6 +33,7 @@ import type {
   CreditPackage,
   PermissionsResponse
 } from '@remix-api'
+import { planManagerLogger, setPlanManagerLoggingEnabled } from './plan-manager-logger'
 
 export type { QuotaEntry }
 
@@ -939,17 +940,18 @@ export class PlanManagerStore {
   constructor(opts?: { debug?: boolean; stateCards?: boolean }) {
     const debug = opts?.debug ?? false
     this.stateCards = opts?.stateCards ?? debug
+    if (debug || this.stateCards) setPlanManagerLoggingEnabled(true)
     this.actor = createActor(planManagerMachine, {
       inspect: debug
         ? (ev: any) => {
           if (ev.type === '@xstate.event') {
 
-            console.log('%c[PlanManager] event %c%s',
+            planManagerLogger.log('%c[PlanManager] event %c%s',
               'color:#1f4b99', 'color:#0b6b3a;font-weight:bold',
               JSON.stringify(ev.event))
           } else if (ev.type === '@xstate.snapshot') {
 
-            console.log('%c[PlanManager] state %c%s',
+            planManagerLogger.log('%c[PlanManager] state %c%s',
               'color:#1f4b99', 'color:#7a5200',
               JSON.stringify(ev.snapshot?.value))
           }
@@ -960,7 +962,7 @@ export class PlanManagerStore {
       this.snapshot = snapshotFromActor(this.actor)
       if (this.stateCards) this.logStateCard()
       for (const fn of this.listeners) {
-        try { fn() } catch (e) { console.error('[PlanManagerStore] listener error', e) }
+        try { fn() } catch (e) { planManagerLogger.error('[PlanManagerStore] listener error', e) }
       }
     })
     this.actor.start()
@@ -1079,12 +1081,12 @@ export class PlanManagerStore {
 
     const ts = new Date().toISOString()
     const stateLabel = `${value.auth}/${value.data}/${value.catalog}/${value.checkout}/${value.overlay}`
-    console.groupCollapsed(`%c[PlanManager][StateCard] %c${ts} %c${this.lastEventType} %c${stateLabel}`,
+    planManagerLogger.groupCollapsed(`%c[PlanManager][StateCard] %c${ts} %c${this.lastEventType} %c${stateLabel}`,
       'color:#1f4b99;font-weight:bold',
       'color:#4a5568',
       'color:#0b6b3a;font-weight:bold',
       'color:#7a5200;font-weight:bold')
-    console.log(card)
-    console.groupEnd()
+    planManagerLogger.log(card)
+    planManagerLogger.groupEnd()
   }
 }
