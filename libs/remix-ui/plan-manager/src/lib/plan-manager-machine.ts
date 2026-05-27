@@ -161,6 +161,7 @@ export interface OpenIntent {
 export const THRESHOLDS = {
   CREDIT_LOW_PCT: 0.20, // <20% of monthly allowance → 'low'
   CREDIT_CRITICAL_PCT: 0.05, // <5%                       → 'critical'
+  INCLUDED_UNLIMITED_AMOUNT: 1e15, // Mirrors quota UI's ∞ threshold.
   PLAN_EXPIRING_DAYS: 7 // ≤7 days to renewal/end    → 'expiring'
 } as const
 
@@ -729,31 +730,91 @@ export function selectPlanState(snap: PlanManagerSnapshot, now: number = Date.no
 
 /**
  * Credit severity. Total = credits per cycle (subscription's allowance,
- * else permissions/free quota, else just balance for accuracy when nothing
+ * else permissions/included quota, else just balance for accuracy when nothing
  * else is known).
  */
 export interface CreditStatus {
   state: CreditState
+  /** Paid/top-up credits. This is the big number in the hero. */
   remaining: number
   total: number
   used: number
   usedPct: number // 0–100
   remainingPct: number // 0–1
   refreshDate: string | null // ISO, when the next allowance lands
+  paidRemaining: number
+  includedRemaining: number
+  includedTotal: number
+  includedUsed: number
+  hasUnlimitedIncluded: boolean
+  availableRemaining: number
+  availableTotal: number
+}
+
+function emptyCreditStatus(state: CreditState = 'unknown'): CreditStatus {
+  return {
+    state,
+    remaining: 0,
+    total: 0,
+    used: 0,
+    usedPct: 0,
+    remainingPct: 0,
+    refreshDate: null,
+    paidRemaining: 0,
+    includedRemaining: 0,
+    includedTotal: 0,
+    includedUsed: 0,
+    hasUnlimitedIncluded: false,
+    availableRemaining: 0,
+    availableTotal: 0
+  }
+}
+
+function selectIncludedCredits(credits: Credits): Pick<CreditStatus, 'includedRemaining' | 'includedTotal' | 'includedUsed' | 'hasUnlimitedIncluded'> {
+  const quotas = Array.isArray(credits.quotas) ? credits.quotas : []
+  const activeQuotas = quotas.filter(q => q && typeof q.amount === 'number' && q.amount > 0)
+  const hasUnlimitedIncluded = activeQuotas.some(q => q.amount >= THRESHOLDS.INCLUDED_UNLIMITED_AMOUNT)
+  const finiteQuotas = activeQuotas.filter(q => q.amount < THRESHOLDS.INCLUDED_UNLIMITED_AMOUNT)
+
+  if (finiteQuotas.length > 0 || hasUnlimitedIncluded) {
+    return finiteQuotas.reduce((acc, quota) => {
+      const amount = Math.max(0, quota.amount ?? 0)
+      const remaining = Math.max(0, quota.remaining ?? amount - Math.max(0, quota.used ?? 0))
+      const used = Math.max(0, Math.min(amount, quota.used ?? amount - remaining))
+      acc.includedRemaining += remaining
+      acc.includedTotal += amount
+      acc.includedUsed += used
+      return acc
+    }, {
+      includedRemaining: 0,
+      includedTotal: 0,
+      includedUsed: 0,
+      hasUnlimitedIncluded
+    })
+  }
+
+  const fallbackFree = Math.max(0, credits.free_credits ?? 0)
+  return {
+    includedRemaining: fallbackFree,
+    includedTotal: fallbackFree,
+    includedUsed: 0,
+    hasUnlimitedIncluded: false
+  }
 }
 
 export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
   const credits = snap.credits
   if (!credits) {
-    return { state: 'unknown', remaining: 0, total: 0, used: 0, usedPct: 0, remainingPct: 0, refreshDate: null }
+    return emptyCreditStatus('unknown')
   }
 
-  const remaining = Math.max(0, credits.balance ?? 0)
+  const paidRemaining = Math.max(0, credits.paid_credits ?? credits.balance ?? 0)
+  const included = selectIncludedCredits(credits)
 
   // Total (this cycle's allowance) — best-effort:
   //   1. subscription.creditsPerMonth (legacy field on UserSubscription)
   //   2. matching catalog plan's creditsPerMonth
-  //   3. (free + paid) — gives a sensible baseline when no plan signal exists
+  //   3. paid balance — gives a sensible baseline when no plan signal exists
   const sub = snap.subscription
   let total = 0
   if (sub?.creditsPerPeriod) total = sub.creditsPerPeriod
@@ -763,26 +824,40 @@ export function selectCreditStatus(snap: PlanManagerSnapshot): CreditStatus {
     if (match) total = match.creditsPerMonth
   }
   if (!total) {
-    // Best fallback: balance + any consumed paid credits we can infer.
-    // Free-credits + paid-credits gives the *current* split, not the
-    // monthly cap — but it's better than zero for severity calc.
-    total = (credits.free_credits ?? 0) + (credits.paid_credits ?? 0)
+    total = paidRemaining
   }
-  if (!total) total = remaining // last resort; severity will read 'healthy'
 
-  const used = Math.max(0, total - remaining)
-  const remainingPct = total > 0 ? remaining / total : 1
+  const availableRemaining = paidRemaining + included.includedRemaining
+  const availableTotal = Math.max(total, paidRemaining) + included.includedTotal
+
+  const remaining = paidRemaining
+  const used = Math.max(0, total - paidRemaining)
+  const remainingPct = total > 0 ? paidRemaining / total : 1
   const usedPct = total > 0 ? Math.min(100, (used / total) * 100) : 0
 
   let state: CreditState
-  if (remaining <= 0) state = 'empty'
-  else if (remainingPct < THRESHOLDS.CREDIT_CRITICAL_PCT) state = 'critical'
-  else if (remainingPct < THRESHOLDS.CREDIT_LOW_PCT) state = 'low'
+  if (included.hasUnlimitedIncluded) state = 'healthy'
+  else if (availableRemaining <= 0) state = 'empty'
+  else if (paidRemaining <= 0 && included.includedRemaining > 0) state = 'healthy'
+  else if (availableTotal > 0 && availableRemaining / availableTotal < THRESHOLDS.CREDIT_CRITICAL_PCT) state = 'critical'
+  else if (availableTotal > 0 && availableRemaining / availableTotal < THRESHOLDS.CREDIT_LOW_PCT) state = 'low'
   else state = 'healthy'
 
   const refreshDate = sub?.currentBillingPeriod?.endsAt ?? sub?.currentPeriodEnd ?? sub?.nextBilledAt ?? null
 
-  return { state, remaining, total, used, usedPct, remainingPct, refreshDate }
+  return {
+    state,
+    remaining,
+    total,
+    used,
+    usedPct,
+    remainingPct,
+    refreshDate,
+    paidRemaining,
+    ...included,
+    availableRemaining,
+    availableTotal
+  }
 }
 
 /**
@@ -1056,6 +1131,10 @@ export class PlanManagerStore {
         credit: {
           state: credit.state,
           remaining: credit.remaining,
+          paidRemaining: credit.paidRemaining,
+          includedRemaining: credit.includedRemaining,
+          includedTotal: credit.includedTotal,
+          availableRemaining: credit.availableRemaining,
           total: credit.total,
           usedPct: credit.usedPct
         },

@@ -1068,7 +1068,7 @@ const PlanManagerOverlay: React.FC<{
   snap: PlanManagerSnapshot
 }> = ({ plugin, snap }) => {
   // null = no expanded section (Plans / Top up / Usage all collapsed). The
-  // panel landing view is intentionally quiet: hero + a summary of free
+  // panel landing view is intentionally quiet: hero + a summary of included
   // quotas + (when relevant) an upgrade promo. Tabs only expand on demand
   // OR when another plugin opens us with a routing intent (see effect below).
   const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage' | null>(null)
@@ -1182,7 +1182,7 @@ const PlanManagerOverlay: React.FC<{
         )}
         {/*
           Email verification gate. The backend now blocks AI access until the
-          user has a confirmed email on file (so we don't burn free credits on
+          user has a confirmed email on file (so we don't burn included credits on
           burner addresses, and so SIWE-only accounts can recover their plan).
           When `email_verified` is false (or `has_email` is false for SIWE
           users) we hide the catalog/hero/alerts and show a focused verify
@@ -1266,7 +1266,6 @@ const PlanManagerOverlay: React.FC<{
             <QuotasPanel
               quotas={quotas}
               aiModels={snap.permissions?.ai_models}
-              planLabel={planCtx.planName}
               paidCredits={snap.credits?.paid_credits ?? 0}
               canUpgrade={canUpgrade && ui.showPlans}
               onUpgrade={() => setActiveSection('plans')}
@@ -1444,13 +1443,12 @@ function formatResetTime(iso: string, period: QuotaEntry['period'], now: number 
 const QuotasPanel: React.FC<{
   quotas: QuotaEntry[]
   aiModels: ModelLookup
-  planLabel: string
-  /** Paid balance available to spend AFTER the free quota is drained. */
+  /** Paid balance available to spend AFTER the included quota is drained. */
   paidCredits: number
   canUpgrade: boolean
   onUpgrade: () => void
   onTopUp: () => void
-}> = ({ quotas, aiModels, planLabel, paidCredits, canUpgrade, onUpgrade, onTopUp }) => {
+}> = ({ quotas, aiModels, paidCredits, canUpgrade, onUpgrade, onTopUp }) => {
   const [expanded, setExpanded] = React.useState(false)
 
   if (!quotas || quotas.length === 0) return null
@@ -1485,12 +1483,12 @@ const QuotasPanel: React.FC<{
   return (
     <section
       className={`pm-quotas ${expanded ? 'pm-quotas--expanded' : 'pm-quotas--collapsed'}`}
-      aria-label="Free AI usage included with your plan"
+      aria-label="Included AI usage with your plan"
     >
       <div className="pm-quotas__head">
         <div>
-          <div className="pm-quotas__eyebrow">Free with {planLabel}</div>
-          <h3 className="pm-quotas__title">Free AI usage included</h3>
+          <div className="pm-quotas__eyebrow">Included in your plan</div>
+          <h3 className="pm-quotas__title">Included AI usage</h3>
         </div>
         <div className="pm-quotas__head-right">
           <div className="pm-quotas__hint">
@@ -1542,15 +1540,15 @@ const QuotasPanel: React.FC<{
               <header className="pm-quota__head">
                 <div className="pm-quota__label">
                   <span className="pm-quota__name" data-id={`pm-quota-${slugId}-name`}>{label}</span>
-                  <span className="pm-quota__period">{periodWord} free</span>
+                  <span className="pm-quota__period">{periodWord} included</span>
                 </div>
                 {unlimited ? (
-                  <span className="pm-quota__badge pm-quota__badge--unlimited" title="Unlimited free usage">∞ Unlimited</span>
+                  <span className="pm-quota__badge pm-quota__badge--unlimited" title="Unlimited included usage">∞ Unlimited</span>
                 ) : (
                   <div className="pm-quota__counts">
                     <span className="pm-quota__used" data-id={`pm-quota-${slugId}-used`}>{q.used.toLocaleString()}</span>
                     <span className="pm-quota__sep">/</span>
-                    <span className="pm-quota__cap" data-id={`pm-quota-${slugId}-cap`}>{q.amount.toLocaleString()} free</span>
+                    <span className="pm-quota__cap" data-id={`pm-quota-${slugId}-cap`}>{q.amount.toLocaleString()} included</span>
                   </div>
                 )}
               </header>
@@ -1565,8 +1563,8 @@ const QuotasPanel: React.FC<{
                 <span className="pm-quota__reset">
                   {exhausted
                     ? (hasPaid
-                      ? <>Free quota used — now drawing paid credits</>
-                      : <>Free quota used — {reset.toLowerCase()}</>)
+                      ? <>Included quota used — now drawing paid credits</>
+                      : <>Included quota used — {reset.toLowerCase()}</>)
                     : reset}
                 </span>
                 {exhausted && !hasPaid && (
@@ -1618,7 +1616,7 @@ const UpgradePromoBanner: React.FC<{
     : `Get more from Remix AI — upgrade from ${planCtx.planName}`
   const sub = isFree
     ? 'Higher daily caps, full model lineup, and paid credits that never expire.'
-    : 'Bigger free quotas across every model, plus priority access on new releases.'
+    : 'Bigger included quotas across every model, plus priority access on new releases.'
 
   return (
     <section className="pm-promo" aria-label="Upgrade your plan">
@@ -1651,7 +1649,8 @@ const Hero: React.FC<{
   /** Omit to hide the Top up CTA — used when `ui:show-top-ups` is off. */
   onTopUp?: () => void
 }> = ({ status, refreshDate, planCtx, heroCompact, onTopUp }) => {
-  const { remaining, total, state } = status
+  const { paidRemaining, total, state, includedRemaining, includedTotal, hasUnlimitedIncluded } = status
+  const showIncluded = hasUnlimitedIncluded || includedTotal > 0
 
   // Credits don't expire and top-ups stack, so a "% of cycle" gauge would
   // misrepresent the model. We only surface a forward-looking line: when
@@ -1684,10 +1683,27 @@ const Hero: React.FC<{
   return (
     <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
       <div className="pm-hero__left">
-        <div className="pm-hero__eyebrow">Credit balance</div>
-        <div className="pm-hero__amount">
-          <span className="pm-hero__num">{remaining.toLocaleString()}</span>
-          <span className="pm-hero__unit">credits</span>
+        <div className="pm-hero__eyebrow">Paid credit balance</div>
+        <div className="pm-hero__balance-row">
+          <div className="pm-hero__amount">
+            <span className="pm-hero__num">{paidRemaining.toLocaleString()}</span>
+            <span className="pm-hero__unit">paid credits</span>
+          </div>
+          {showIncluded && (
+            <div className="pm-hero__included" aria-label="Included AI credits remaining">
+              <span className="pm-hero__included-kicker">Included AI</span>
+              {hasUnlimitedIncluded ? (
+                <span className="pm-hero__included-value">Unlimited</span>
+              ) : (
+                <span className="pm-hero__included-value">
+                  {includedRemaining.toLocaleString()}
+                  <span>/</span>
+                  {includedTotal.toLocaleString()}
+                </span>
+              )}
+              <span className="pm-hero__included-label">credits</span>
+            </div>
+          )}
         </div>
         <div className="pm-hero__meta">
           {renderRenewal()}
@@ -2354,7 +2370,7 @@ const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
         </div>
         <div className="pm-usage__total">
           <div className="pm-usage__total-num">{formatCreditValue(totals.credits)}</div>
-          <div className="pm-usage__total-lbl">credits billed</div>
+          <div className="pm-usage__total-lbl">credits used</div>
         </div>
       </div>
 
@@ -2421,7 +2437,7 @@ const ALERT_COPY: Record<Exclude<CreditState, 'healthy' | 'unknown'>, {
   empty: {
     eyebrow: 'Out of credits',
     title: () => 'You\'ve used all your credits',
-    body: (r) => `AI features are paused until you top up, upgrade your plan${r ? `, or your free allowance refills on ${r}` : ''}.`,
+    body: (r) => `AI features are paused until you top up, upgrade your plan${r ? `, or your included allowance refills on ${r}` : ''}.`,
     icon: 'fas fa-bolt'
   }
 }
@@ -2435,6 +2451,7 @@ const CreditAlert: React.FC<{
 }> = ({ status, refreshDate, canUpgrade, onTopUp, onUpgrade }) => {
   if (status.state === 'healthy' || status.state === 'unknown') return null
   const copy = ALERT_COPY[status.state]
+  const remaining = status.availableRemaining
 
   return (
     <section className={`pm-alert pm-alert--${status.state}`}>
@@ -2444,7 +2461,7 @@ const CreditAlert: React.FC<{
       </div>
       <div className="pm-alert__body">
         <div className="pm-alert__eyebrow">{copy.eyebrow}</div>
-        <div className="pm-alert__title">{copy.title(status.remaining)}</div>
+        <div className="pm-alert__title">{copy.title(remaining)}</div>
         <p className="pm-alert__desc">{copy.body(refreshDate)}</p>
       </div>
       <div className="pm-alert__actions">
@@ -2933,11 +2950,11 @@ const EmailVerificationScreen: React.FC<{
             </h2>
             <p className="pm-signin__lede">
               {isAddMode
-                ? 'You signed in with a wallet, so we don\'t have an email on file. We need a verified address before unlocking AI features — it\'s how we keep free credits out of the hands of throwaway accounts and how you\'ll recover your plan if you ever lose your wallet.'
+                ? 'You signed in with a wallet, so we don\'t have an email on file. We need a verified address before unlocking AI features — it\'s how we keep included credits out of the hands of throwaway accounts and how you\'ll recover your plan if you ever lose your wallet.'
                 : (<>
                   We\'ll email a 6-digit code to{' '}
                   <strong className="pm-verify__email">{targetEmailMasked || 'your address on file'}</strong>.
-                  This is a one-time check to keep free credits out of throwaway accounts.
+                  This is a one-time check to keep included credits out of throwaway accounts.
                 </>)}
             </p>
 
