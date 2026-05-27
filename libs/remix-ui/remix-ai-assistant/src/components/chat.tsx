@@ -311,6 +311,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
 }
 
 function RemixMarkdownViewer(theme: string, markDownContent: string): React.ReactNode {
+  const [btnColor, setBtnColor] = useState('')
   return <ReactMarkdown
     remarkPlugins={[[remarkGfm, {}]]}
     remarkRehypeOptions={{}}
@@ -336,8 +337,12 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
                 <span className="ai-code-language">{language}</span>
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-info border border-info"
-                  onClick={() => copy(text)}
+                  className={`btn btn-sm ${btnColor.length > 0 ? 'btn-outline-success border border-success' : 'btn-outline-info border border-info'}`}
+                  onClick={() => {
+                    setBtnColor('successfulCopy')
+                    copy(text)
+                    setTimeout(() => setBtnColor(''), 2000)
+                  }}
                 >
                   <i className="fa-regular fa-copy"></i>
                 </button>
