@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import copy from 'copy-to-clipboard'
 import { ChatMessage, assistantAvatar, assitantAvatarLight } from '../lib/types'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, SetStateAction, Dispatch } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
 import {
   sampleConversationStarters,
@@ -81,6 +81,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   onDappReviewViewDiff,
   handleLoadSkills
 }) => {
+  const [btnColor, setBtnColor] = useState('')
   return (
     <div
       ref={historyRef}
@@ -140,7 +141,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                       } : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        RemixMarkdownViewer(theme, displayContent)
+                        RemixMarkdownViewer(theme, msg.content, btnColor, setBtnColor)
                       ) : (
                         <div className="ai-paragraph pb-0">
                           {msg.content}
@@ -310,8 +311,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   )
 }
 
-function RemixMarkdownViewer(theme: string, markDownContent: string): React.ReactNode {
-  const [btnColor, setBtnColor] = useState('')
+function RemixMarkdownViewer(theme: string, markDownContent: string, btnColor: string, setBtnColor: Dispatch<SetStateAction<string>>): React.ReactNode {
   return <ReactMarkdown
     remarkPlugins={[[remarkGfm, {}]]}
     remarkRehypeOptions={{}}
