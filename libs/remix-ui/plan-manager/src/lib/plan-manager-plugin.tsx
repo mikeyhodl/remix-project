@@ -22,7 +22,7 @@ import { PluginViewWrapper } from '@remix-ui/helper'
 // removed when Plan Manager became the sole billing surface.
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
-import type { CreditsUsageQuery, UsageReport } from '@remix-api'
+import type { CreditsUsageQuery, FeatureGroup, UsageReport } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -1328,7 +1328,7 @@ const PlanManagerOverlay: React.FC<{
               <PlansSection
                 plans={visiblePlans}
                 currentPlanId={planCtx.planId}
-                userFeatureGroupNames={snap.permissions?.feature_groups?.map(g => g.name) ?? []}
+                userFeatureGroups={snap.permissions?.feature_groups ?? []}
                 isTrialEligible={snap.isTrialEligible}
                 purchasingId={purchasingProductId}
                 requiredFeature={intent?.requiredFeature ?? null}
@@ -1926,9 +1926,29 @@ function computeYearlySavings(p: any): { percent: number; monthsFree: number } |
   return { percent: pct, monthsFree }
 }
 
+function normalizePlanKey(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase()
+}
+
+function findAccessGroupForPlan(plan: any, groups: FeatureGroup[]): FeatureGroup | null {
+  const featureGroupName = normalizePlanKey(plan.featureGroupName)
+  if (!featureGroupName) return null
+  const matches = groups.filter(group => normalizePlanKey(group.name) === featureGroupName)
+  if (matches.length === 0) return null
+  return [...matches].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0]
+}
+
+function formatFeatureGroupSource(sourceType: string | null | undefined): string {
+  if (sourceType === 'subscription') return 'subscription'
+  if (sourceType === 'admin_grant') return 'admin grant'
+  if (!sourceType) return 'access grant'
+  return sourceType.replace(/_/g, ' ')
+}
+
 const PlanCard: React.FC<{
   plan: any
-  isCurrent: boolean
+  isSubscriptionCurrent: boolean
+  accessGroup: FeatureGroup | null
   isRecommended: boolean
   isPurchasing: boolean
   anyPurchasing: boolean
@@ -1936,7 +1956,7 @@ const PlanCard: React.FC<{
   cancelledNotice: { expiresOn: string | null } | null
   onSubscribe: (planId: string, priceId?: number) => void
   onCancel: () => void
-}> = ({ plan, isCurrent, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel }) => {
+}> = ({ plan, isSubscriptionCurrent, accessGroup, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel }) => {
   const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
   const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
   const hasMonthly = activePrices.some((pr: any) => pr.billing_interval === 'month')
@@ -1969,19 +1989,31 @@ const PlanCard: React.FC<{
     ? 'forever'
     : selectedInterval === 'year' ? 'per year' : 'per month'
   const isFree = selectedPriceCents === 0
+  const isAccessActive = accessGroup !== null
+  const isSubscriptionAccess = isAccessActive && accessGroup.source_type === 'subscription'
+  const showUnifiedCurrent = isSubscriptionCurrent && isSubscriptionAccess
+  const isPlanActive = isSubscriptionCurrent || isAccessActive
   const trialDays = Number(plan.trialPeriodDays) || 0
-  const showTrial = trialDays > 0 && isTrialEligible && !isCurrent && !isFree
+  const showTrial = trialDays > 0 && isTrialEligible && !isPlanActive && !isFree
   const trialCredits = Number(plan.trialCredits) || 0
-  const disabled = isCurrent || isFree || anyPurchasing
+  const disabled = isPlanActive || isFree || anyPurchasing
   const accent = pickAccent(plan.id)
 
   return (
     <article
-      className={`pm-plan ${isCurrent ? 'is-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
+      className={`pm-plan ${isPlanActive ? 'is-current' : ''} ${isSubscriptionCurrent ? 'is-subscription-current' : ''} ${isAccessActive ? 'is-access-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
       style={{ '--pm-accent': accent } as React.CSSProperties}
     >
-      {isRecommended && !isCurrent && <div className="pm-plan__ribbon">Recommended</div>}
-      {isCurrent && <div className="pm-plan__current">Current</div>}
+      <div className="pm-plan__badges">
+        {isRecommended && !isPlanActive && <div className="pm-plan__ribbon">Recommended</div>}
+        {showUnifiedCurrent && <div className="pm-plan__current">Current</div>}
+        {!showUnifiedCurrent && isSubscriptionCurrent && <div className="pm-plan__current pm-plan__current--subscription">Subscription</div>}
+        {!showUnifiedCurrent && isAccessActive && (
+          <div className="pm-plan__current pm-plan__current--access" title={`Access from ${formatFeatureGroupSource(accessGroup.source_type)}`}>
+            Access
+          </div>
+        )}
+      </div>
       {showTrial && (
         <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
           <i className="fas fa-gift"></i>
@@ -2043,16 +2075,17 @@ const PlanCard: React.FC<{
         disabled={disabled}
         onClick={() => { if (!disabled) onSubscribe(plan.id, selectedPriceId) }}
       >
-        {isCurrent ? 'Active'
+        {isSubscriptionCurrent ? 'Active'
           : isPurchasing ? <><i className="fas fa-spinner fa-spin"></i> Opening checkout…</>
-            : isFree ? 'Always free'
-              : showTrial
-                ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
-                : `Switch to ${plan.name}`}
+            : isAccessActive ? 'Access active'
+              : isFree ? 'Always free'
+                : showTrial
+                  ? <><i className="fas fa-flask"></i> Start {trialDays}-day free trial</>
+                  : `Switch to ${plan.name}`}
       </button>
       {/* Cancel affordance — only on the active *paid* plan. Free /
           beta have no subscription row to cancel. */}
-      {isCurrent && !isFree && (
+      {isSubscriptionCurrent && !isFree && (
         <>
           {cancelledNotice && (
             <div className="pm-plan__cancel-notice" role="status">
@@ -2081,10 +2114,8 @@ const PlanCard: React.FC<{
 const PlansSection: React.FC<{
   plans: any[]
   currentPlanId: string | null
-  /** Feature group names the user already has (from permissions). Used to detect
-   * "current" when the subscription record is absent but a feature group was
-   * granted directly (e.g. after purchasing via /products/available). */
-  userFeatureGroupNames: string[]
+  /** Feature groups currently granting access. Permissions and quotas follow these, not necessarily billing. */
+  userFeatureGroups: FeatureGroup[]
   /** True when the user has never used a trial — enables "Start free trial" CTAs. */
   isTrialEligible: boolean
   purchasingId: string | null
@@ -2095,7 +2126,7 @@ const PlansSection: React.FC<{
   onCancel: () => void
   /** When the active paid sub is set to cancel, show "will not renew" copy. */
   cancelledNotice: { expiresOn: string | null } | null
-}> = ({ plans, currentPlanId, userFeatureGroupNames, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
+}> = ({ plans, currentPlanId, userFeatureGroups, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -2113,6 +2144,14 @@ const PlansSection: React.FC<{
     ? popularPlan.id
     : (sorted.length >= 3 ? sorted[1].id : null)
   const anyPurchasing = purchasingId !== null
+  const currentPlan = sorted.find(plan => plan.id === currentPlanId) ?? null
+  const accessMatches = sorted
+    .map(plan => ({ plan, group: findAccessGroupForPlan(plan, userFeatureGroups) }))
+    .filter((entry): entry is { plan: any; group: FeatureGroup } => entry.group !== null)
+  const primaryAccess = [...accessMatches].sort((a, b) => (b.group.priority ?? 0) - (a.group.priority ?? 0))[0] ?? null
+  const accessDiffersFromSubscription = !!primaryAccess && (
+    !currentPlan || primaryAccess.plan.id !== currentPlan.id || primaryAccess.group.source_type !== 'subscription'
+  )
 
   return (
     <div className="pm-plans" data-id="pm-plans-view">
@@ -2125,16 +2164,26 @@ const PlansSection: React.FC<{
           </span>
         </div>
       )}
+      {accessDiffersFromSubscription && (
+        <div className="pm-plans__access-note" role="status">
+          <i className="fas fa-key" aria-hidden></i>
+          <span>
+            Billing subscription: <strong>{currentPlan?.name ?? 'None'}</strong>. Active access: <strong>{primaryAccess.plan.name}</strong>
+            {' '}via {formatFeatureGroupSource(primaryAccess.group.source_type)}. Permissions, quotas, and included AI usage follow active access.
+          </span>
+        </div>
+      )}
       {sorted.map(plan => {
-        const isCurrent = plan.id === currentPlanId ||
-          (plan.featureGroupName != null && userFeatureGroupNames.includes(plan.featureGroupName))
+        const isSubscriptionCurrent = plan.id === currentPlanId
+        const accessGroup = findAccessGroupForPlan(plan, userFeatureGroups)
         const isRecommended = plan.id === recommendedId
         const isPurchasing = purchasingId === plan.id
         return (
           <PlanCard
             key={plan.id}
             plan={plan}
-            isCurrent={isCurrent}
+            isSubscriptionCurrent={isSubscriptionCurrent}
+            accessGroup={accessGroup}
             isRecommended={isRecommended}
             isPurchasing={isPurchasing}
             anyPurchasing={anyPurchasing}
