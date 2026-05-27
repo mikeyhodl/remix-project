@@ -443,7 +443,7 @@ export function RemixUiTopbar() {
     // @ts-ignore: Object is possibly 'null'.
     const workspaceName = workspaceRenameInput.current.value
     try {
-      await renameWorkspace(currMenuName ?? '', workspaceName)
+      await renameWorkspace(currMenuName!, workspaceName)
     } catch (e: any) {
       global.modal(
         intl.formatMessage({ id: 'filePanel.workspace.rename' }),
@@ -472,7 +472,7 @@ export function RemixUiTopbar() {
   }
   const onFinishDeleteWorkspace = async (workspaceName?: string) => {
     try {
-      await deleteWorkspace(workspaceName ?? '')
+      await deleteWorkspace(workspaceName!)
       await updateMenuItems()
     } catch (e: any) {
       global.modal(
