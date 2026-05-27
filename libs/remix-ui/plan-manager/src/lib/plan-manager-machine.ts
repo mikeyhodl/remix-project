@@ -212,7 +212,7 @@ export type PlanManagerEvent =
   | { type: 'CHECKOUT_OPENED' }
   | { type: 'CHECKOUT_COMPLETED'; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_CLOSED' }
-  | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string }
+  | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_RESULT_DISMISS' }
   // Plugin-side signal: backend confirmed the purchase + we just refreshed
   // permissions/credits/sub. Promotes 'processing' → 'success' regardless of
@@ -338,7 +338,8 @@ export const planManagerMachine = setup({
         intent,
         itemLabel,
         errorMessage: event.message,
-        transactionId: event.transactionId
+        transactionId: event.transactionId,
+        meta: event.meta
       }
       context.pendingCheckout = null
     },

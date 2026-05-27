@@ -252,7 +252,8 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.store.send({
         type: 'CHECKOUT_ERROR',
         message: result.errorMessage,
-        transactionId: result.transactionId
+        transactionId: result.transactionId,
+        meta: result.meta
       })
       break
     }
@@ -390,9 +391,9 @@ export class PlanManagerPlugin extends ViewPlugin {
         return
       }
 
-      // 1. Preview proration. Best-effort — if it fails (e.g. provider quirk)
-      //    we still let the user attempt the PATCH; the backend will reject
-      //    if it really can't apply.
+      // 1. Preview proration. This is authoritative: the backend can refuse
+      //    a plan change before we ever show a confirm dialog (for example,
+      //    downgrades that must wait until the current period ends).
       let confirmMessage = `Switch your subscription to ${itemLabel}?`
       let chargeCentsNum: number | null = null
       let creditCentsNum: number | null = null
@@ -401,6 +402,11 @@ export class PlanManagerPlugin extends ViewPlugin {
         const previewReq: any = { planSlug: planId, prorationBillingMode: PRORATION }
         if (externalPriceId) previewReq.priceId = externalPriceId
         const preview = await billingApi.previewSubscriptionChange(previewReq)
+        if (!preview?.ok) {
+          const failure = this.formatApiFailure(preview, `Could not preview the switch to ${itemLabel}.`, 'plan-change-preview')
+          this.store.send({ type: 'CHECKOUT_ERROR', message: failure.message, meta: failure.meta })
+          return
+        }
         if (preview?.ok && preview.data?.preview) {
           const totals = (preview.data.preview as any)?.update_summary || (preview.data.preview as any)?.totals || {}
           const charge = totals?.result?.amount ?? totals?.charge?.amount ?? totals?.total ?? null
@@ -415,7 +421,14 @@ export class PlanManagerPlugin extends ViewPlugin {
             confirmMessage = `Switch to ${itemLabel}? You'll receive a ${formatMoney(credit, currency)} credit on your next invoice.`
           }
         }
-      } catch { /* fall through to plain confirm */ }
+      } catch (err: any) {
+        this.store.send({
+          type: 'CHECKOUT_ERROR',
+          message: err?.message || `Could not preview the switch to ${itemLabel}.`,
+          meta: { flow: 'plan-change-preview' }
+        })
+        return
+      }
 
       const choice = await this.requestConfirm({
         title: `Switch to ${itemLabel}`,
@@ -432,8 +445,8 @@ export class PlanManagerPlugin extends ViewPlugin {
           currency: switchCurrency
         }),
         actions: [
-          { value: 'cancel', label: 'Keep current plan', variant: 'ghost' },
-          { value: 'confirm', label: `Switch to ${itemLabel}`, variant: 'primary', icon: 'fas fa-arrow-right' }
+          { value: 'confirm', label: `Switch to ${itemLabel}`, variant: 'primary', icon: 'fas fa-arrow-right' },
+          { value: 'cancel', label: 'Keep current plan', variant: 'ghost' }
         ]
       })
       if (choice !== 'confirm') {
@@ -446,7 +459,8 @@ export class PlanManagerPlugin extends ViewPlugin {
       if (externalPriceId) changeReq.priceId = externalPriceId
       const resp = await billingApi.changeSubscription(changeReq)
       if (!resp?.ok) {
-        this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not change plan.' })
+        const failure = this.formatApiFailure(resp, 'Could not change plan.', 'plan-change-commit')
+        this.store.send({ type: 'CHECKOUT_ERROR', message: failure.message, meta: failure.meta })
         return
       }
 
@@ -492,17 +506,15 @@ export class PlanManagerPlugin extends ViewPlugin {
           { label: 'After cancellation', value: 'Free plan', tone: 'muted' as const }
         ],
         actions: [
-          { value: 'keep', label: 'Keep subscription', variant: 'ghost' },
+          { value: 'next_billing_period', label: periodEndLabel, variant: 'primary', icon: 'fas fa-calendar-check' },
           { value: 'immediately', label: 'Cancel immediately', variant: 'danger', icon: 'fas fa-bolt' },
-          { value: 'next_billing_period', label: periodEndLabel, variant: 'primary', icon: 'fas fa-calendar-check' }
+          { value: 'keep', label: 'Keep subscription', variant: 'ghost' }
         ]
       })
       if (choice !== 'immediately' && choice !== 'next_billing_period') return
       chosen = choice
     }
 
-    // Route through the same checkout-result UI as purchases so the user
-    // gets explicit confirmation, error states, and the data refresh that
     // flips the plan card to "Free" in real time.
     const planName = planState.planName
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'cancel', itemLabel: planName, productId: planState.planId ?? planName })
@@ -570,6 +582,23 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.pendingConfirmResolver = resolve
       this.store.send({ type: 'CONFIRM_REQUEST', dialog })
     })
+  }
+
+  private formatApiFailure(resp: any, fallback: string, flow?: string): { message: string; meta: Record<string, string> } {
+    const data = resp?.data ?? {}
+    const bodyMessage = typeof data?.message === 'string' && data.message.trim() ? data.message.trim() : ''
+    const responseError = typeof resp?.error === 'string' && resp.error.trim() ? resp.error.trim() : ''
+    const errorCode = typeof data?.error === 'string' && data.error.trim()
+      ? data.error.trim()
+      : responseError
+    const message = bodyMessage || responseError || fallback
+    const meta: Record<string, string> = {}
+    if (flow) meta.flow = flow
+    if (errorCode) meta.errorCode = errorCode
+    if (typeof data?.hint === 'string' && data.hint.trim()) meta.hint = data.hint.trim()
+    if (Number.isFinite(Number(data?.currentPriceCents))) meta.currentPrice = formatMoney(Number(data.currentPriceCents), 'USD')
+    if (Number.isFinite(Number(data?.targetPriceCents))) meta.targetPrice = formatMoney(Number(data.targetPriceCents), 'USD')
+    return { message, meta }
   }
 
   /**
@@ -3116,7 +3145,7 @@ const PlanManagerError: React.FC<{ message?: string | null; onRetry: () => void 
 const CHECKOUT_COPY: Record<CheckoutResultKind, {
   eyebrow: string
   icon: string
-  title: (intent: string, itemLabel?: string) => string
+  title: (intent: string, itemLabel?: string, meta?: Record<string, string>) => string
   body: (intent: string, itemLabel?: string, meta?: Record<string, string>) => string
 }> = {
   processing: {
@@ -3160,15 +3189,26 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
   error: {
     eyebrow: 'Payment failed',
     icon: 'fas fa-circle-exclamation',
-    title: (intent) => intent === 'cancel'
-      ? 'We couldn’t cancel your subscription'
-      : 'We couldn’t complete your payment',
-    body: (intent) =>
-      intent === 'topup'
-        ? 'Your top-up didn\'t go through. No credits were added and no card was charged.'
-        : intent === 'cancel'
-          ? 'Your cancellation request didn’t go through. Your subscription is unchanged. Please try again or contact support if the problem persists.'
-          : 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
+    title: (intent, item, meta) => {
+      if (meta?.flow === 'plan-change-preview') {
+        return meta?.errorCode === 'downgrade_not_supported'
+          ? `Can't switch to ${item || 'that plan'} mid-cycle`
+          : `Couldn't preview ${item || 'that plan'}`
+      }
+      return intent === 'cancel'
+        ? 'We couldn’t cancel your subscription'
+        : 'We couldn’t complete your payment'
+    },
+    body: (intent, _item, meta) => {
+      if (meta?.flow === 'plan-change-preview') {
+        return meta?.errorCode === 'downgrade_not_supported'
+          ? 'Your current plan is unchanged. Cancel at period end, then choose the lower plan after this billing period expires.'
+          : 'Your current plan is unchanged. Please try again in a moment.'
+      }
+      if (intent === 'topup') return 'Your top-up didn\'t go through. No credits were added and no card was charged.'
+      if (intent === 'cancel') return 'Your cancellation request didn’t go through. Your subscription is unchanged. Please try again or contact support if the problem persists.'
+      return 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
+    }
   }
 }
 
@@ -3180,14 +3220,17 @@ const CheckoutResultScreen: React.FC<{
 }> = ({ result, onDismiss, onViewPlans, onViewTopUps }) => {
   const copy = CHECKOUT_COPY[result.kind]
   const isCancel = result.intent === 'cancel'
-  const tryAgain = isCancel ? onViewPlans : (result.intent === 'topup' ? onViewTopUps : onViewPlans)
-  const tryAgainLabel = isCancel ? 'Back to plans' : (result.intent === 'topup' ? 'Choose a top-up' : 'Back to plans')
+  const isUnsupportedDowngrade = result.kind === 'error' && result.meta?.errorCode === 'downgrade_not_supported'
+  const tryAgain = isCancel || isUnsupportedDowngrade ? onViewPlans : (result.intent === 'topup' ? onViewTopUps : onViewPlans)
+  const tryAgainLabel = isCancel || isUnsupportedDowngrade ? 'Back to plans' : (result.intent === 'topup' ? 'Choose a top-up' : 'Back to plans')
   const eyebrow = isCancel
     ? (result.kind === 'success' ? 'Cancellation confirmed'
       : result.kind === 'processing' ? 'Cancelling'
         : result.kind === 'error' ? 'Cancellation failed'
           : copy.eyebrow)
-    : copy.eyebrow
+    : result.kind === 'error' && result.meta?.flow === 'plan-change-preview'
+      ? 'Plan change unavailable'
+      : copy.eyebrow
 
   return (
     <section className={`pm-result pm-result--${result.kind}`}>
@@ -3198,7 +3241,7 @@ const CheckoutResultScreen: React.FC<{
       </div>
 
       <div className="pm-result__eyebrow">{eyebrow}</div>
-      <h2 className="pm-result__title">{copy.title(result.intent, result.itemLabel)}</h2>
+      <h2 className="pm-result__title">{copy.title(result.intent, result.itemLabel, result.meta)}</h2>
       <p className="pm-result__body">{copy.body(result.intent, result.itemLabel, result.meta)}</p>
 
       {result.kind === 'error' && result.errorMessage && (
@@ -3238,7 +3281,7 @@ const CheckoutResultScreen: React.FC<{
           <>
             {!isCancel && (
               <button className="pm-result__btn pm-result__btn--primary" onClick={tryAgain}>
-                <i className="fas fa-rotate-right"></i> Try again
+                <i className={isUnsupportedDowngrade ? 'fas fa-arrow-left' : 'fas fa-rotate-right'}></i> {isUnsupportedDowngrade ? tryAgainLabel : 'Try again'}
               </button>
             )}
             {isCancel && (
@@ -3246,14 +3289,20 @@ const CheckoutResultScreen: React.FC<{
                 <i className="fas fa-arrow-left"></i> Back to account
               </button>
             )}
-            <a
-              className="pm-result__btn pm-result__btn--ghost"
-              href="https://discord.gg/TWfKkZVwJW"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <i className="fas fa-life-ring"></i> Contact support
-            </a>
+            {isUnsupportedDowngrade ? (
+              <button className="pm-result__btn pm-result__btn--ghost" onClick={onDismiss}>
+                Dismiss
+              </button>
+            ) : (
+              <a
+                className="pm-result__btn pm-result__btn--ghost"
+                href="https://discord.gg/TWfKkZVwJW"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <i className="fas fa-life-ring"></i> Contact support
+              </a>
+            )}
           </>
         )}
 
@@ -3309,14 +3358,6 @@ function ConfirmModal({ dialog, onResolve }: {
           <div className="pm-modal__atmosphere-orb"></div>
           <div className="pm-modal__atmosphere-grain"></div>
         </div>
-        <button
-          type="button"
-          className="pm-modal__close"
-          aria-label="Dismiss"
-          onClick={() => onResolve(null)}
-        >
-          <i className="fas fa-times"></i>
-        </button>
         <div className="pm-modal__header">
           {dialog.icon && (
             <div className="pm-modal__icon" aria-hidden="true">
@@ -3327,6 +3368,14 @@ function ConfirmModal({ dialog, onResolve }: {
             {dialog.eyebrow && <div className="pm-modal__eyebrow">{dialog.eyebrow}</div>}
             <h3 className="pm-modal__title" id={`${dialog.id}-title`}>{dialog.title}</h3>
           </div>
+          <button
+            type="button"
+            className="pm-modal__close"
+            aria-label="Dismiss"
+            onClick={() => onResolve(null)}
+          >
+            <i className="fas fa-times"></i>
+          </button>
         </div>
         <div className="pm-modal__body">
           {dialog.message.split('\n').filter(Boolean).map((para, i) => (
@@ -3347,18 +3396,21 @@ function ConfirmModal({ dialog, onResolve }: {
             ))}
           </div>
         )}
-        <div className="pm-modal__actions">
-          {dialog.actions.map((action) => (
-            <button
-              key={action.value}
-              type="button"
-              className={`pm-modal__btn pm-modal__btn--${action.variant ?? 'primary'}`}
-              onClick={() => onResolve(action.value)}
-            >
-              {action.icon && <i className={action.icon}></i>}
-              <span>{action.label}</span>
-            </button>
-          ))}
+        <div className={`pm-modal__actions pm-modal__actions--count-${dialog.actions.length}`}>
+          {dialog.actions.map((action) => {
+            const actionSlug = action.value.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/_/g, '-')
+            return (
+              <button
+                key={action.value}
+                type="button"
+                className={`pm-modal__btn pm-modal__btn--${action.variant ?? 'primary'} pm-modal__btn--action-${actionSlug}`}
+                onClick={() => onResolve(action.value)}
+              >
+                {action.icon && <i className={action.icon}></i>}
+                <span>{action.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>
