@@ -86,7 +86,7 @@ function DeployWidget({ plugin }: DeployWidgetProps) {
       })
     })
 
-    plugin.on('blockchain', 'networkStatus', async ({ error, network }) => {
+    plugin.on('blockchain', 'networkStatus', async ({ error, network }: any) => {
       if (error) {
         const netUI = 'can\'t detect network'
 
