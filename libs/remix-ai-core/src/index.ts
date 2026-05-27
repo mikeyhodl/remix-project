@@ -18,6 +18,7 @@ import { mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConf
 import { ChatHistoryStorageManager } from './storage/storageManager'
 import { IndexedDBChatHistoryBackend } from './storage/indexedDBBackend'
 import { WeightedToolSelector, IChatMessage } from './services/weightedToolSelector'
+import { remixAILogger, setRemixAILoggingEnabled, isRemixAILoggingEnabled } from './helpers/logger'
 export {
   ChatCommandParser,
   ModelType, ICompletions, IParams, IRemoteModel, buildChatPrompt,
@@ -28,13 +29,15 @@ export {
   mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig,
   AIModel, ANONYMOUS_FALLBACK_MODELS, ANONYMOUS_PLACEHOLDER_MODEL, OLLAMA_MODEL, getModelById, parseAIModelsFromPermissions,
   ChatHistoryStorageManager, IndexedDBChatHistoryBackend,
-  WeightedToolSelector, IChatMessage
+  WeightedToolSelector, IChatMessage,
+  remixAILogger, setRemixAILoggingEnabled, isRemixAILoggingEnabled
 }
 
 export * from './types/types'
 export * from './types/mcp'
 export * from './helpers/streamHandler'
 export * from './helpers/apiKeyValidator'
+export * from './helpers/logger'
 export * from './agents/codeExplainAgent'
 export * from './agents/completionAgent'
 export * from './agents/securityAgent'

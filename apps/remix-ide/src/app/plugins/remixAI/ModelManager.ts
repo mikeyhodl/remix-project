@@ -1,4 +1,4 @@
-import {
+import { remixAILogger,
   RemoteInferencer,
   OllamaInferencer,
   MCPInferencer,
@@ -45,7 +45,7 @@ export class ModelManager {
         model = dynamic.find(m => m.id === modelId)
       }
     } catch (e) {
-      console.warn('[ModelManager] assistantState.getAvailableModels failed', e)
+      remixAILogger.warn('[ModelManager] assistantState.getAvailableModels failed', e)
     }
     if (!model) model = getModelById(modelId)
     if (!model) {
@@ -110,9 +110,9 @@ export class ModelManager {
     }
 
     // Reinitialize DeepAgent if enabled and model changed
-    console.log(`[ModelManager] Model set to ${modelId} (provider: ${model.provider}). Previous model was ${previousModelId}. Reinitializing DeepAgent if needed.`)
+    remixAILogger.log(`[ModelManager] Model set to ${modelId} (provider: ${model.provider}). Previous model was ${previousModelId}. Reinitializing DeepAgent if needed.`)
     if (plugin.deepAgentEnabled && plugin.deepAgentInferencer && plugin.remixMCPServer && previousModelId !== modelId) {
-      console.log('[ModelManager] Reinitializing DeepAgent due to model change...')
+      remixAILogger.log('[ModelManager] Reinitializing DeepAgent due to model change...')
       await this.reinitializeDeepAgentForModelChange(model, modelId)
     }
 
@@ -157,7 +157,7 @@ export class ModelManager {
 
   private async reinitializeDeepAgentForModelChange(_model: AIModel, _modelId: string): Promise<void> {
     const plugin = this.deps.plugin
-    console.log('[RemixAI Plugin] Model changed, reinitializing DeepAgent with new model:', _model.provider, _modelId)
+    remixAILogger.log('[RemixAI Plugin] Model changed, reinitializing DeepAgent with new model:', _model.provider, _modelId)
     ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:enter', 'model change → DeepAgent reinit', {
       newProvider: _model.provider,
       newModelId: _modelId
@@ -171,7 +171,7 @@ export class ModelManager {
       // Get user API keys config
       const userApiKeys = await this.apiKeyHelper.getUserApiKeysConfig()
       if (userApiKeys?.useOwnKeys) {
-        console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (model change)')
+        remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (model change)')
       }
 
       // Create new instance with updated model
@@ -194,7 +194,7 @@ export class ModelManager {
       this.deps.eventBridge.resetSetup()
       this.deps.setupDeepAgentEventListeners()
 
-      console.log('[RemixAI Plugin] DeepAgent reinitialized with new model successfully')
+      remixAILogger.log('[RemixAI Plugin] DeepAgent reinitialized with new model successfully')
       ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:success', 'DeepAgent reinitialized after model change', {
         provider: _model.provider,
         modelId: _modelId
@@ -206,7 +206,7 @@ export class ModelManager {
         plugin.pendingDeepAgentThreadId = null
       }
     } catch (error) {
-      console.error('[RemixAI Plugin] Failed to reinitialize DeepAgent on model change:', error)
+      remixAILogger.error('[RemixAI Plugin] Failed to reinitialize DeepAgent on model change:', error)
       ;(plugin as any).traceDeepAgentLifecycle?.('modelManager.reinit:failed', 'caught error inside reinitializeDeepAgentForModelChange()', {
         errorMessage: (error as any)?.message,
         errorStack: ((error as any)?.stack || '').split('\n').slice(0, 8).join('\n')
@@ -220,13 +220,13 @@ export class ModelManager {
 
     // Special method for selecting specific Ollama model after "Ollama" is selected
     if (plugin.selectedModel.provider !== 'ollama') {
-      console.warn('setOllamaModel should only be called when Ollama provider is selected')
+      remixAILogger.warn('setOllamaModel should only be called when Ollama provider is selected')
       return
     }
 
     const isAvailable = await isOllamaAvailable()
     if (!isAvailable) {
-      console.error('Ollama is not available. Please ensure Ollama is running.')
+      remixAILogger.error('Ollama is not available. Please ensure Ollama is running.')
       return
     }
 

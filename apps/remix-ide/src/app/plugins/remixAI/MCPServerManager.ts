@@ -1,4 +1,4 @@
-import { MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core'
+import { remixAILogger, MCPInferencer, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core'
 import type { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin } from './types'
 import type { PermissionChecker } from './PermissionChecker'
@@ -31,7 +31,7 @@ export class MCPServerManager {
         await this.plugin.mcpInferencer.addMCPServer(server)
       }
     } catch (error) {
-      console.error(`[RemixAI Plugin] Failed to add MCP server ${server.name}:`, error)
+      remixAILogger.error(`[RemixAI Plugin] Failed to add MCP server ${server.name}:`, error)
       throw error
     }
   }
@@ -49,7 +49,7 @@ export class MCPServerManager {
         await this.plugin.mcpInferencer.removeMCPServer(serverName)
       }
     } catch (error) {
-      console.error(`[RemixAI Plugin] Failed to remove MCP server ${serverName}:`, error)
+      remixAILogger.error(`[RemixAI Plugin] Failed to remove MCP server ${serverName}:`, error)
       throw error
     }
   }
@@ -132,11 +132,11 @@ export class MCPServerManager {
       else if (st === 'error') preErrored.add(s.name)
     }
     if (preConnected.size + preErrored.size >= serversToWaitFor.length) {
-      console.log(`[RemixAI Plugin] waitForServersReady: all ${serversToWaitFor.length} servers already resolved (connected=${preConnected.size}, errored=${preErrored.size}), skipping wait`)
+      remixAILogger.log(`[RemixAI Plugin] waitForServersReady: all ${serversToWaitFor.length} servers already resolved (connected=${preConnected.size}, errored=${preErrored.size}), skipping wait`)
       return Promise.resolve()
     }
 
-    console.log(`[RemixAI Plugin] Waiting for ${serversToWaitFor.length} external MCP servers to connect:`, serversToWaitFor.map(s => s.name), `(already resolved: ${preConnected.size + preErrored.size})`)
+    remixAILogger.log(`[RemixAI Plugin] Waiting for ${serversToWaitFor.length} external MCP servers to connect:`, serversToWaitFor.map(s => s.name), `(already resolved: ${preConnected.size + preErrored.size})`)
 
     return new Promise<void>((resolve) => {
       const connectedServers = new Set<string>(preConnected)
@@ -144,10 +144,10 @@ export class MCPServerManager {
 
       const checkComplete = () => {
         const totalResolved = connectedServers.size + erroredServers.size
-        console.log(`[RemixAI Plugin] MCP servers progress: ${totalResolved}/${serversToWaitFor.length} (${connectedServers.size} connected, ${erroredServers.size} errored)`)
+        remixAILogger.log(`[RemixAI Plugin] MCP servers progress: ${totalResolved}/${serversToWaitFor.length} (${connectedServers.size} connected, ${erroredServers.size} errored)`)
 
         if (totalResolved >= serversToWaitFor.length) {
-          console.log(`[RemixAI Plugin] All ${serversToWaitFor.length} external MCP servers resolved`)
+          remixAILogger.log(`[RemixAI Plugin] All ${serversToWaitFor.length} external MCP servers resolved`)
           cleanup()
           resolve()
         }
@@ -156,7 +156,7 @@ export class MCPServerManager {
       const onConnected = (serverName: string) => {
         if (serversToWaitFor.some(s => s.name === serverName)) {
           connectedServers.add(serverName)
-          console.log(`[RemixAI Plugin] waitForServersReady: "${serverName}" connected`)
+          remixAILogger.log(`[RemixAI Plugin] waitForServersReady: "${serverName}" connected`)
           checkComplete()
         }
       }
@@ -164,7 +164,7 @@ export class MCPServerManager {
       const onError = (serverName: string, _error: Error) => {
         if (serversToWaitFor.some(s => s.name === serverName)) {
           erroredServers.add(serverName)
-          console.log(`[RemixAI Plugin] waitForServersReady: "${serverName}" errored`)
+          remixAILogger.log(`[RemixAI Plugin] waitForServersReady: "${serverName}" errored`)
           checkComplete()
         }
       }
@@ -179,7 +179,7 @@ export class MCPServerManager {
         const missing = serversToWaitFor
           .filter(s => !connectedServers.has(s.name) && !erroredServers.has(s.name))
           .map(s => s.name)
-        console.warn(`[RemixAI Plugin] Timeout waiting for MCP servers. Missing: ${missing.join(', ')}`)
+        remixAILogger.warn(`[RemixAI Plugin] Timeout waiting for MCP servers. Missing: ${missing.join(', ')}`)
         cleanup()
         resolve()
       }, timeout)
@@ -201,10 +201,10 @@ export class MCPServerManager {
     )
 
     mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-      console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`)
+      remixAILogger.log(`[RemixAI Plugin] MCP server connected: ${serverName}`)
     })
     mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-      console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error)
+      remixAILogger.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error)
     })
     mcpInferencer.event.on('onInference', () => {
       this.plugin.isInferencing = true
@@ -232,7 +232,7 @@ export class MCPServerManager {
 
   async refreshOnAuthChange(authState: any): Promise<void> {
     if (!this.deps) {
-      console.warn('[MCPServerManager] deps not set, skipping auth refresh')
+      remixAILogger.warn('[MCPServerManager] deps not set, skipping auth refresh')
       return
     }
 
@@ -243,7 +243,7 @@ export class MCPServerManager {
         // User logged out — clear the in-memory model selection and reset
         // MCP servers. The next /permissions response (after re-login) will
         // re-populate selectedModel via assistantState. No literal default.
-        console.log('[RemixAI Plugin] User logged out, clearing model selection and resetting MCP servers')
+        remixAILogger.log('[RemixAI Plugin] User logged out, clearing model selection and resetting MCP servers')
         this.plugin.selectedModel = null
         this.plugin.selectedModelId = ''
         await this.resetToDefaultWithReinit()
@@ -262,12 +262,12 @@ export class MCPServerManager {
 
       // Update servers if needed
       if (serversChanged) {
-        console.log('[RemixAI Plugin] Updating MCP servers')
+        remixAILogger.log('[RemixAI Plugin] Updating MCP servers')
         this.plugin.mcpServers = newServerList
         await this.recreateInferencerAndConnect()
       }
     } catch (error) {
-      console.error('[RemixAI Plugin] Failed to refresh MCP servers on auth change:', error)
+      remixAILogger.error('[RemixAI Plugin] Failed to refresh MCP servers on auth change:', error)
     }
   }
 
@@ -279,7 +279,7 @@ export class MCPServerManager {
       this.plugin.mcpServers = [...mcpDefaultServersConfig.defaultServers]
       await this.recreateInferencerAndConnect()
     } catch (error) {
-      console.error('[RemixAI Plugin] Failed to reset MCP servers to default:', error)
+      remixAILogger.error('[RemixAI Plugin] Failed to reset MCP servers to default:', error)
     }
   }
 
@@ -306,10 +306,10 @@ export class MCPServerManager {
     )
 
     this.plugin.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-      console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`)
+      remixAILogger.log(`[RemixAI Plugin] MCP server connected: ${serverName}`)
     })
     this.plugin.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-      console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error)
+      remixAILogger.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error)
     })
 
     // Connect enabled servers
@@ -319,7 +319,7 @@ export class MCPServerManager {
       await this.plugin.mcpInferencer.connectAllServers()
       await waitPromise
       this.plugin.emit('mcpServersLoaded')
-      console.log('[RemixAI Plugin] MCP servers refreshed and connected')
+      remixAILogger.log('[RemixAI Plugin] MCP servers refreshed and connected')
     }
 
     if (this.deps) {

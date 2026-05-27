@@ -14,6 +14,7 @@ import {
   selectModelForTask,
   selectTaskParam,
   selectAutoModeEnabled,
+  remixAILogger,
   type AssistantSnapshot,
   type AIError,
   type AIModel,
@@ -96,8 +97,7 @@ export class AssistantStatePlugin extends Plugin {
 
   constructor() {
     super(profile)
-    // eslint-disable-next-line no-console
-    console.log('[assistantState] CONSTRUCT plugin#' + this.instanceId)
+    remixAILogger.log('[assistantState] CONSTRUCT plugin#' + this.instanceId)
     this.actor.start()
     this.cachedSnapshot = snapshotFromActor(this.actor)
     // Re-emit `stateChanged` on every transition so React subscribers
@@ -284,7 +284,7 @@ export class AssistantStatePlugin extends Plugin {
       try {
         await this.call('planManager' as any, 'open', handoff)
       } catch (e) {
-        console.warn('[assistantState] failed to open planManager', e)
+        remixAILogger.warn('[assistantState] failed to open planManager', e)
       }
     }
     return false

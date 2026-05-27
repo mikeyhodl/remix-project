@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * Remix Tool Adapter for DeepAgent
  * Converts Remix MCP tools to LangChain tool format
@@ -171,7 +172,7 @@ export class ToolApprovalGate {
               proposedContent = existingContent.replace(new RegExp(args.regEx, 'g'), args.contentToReplace)
 
             } catch (regexErr) {
-              console.warn('[HITL][ApprovalGate] file_replace: regex failed:', regexErr)
+              remixAILogger.warn('[HITL][ApprovalGate] file_replace: regex failed:', regexErr)
               proposedContent = undefined
             }
           }
@@ -204,7 +205,7 @@ export class ToolApprovalGate {
       // For DApp updates, open the target DApp for user review
       if (toolName === 'update_dapp' && args.workspaceName) {
         try {
-          console.log('[QuickDapp] Opening DApp for confirmation:', args.workspaceName)
+          remixAILogger.log('[QuickDapp] Opening DApp for confirmation:', args.workspaceName)
 
           // Activate plugin and open DApp detail page
           await this.plugin.call('filePanel' as any, 'switchToWorkspace', {
@@ -216,9 +217,9 @@ export class ToolApprovalGate {
           await new Promise(r => setTimeout(r, 500))
           await this.plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
 
-          console.log('[QuickDapp] DApp detail page opened for:', args.workspaceName)
+          remixAILogger.log('[QuickDapp] DApp detail page opened for:', args.workspaceName)
         } catch (e: any) {
-          console.warn('[QuickDapp] Failed to open DApp for confirmation (non-critical):', e?.message)
+          remixAILogger.warn('[QuickDapp] Failed to open DApp for confirmation (non-critical):', e?.message)
         }
       }
 
@@ -268,7 +269,7 @@ export class ToolApprovalGate {
             return JSON.stringify({ success: true, path: filePath, message: 'File written successfully' })
           }
         } catch (writeErr) {
-          console.error('[HITL][ApprovalGate][DirectWrite] Write failed:', writeErr)
+          remixAILogger.error('[HITL][ApprovalGate][DirectWrite] Write failed:', writeErr)
           return JSON.stringify({ success: false, error: `Failed to write file: ${writeErr.message}` })
         }
       }
@@ -390,7 +391,7 @@ export class RemixToolAdapter {
 
         tools.push(langChainTool)
       } catch (error) {
-        console.warn(`[RemixToolAdapter] Failed to convert tool ${tool.name}:`, error)
+        remixAILogger.warn(`[RemixToolAdapter] Failed to convert tool ${tool.name}:`, error)
       }
     }
 
@@ -424,7 +425,7 @@ export class RemixToolAdapter {
       const innerFunc = func
       func = async (input: Record<string, any>): Promise<string> => {
         if (!this.listDappsCalled) {
-          console.warn('[RemixToolAdapter] BLOCKED update_dapp — list_dapps not called yet')
+          remixAILogger.warn('[RemixToolAdapter] BLOCKED update_dapp — list_dapps not called yet')
           return 'ERROR: You MUST call list_dapps first and present the numbered workspace list to the user. The user must explicitly choose which DApp to update. Call list_dapps now and show the results as a numbered list.'
         }
         return innerFunc(input)
@@ -539,11 +540,11 @@ export async function createRemixTools(
 
   // Get ALL internal Remix MCP tools (generate_dapp, update_dapp, compile, deploy, etc.)
   const internalTools = adapter.getAllTools()
-  console.log(`[RemixToolAdapter] Internal Remix MCP tools (${internalTools.length}):`, internalTools.map(t => t.name))
+  remixAILogger.log(`[RemixToolAdapter] Internal Remix MCP tools (${internalTools.length}):`, internalTools.map(t => t.name))
 
   // Get helper tools (get_current_file, get_opened_files, etc.)
   const helperTools = RemixToolAdapter.createSolidityHelperTools(plugin)
-  console.log(`[RemixToolAdapter] Helper tools (${helperTools.length}):`, helperTools.map(t => t.name))
+  remixAILogger.log(`[RemixToolAdapter] Helper tools (${helperTools.length}):`, helperTools.map(t => t.name))
 
   // Get all external MCP client tools if mcpInferencer is provided
   let externalTools: DynamicStructuredTool[] = []
@@ -551,13 +552,13 @@ export async function createRemixTools(
     try {
       const allMCPTools = await mcpInferencer.getAvailableToolsForLLM()
       externalTools = adapter.convertExternalMCPTools(allMCPTools, mcpInferencer)
-      console.log(`[RemixToolAdapter] External MCP tools (${externalTools.length}):`, externalTools.map(t => t.name))
+      remixAILogger.log(`[RemixToolAdapter] External MCP tools (${externalTools.length}):`, externalTools.map(t => t.name))
     } catch (error) {
-      console.warn('[RemixToolAdapter] Failed to get external MCP tools:', error)
+      remixAILogger.warn('[RemixToolAdapter] Failed to get external MCP tools:', error)
     }
   }
 
   const allTools = [...internalTools, ...helperTools, ...externalTools]
-  console.log(`[RemixToolAdapter] Total tools registered: ${allTools.length}`)
+  remixAILogger.log(`[RemixToolAdapter] Total tools registered: ${allTools.length}`)
   return allTools
 }

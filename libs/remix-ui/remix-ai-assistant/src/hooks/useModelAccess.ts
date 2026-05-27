@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { remixAILogger } from '@remix/remix-ai-core'
 
 interface AssistantStatePluginCaller {
   call: (pluginName: string, method: string, ...args: any[]) => Promise<any>
@@ -49,7 +50,7 @@ export function useModelAccess(plugin?: AssistantStatePluginCaller): ModelAccess
       }
       setAllowedMcps(allowedMcpsFea)
     } catch (err) {
-      console.error('Failed to read MCP access from assistantState:', err)
+      remixAILogger.error('Failed to read MCP access from assistantState:', err)
       setAllowedMcps([])
       setError('Failed to load MCP access')
     } finally {

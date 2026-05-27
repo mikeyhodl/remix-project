@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import axios from 'axios';
 import { Registry } from '@remix-project/remix-lib';
 import { trackMatomoEvent } from '@remix-api'
@@ -129,7 +130,7 @@ export async function pullModel(modelName: string): Promise<void> {
     trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_pull_model_success:${modelName}|duration:${duration}ms` });
   } catch (error) {
     trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_pull_model_error:${modelName}|${error.message || 'unknown'}` });
-    console.error('Error pulling model:', error);
+    remixAILogger.error('Error pulling model:', error);
     throw new Error(`Failed to pull model: ${modelName}`);
   }
 }
@@ -165,7 +166,7 @@ export async function getBestAvailableModel(): Promise<string | null> {
     return models[0];
   } catch (error) {
     trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_get_best_model_error:${error.message || 'unknown'}` });
-    console.error('Error getting best available model:', error);
+    remixAILogger.error('Error getting best available model:', error);
     return null;
   }
 }
