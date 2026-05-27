@@ -61,8 +61,8 @@ export class DeepAgentEventBridge {
       plugin.emit('onStreamResult', data)
     })
 
-    eventEmitter.on('onStreamComplete', (finalText: string) => {
-      plugin.emit('onStreamComplete', finalText)
+    eventEmitter.on('onStreamComplete', (data: string | { content: string; threadId?: string }) => {
+      plugin.emit('onStreamComplete', data)
     })
 
     eventEmitter.on('onToolCall', (data: ToolCallData) => {

@@ -90,7 +90,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.plugin = plugin
     this.event = new EventEmitter()
     this.fallbackInferencer = fallbackInferencer
-    this.streamEventHandler = new StreamEventHandler(this.event)
+    this.streamEventHandler = new StreamEventHandler(this.event, () => this.sessionThreadId)
 
     // The model selection MUST come from the caller (resolved from
     // /permissions \u2014 either the user's pick or assistantState.getDefaultModel()).
@@ -249,12 +249,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.event.emit('onAgentError', {
       message: errorMessage,
       timestamp: Date.now(),
-      type: error?.name || 'Error'
+      type: error?.name || 'Error',
+      threadId: this.sessionThreadId
     })
 
     this.event.emit('onTodoError', {
       error: errorMessage,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      threadId: this.sessionThreadId
     })
 
     remixAILogger.log('[DeepAgentInferencer] Emitted error to todos:', errorMessage)
@@ -596,7 +598,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       let finalMessageFromChain = ''
       for await (const event of eventStream) {
         if (this.currentAbortController?.signal.aborted) {
-          this.event.emit('onStreamComplete', fullResponse)
+          this.event.emit('onStreamComplete', { content: fullResponse, threadId: this.sessionThreadId })
           break
         }
 
@@ -667,7 +669,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
                 : event.data.chunk.content.map((c: any) => c.text || '').join('')
               if (content) {
                 fullResponse += content
-                this.event.emit('onStreamResult', { content, isIntermediate: false, source: 'retry' })
+                this.event.emit('onStreamResult', { content, isIntermediate: false, source: 'retry', threadId: this.sessionThreadId })
               }
             }
           }
@@ -712,7 +714,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         retryable,
         retryAfter,
         originalError: error?.message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        threadId: this.sessionThreadId
       })
 
       // Emit API key specific error for UI handling
@@ -731,7 +734,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         this.event.emit('onStreamResult', {
           content: errorMessage,
           isIntermediate: false,
-          source: 'error'
+          source: 'error',
+          threadId: this.sessionThreadId
         })
         fullResponse += errorMessage
         return fullResponse
@@ -741,7 +745,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     } finally {
       this.streamEventHandler.stopInactivityTracking()
       this.currentAbortController = null
-      this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end' })
+      this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end', threadId: this.sessionThreadId })
     }
   }
 
@@ -864,7 +868,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       retryable,
       retryAfter,
       originalError: error?.message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      threadId: this.sessionThreadId
     })
 
     // Emit API key specific error for UI handling
