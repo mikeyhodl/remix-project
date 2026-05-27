@@ -1,6 +1,6 @@
 import { NightwatchBrowser } from 'nightwatch'
 
-function openTemplatesExplorer(browser: NightwatchBrowser) {
+function openTemplatesExplorer(browser: NightwatchBrowser, done) {
   browser
     .click('*[data-id="workspacesSelect"]')
     .pause(2000)
@@ -13,6 +13,7 @@ function openTemplatesExplorer(browser: NightwatchBrowser) {
     .waitForElementVisible('*[data-id="workspace-details-section"]')
     .waitForElementVisible('*[data-id="validateWorkspaceButton"]')
     .click('*[data-id="validateWorkspaceButton"]')
+    .perform(() => done())
 }
 
 module.exports = {
@@ -25,10 +26,9 @@ module.exports = {
     browser
       .hideToolTips()
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
-
-    openTemplatesExplorer(browser)
-
-    browser
+      .perform((done) => {
+        openTemplatesExplorer(browser, done)
+      })
       .pause(3000)
       .windowHandles(function (result) {
         console.log(result.value)
