@@ -28,7 +28,7 @@ require('dotenv').config()
 // Node release fails with an opaque `fetch failed`.
 // TODO: drop the staging default once the app stops hard-coding it.
 const API_URL = process.env.REMIX_API_URL || 'https://tokens.staging.remix.live'
-const API_KEY = process.env.E2E_POOL_API_KEY || ''
+const API_KEY = process.env.E2E_POOL_API_KEY || process.env.E2E_POOL_KEY || ''
 const POOL_BASE = `${API_URL}/sso/test/pool`
 
 export interface PoolSession {

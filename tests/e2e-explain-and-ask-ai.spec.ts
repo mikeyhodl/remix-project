@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/e2e-pool';
 
 test.use({ viewport: { width: 1440, height: 900 } })
 
@@ -8,11 +8,8 @@ test.use({ viewport: { width: 1440, height: 900 } })
  *   2. Switch to Mistral Medium for faster runs
  *   3. Open contracts/1_Storage.sol
  *   4. Click "Explain contract" in the bottom bar → assert the assistant responds
- *   5. Replace the file content with a faulty contract (DeclarationError)
- *   6. Compile → error card appears with "Ask RemixAI" button
- *   7. Click "Ask RemixAI" → assert the assistant produces a second response
  */
-test('explain contract then ask AI about a compile error', async ({ page }) => {
+test('explain contract with AI', async ({ page }) => {
   test.setTimeout(300_000)
   const poolApiKey = process.env.E2E_POOL_API_KEY || process.env.E2E_POOL_KEY
   if (!poolApiKey) {
@@ -61,13 +58,45 @@ test('explain contract then ask AI about a compile error', async ({ page }) => {
     async () => (await page.locator('[data-id="ai-response-chat-bubble-section"].me-3').first().innerText()).trim().length,
     { timeout: 90000, intervals: [1000, 2000, 3000] }
   ).toBeGreaterThan(20)
+});
 
-  await page.waitForTimeout(5000); // extra wait to ensure all async state updates have settled before we proceed with the next steps
-  // Snapshot how many assistant bubbles exist before we trigger the second request
-  const assistantBubbles = page.locator('[data-id="ai-response-chat-bubble-section"].me-3')
-  const initialAssistantCount = await assistantBubbles.count()
+/**
+ * Quota-tier compile-error flow:
+ *   1. Sign in via topbar (E2E Test Pool)
+ *   2. Switch to Mistral Medium for faster runs
+ *   3. Replace contracts/1_Storage.sol with a faulty contract
+ *   4. Compile → error card appears with "Ask RemixAI" button
+ *   5. Click "Ask RemixAI" → assert the assistant responds
+ */
+test('ask AI about a compile error', async ({ page }) => {
+  test.setTimeout(240_000)
+  const poolApiKey = process.env.E2E_POOL_API_KEY || process.env.E2E_POOL_KEY
+  if (!poolApiKey) {
+    throw new Error('Missing E2E pool key. Set E2E_POOL_API_KEY (or E2E_POOL_KEY) in your environment before running this test.')
+  }
 
-  // --- 5. Replace the file with a faulty contract ---------------------------
+  const url = `http://localhost:8080/?#e2e_feature_groups=e2e-free-with-quotas&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
+  await page.goto(url);
+
+  // --- 1. Sign in via topbar -------------------------------------------------
+  await page.getByRole('button', { name: 'Sign In BETA' }).click();
+  await page.getByRole('button', { name: /E2E Test Pool/i }).click();
+  await expect(page.getByRole('button', { name: /E2E Pool/i }).first()).toBeVisible({ timeout: 30000 });
+
+  // --- 2. Open contracts/1_Storage.sol via file explorer --------------------
+  await page.locator('li[data-id="treeViewLitreeViewItemcontracts"]').click();
+  await page.locator('li[data-id="treeViewLitreeViewItemcontracts/1_Storage.sol"]').click();
+  await expect(page.locator('[data-id="bottomBarExplainBtn"]')).toBeVisible({ timeout: 10000 });
+
+  // --- 3. Open AI panel and switch to Mistral Medium ------------------------
+  await page.locator('[data-id="verticalIconsKindremixaiassistant"]').click();
+  await page.locator('[data-id="ai-model-selector-btn"]').click();
+  await page.locator('[data-id="ai-model-mistral-medium-latest"]').click();
+
+  await expect(page.locator('[data-id="ai-route-status"]'))
+    .toHaveAttribute('data-route', /agent|tools|chat/, { timeout: 30000 })
+
+  // --- 4. Replace the file with a faulty contract ---------------------------
   const faultyContract = `// SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.2 <0.9.0;
 
@@ -88,7 +117,7 @@ contract Storage {
     elem.setCurrentContent(value)
   }, faultyContract)
 
-  // --- 6. Compile → error card appears --------------------------------------
+  // --- 5. Compile → error card appears --------------------------------------
   await page.locator('[data-id="verticalIconsKindsolidity"]').click();
   await page.locator('[data-id="compilerContainerCompileBtn"]').click();
 
@@ -100,16 +129,11 @@ contract Storage {
   await expect(page.locator('[data-id="ai-route-status"]'))
     .toHaveAttribute('data-route', /agent|tools|chat/, { timeout: 30000 })
 
-  // --- 7. Click "Ask RemixAI" on the error card -----------------------------
+  // --- 6. Click "Ask RemixAI" on the error card -----------------------------
   await askAiBtn.click();
 
-  // Assistant should produce a new response (bubble count strictly increases)
-  await expect.poll(
-    async () => await assistantBubbles.count(),
-    { timeout: 90000, intervals: [1000, 2000, 3000] }
-  ).toBeGreaterThan(initialAssistantCount)
-
-  // And the latest assistant bubble should not be empty
+  const assistantBubbles = page.locator('[data-id="ai-response-chat-bubble-section"].me-3')
+  await expect(assistantBubbles.first()).toBeVisible({ timeout: 90000 })
   await expect.poll(
     async () => (await assistantBubbles.last().innerText()).trim().length,
     { timeout: 90000, intervals: [1000, 2000, 3000] }
