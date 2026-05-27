@@ -19,6 +19,7 @@ import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
 import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig, ApiKeyErrorEvent } from '../../types/deepagent'
 import { ToolRegistry } from '../../remix-mcp-server/types/mcpTools'
 import { classifyApiError, getErrorMessage } from './ApiErrorHandler'
+import { aiErrorFromException } from '../../state/ai-error'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
 import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
@@ -89,11 +90,18 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.fallbackInferencer = fallbackInferencer
     this.streamEventHandler = new StreamEventHandler(this.event, () => this.sessionThreadId)
 
-    // Store model selection (default to mistral-medium-latest which is the system default)
-    this.modelSelection = modelSelection || {
-      provider: 'mistralai',
-      modelId: 'mistral-medium-latest'
+    // The model selection MUST come from the caller (resolved from
+    // /permissions \u2014 either the user's pick or assistantState.getDefaultModel()).
+    // No literal fallback: if it's missing we have a wiring bug, not a
+    // recoverable situation. Throw loudly so the regression is visible.
+    if (!modelSelection || !modelSelection.provider || !modelSelection.modelId) {
+      throw new Error(
+        '[DeepAgentInferencer] modelSelection is required. ' +
+        'Resolve it from assistantState.getDefaultModel() (or the user\'s explicit pick) ' +
+        'after /permissions has loaded \u2014 no literal model defaults are allowed.'
+      )
     }
+    this.modelSelection = modelSelection
 
     // Default configuration (API key handled by proxy)
     this.config = {
@@ -105,13 +113,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       timeout: config?.timeout || 300000, // 5 minutes
       enableSubagents: config?.enableSubagents !== false,
       enablePlanning: config?.enablePlanning !== false,
-      autoMode: config?.autoMode || {
-        enabled: false,
-        fallbackModel: {
-          provider: 'mistralai',
-          modelId: 'mistral-medium-latest'
-        }
-      }
+      // Auto Mode: caller decides on/off based on assistantState.isAutoModeEnabled().
+      // No fallbackModel field \u2014 selectOptimalModel uses the current selection
+      // and the structural Sonnet-substitution safety net in answer().
+      autoMode: config?.autoMode || { enabled: false }
     }
 
     // Store user API keys for model creation
@@ -133,6 +138,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       console.log('[DeepAgentInferencer] Initializing DeepAgent...')
       console.log('[DeepAgentInferencer] Initializing DeepAgent with config:', this.config)
       console.log('[DeepAgentInferencer] Model selection:', this.modelSelection)
+      await this.logInitDiagnostics()
 
       this.model = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
 
@@ -151,6 +157,45 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         DeepAgentErrorType.INITIALIZATION_FAILED,
         error
       )
+    }
+  }
+
+  private async logInitDiagnostics(): Promise<void> {
+    try {
+      const pluginAny = this.plugin as any
+      const snapshot = await pluginAny.call?.('assistantState', 'getSnapshot')
+      const features = snapshot?.permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
+
+      const hasBasicMcp = features?.['mcp:basicExternal']?.is_enabled === true
+      const configuredServers = Array.isArray(pluginAny?.mcpServers)
+        ? pluginAny.mcpServers.map((s: any) => s?.name).filter(Boolean)
+        : []
+      const connectedServers = this.mcpInferencer?.getConnectedServers?.() || []
+
+      let availableExternalToolCount = -1
+      if (this.mcpInferencer?.getAvailableToolsForLLM) {
+        try {
+          const externalTools = await this.mcpInferencer.getAvailableToolsForLLM()
+          availableExternalToolCount = Array.isArray(externalTools) ? externalTools.length : -1
+        } catch {
+          availableExternalToolCount = -1
+        }
+      }
+
+      console.log('[DeepAgentInferencer][InitDiagnostics]', {
+        isAuthenticated: !!snapshot?.isAuthenticated,
+        permissionsState: snapshot?.permissionsState || 'unknown',
+        hasPermissionsPayload: !!snapshot?.permissions,
+        hasBasicMcp,
+        selectedModel: this.modelSelection,
+        configuredServerCount: configuredServers.length,
+        configuredServers,
+        connectedServerCount: connectedServers.length,
+        connectedServers,
+        availableExternalToolCount
+      })
+    } catch (error: any) {
+      console.warn('[DeepAgentInferencer][InitDiagnostics] Failed to collect diagnostics:', error?.message || error)
     }
   }
 
@@ -324,10 +369,51 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      if (this.config.autoMode?.enabled) {
-        const optimalModel = selectOptimalModel(prompt, context, this.config.autoMode, this.modelSelection, (this.plugin as any).getAllowedModels())
-        await this.updateAgentModel(optimalModel)
+      // Resolve the live, backend-driven list of model ids the user is
+      // allowed to use. Source of truth is the assistantState plugin's
+      // `getAvailableModels()` (which reads `permissions.ai_models`).
+      // The legacy `plugin.getAllowedModels()` reads `this.modelAccess`,
+      // which nothing in the codebase ever populates — querying it returns
+      // [] and makes us misclassify users as "no Anthropic permitted".
+      const resolveAllowedIds = async (): Promise<string[]> => {
+        try {
+          const models = await (this.plugin as any).call?.('assistantState', 'getAvailableModels')
+          if (Array.isArray(models)) {
+            return models.filter((m: any) => m?.available).map((m: any) => m.id)
+          }
+        } catch { /* assistantState not active — fall through */ }
+        // Last-resort legacy path. Almost certainly returns [].
+        return (this.plugin as any).getAllowedModels?.() || []
       }
+
+      if (this.config.autoMode?.enabled) {
+        const allowed = await resolveAllowedIds()
+        console.log('[DeepAgent.answer] autoMode=ENABLED', {
+          currentModelSelection: this.modelSelection,
+          allowedModels: allowed,
+          allowedCount: allowed.length,
+          allowedHasSonnet: allowed.some((m: string) => m.includes('sonnet'))
+        })
+        const optimalModel = selectOptimalModel(prompt, context, this.config.autoMode, this.modelSelection, allowed)
+        console.log('[DeepAgent.answer] selectOptimalModel →', optimalModel)
+        await this.updateAgentModel(optimalModel)
+        console.log('[DeepAgent.answer] after updateAgentModel, this.modelSelection=', this.modelSelection)
+      } else {
+        console.log('[DeepAgent.answer] autoMode=DISABLED, using static model:', this.modelSelection)
+      }
+
+      // NOTE: previously this branch hard-failed (or swapped to Anthropic)
+      // when the selected provider was 'mistralai', on the assumption that
+      // ChatMistralAI's converter would throw on cache_control / non-text
+      // content blocks injected by the deepagents middleware. Verified in
+      // 2026-05 against @langchain/mistralai@1.0.7 + deepagents@1.0.0:
+      //   - deepagents only ever emits `type: "text"` blocks.
+      //   - ChatMistralAI's converter only throws on unknown `type` values;
+      //     extra sibling props like `cache_control` are silently dropped.
+      // So all three Langchain integrations (Mistral / OpenAI / Anthropic)
+      // can drive the agent. Access control happens earlier (permissions /
+      // model availability); runtime errors will surface from langgraph
+      // directly. Gate removed intentionally.
 
       const mcpContext = await this.gatherMCPResourcesContext(prompt)
       const enrichedContext = mcpContext
@@ -336,36 +422,59 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const messages = [
         { role: 'user', content: enrichedContext ? `Context:\n${enrichedContext}\n\nQuestion: ${prompt}` : prompt }
       ]
-      const responsePromise = this.runAgent(messages, params)
 
-      responsePromise.then(response => {
-        this.event.emit('onStreamComplete', { content: response, threadId: this.sessionThreadId })
+      // We MUST await runAgent so withAssistantGate sees rejections (and
+      // gets the AIError envelope routed to assistantState → cooldown
+      // banner / plan-manager / notice strip). Previous fire-and-forget
+      // pattern emitted onApiError + onAgentError directly, which painted
+      // the chat bubble twice and bypassed every gate.
+      try {
+        const response = await this.runAgent(messages, params)
+        this.event.emit('onStreamComplete', response)
         this.event.emit('onInferenceDone')
-      }).catch(error => {
+        return response
+      } catch (error: any) {
+        this.event.emit('onInferenceDone')
         if (error?.name === 'AbortError' || error?.message?.includes('cancelled')) {
           console.log('[DeepAgentInferencer] Answer request was cancelled')
-        } else {
-          console.error('[DeepAgentInferencer] Answer error:', error)
-          const { type: errorType, retryable, retryAfter } = classifyApiError(error)
-          const userMessage = getErrorMessage(errorType, error, retryAfter)
-
-          this.event.emit('onApiError', {
-            type: errorType,
-            message: userMessage,
-            retryable,
-            retryAfter,
-            originalError: error?.message,
-            timestamp: Date.now(),
-            threadId: this.sessionThreadId
-          })
-
-          // Emit error to update todo list with failed status
-          this.emitErrorToTodos(new Error(userMessage))
+          return ''
         }
-        this.event.emit('onInferenceDone')
-      })
+        console.error('[DeepAgentInferencer] Answer error:', error)
 
-      return ''
+        // If the error carries a structured AIError envelope (or one
+        // can be parsed out of it), stamp it on and propagate so
+        // withAssistantGate can route through assistantState. NEVER emit
+        // onApiError/onAgentError for envelope errors — those are owned
+        // by the cooldown banner / plan-manager / notice strip.
+        const envelope = aiErrorFromException(error)
+        if (envelope && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0) {
+          try {
+            error.aiError = envelope
+            if (!error.response) {
+              error.response = { status: envelope.status, data: { error: envelope } }
+            }
+            if (typeof error.status !== 'number') error.status = envelope.status
+            if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+              error.message = envelope.message
+            }
+          } catch { /* ignore */ }
+          throw error
+        }
+
+        // Truly unstructured error — fall through to legacy UI handlers.
+        const { type: errorType, retryable, retryAfter } = classifyApiError(error)
+        const userMessage = getErrorMessage(errorType, error, retryAfter)
+        this.event.emit('onApiError', {
+          type: errorType,
+          message: userMessage,
+          retryable,
+          retryAfter,
+          originalError: error?.message,
+          timestamp: Date.now()
+        })
+        this.emitErrorToTodos(new Error(userMessage))
+        throw error
+      }
     } catch (error) {
       this.event.emit('onInferenceDone')
       console.error(`[DeepAgentInferencer] Error in answer method:`, error)
@@ -561,6 +670,25 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       }
 
+      // If the error carries a backend AIError envelope, propagate it
+      // unchanged so withAssistantGate / assistantState can route it
+      // (notice strip + plan-manager hand-off). DO NOT emit onApiError —
+      // that would cause the UI to dump the raw body into the chat bubble.
+      const envelope = aiErrorFromException(error)
+      if (envelope && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0) {
+        try {
+          error.aiError = envelope
+          if (!error.response) {
+            error.response = { status: envelope.status, data: { error: envelope } }
+          }
+          if (typeof error.status !== 'number') error.status = envelope.status
+          if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+            error.message = envelope.message
+          }
+        } catch { /* ignore */ }
+        throw error
+      }
+
       // Classify and handle API errors
       const { type: errorType, retryable, retryAfter } = classifyApiError(error)
       const userMessage = getErrorMessage(errorType, error, retryAfter)
@@ -620,7 +748,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const checkpointer = new IndexedDBCheckpointSaver()
-      const hasSkillsPermission = await this.plugin.call('auth', 'hasPermission', 'ai:skills')
+      const hasSkillsPermission = await (async () => {
+        try {
+          return !!(await (this.plugin as any).call?.('assistantState', 'hasFeature', 'ai:skills'))
+        } catch {
+          return false
+        }
+      })()
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
@@ -679,10 +813,38 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   /**
-   * Handle errors with fallback strategy
+   * Handle errors with fallback strategy.
+   *
+   * IMPORTANT: when the underlying error is a backend AIError envelope
+   * (FEATURE_DENIED / PROVIDER_DENIED / EMAIL_NOT_VERIFIED / RATE_LIMITED /
+   * IP_BLOCKED / ABUSE_BLOCKED / BAD_REQUEST / ...), we MUST NOT
+   *   - emit `onApiError` (UI handler would dump the raw body into the chat bubble), or
+   *   - fall back to RemoteInferencer (it will hit the same envelope error again).
+   * Instead we re-throw the error with the envelope stamped on it so
+   * `withAssistantGate` can route it through assistantState and the
+   * notice strip / plan-manager hand-off render the right thing.
    */
   private async handleError(error: any, method: string, prompt: string, params: IParams): Promise<string> {
     console.error(`[DeepAgentInferencer] Error in ${method}:`, error)
+
+    // Try to extract a structured AIError envelope first.
+    const envelope = aiErrorFromException(error)
+    const isBackendEnvelope = envelope && envelope.code && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0
+    if (isBackendEnvelope) {
+      try {
+        error.aiError = envelope
+        if (!error.response) {
+          error.response = { status: envelope.status, data: { error: envelope } }
+        }
+        if (typeof error.status !== 'number') error.status = envelope.status
+        // Replace the noisy "<status> {body}" message with the envelope's message.
+        // Also matches Mistral SDK's "API error occurred: Status NNN ... Body: {json}" shape.
+        if (typeof error.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(error.message.trim())) {
+          error.message = envelope.message
+        }
+      } catch { /* read-only error object — ignore */ }
+      throw error
+    }
 
     const { type: errorType, retryable, retryAfter } = classifyApiError(error)
     const userMessage = getErrorMessage(errorType, error, retryAfter)
@@ -732,6 +894,21 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         }
       } catch (fallbackError: any) {
         console.error('[DeepAgentInferencer] Fallback also failed:', fallbackError)
+        // If the fallback failed with a backend envelope, propagate it so the
+        // gate can react instead of dumping the raw body into the chat.
+        const fbEnvelope = aiErrorFromException(fallbackError)
+        if (fbEnvelope && fbEnvelope.code !== 'INTERNAL_ERROR' && fbEnvelope.status > 0) {
+          try {
+            fallbackError.aiError = fbEnvelope
+            if (!fallbackError.response) {
+              fallbackError.response = { status: fbEnvelope.status, data: { error: fbEnvelope } }
+            }
+            if (typeof fallbackError.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(fallbackError.message.trim())) {
+              fallbackError.message = fbEnvelope.message
+            }
+          } catch { /* ignore */ }
+          throw fallbackError
+        }
         const fallbackClassification = classifyApiError(fallbackError)
         const fallbackMessage = getErrorMessage(fallbackClassification.type, fallbackError, fallbackClassification.retryAfter)
         return `${fallbackMessage}`

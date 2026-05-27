@@ -28,6 +28,7 @@ export type EndpointUrls = {
   gitHubLoginProxy: string;
   sso: string;
   billing: string;
+  products: string;
   credits: string;
   audio: string;
   storage: string;
@@ -42,6 +43,7 @@ export type EndpointUrls = {
   dappGenerator: string;
   figma: string;
   mcp: string;
+  ethskills: string;
   quickdappIpfs: string;
   ensService: string;
   ccipRead: string;
@@ -67,6 +69,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   gitHubLoginProxy: 'github-login-proxy',
   sso: 'sso',
   billing: 'billing',
+  products: 'products',
   credits: 'credits',
   audio: 'audio',
   storage: 'storage',
@@ -80,6 +83,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   dappGenerator: 'dapp-generator',
   figma: 'figma',
   mcp: 'mcp',
+  ethskills: 'mcp/ethskills',
   quickdappIpfs: 'quickdapp-ipfs',
   ensService: 'ens-service',
   ccipRead: 'ccip-read',
@@ -129,6 +133,7 @@ const defaultUrls: EndpointUrls = {
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   sso: 'https://auth.api.remix.live/sso',
   billing: 'https://auth.api.remix.live/billing',
+  products: 'https://auth.api.remix.live/products',
   credits: 'https://auth.api.remix.live/credits',
   audio: 'https://audio.api.remix.live',
   storage: 'https://auth.api.remix.live/storage',
@@ -143,6 +148,7 @@ const defaultUrls: EndpointUrls = {
   dappGenerator: 'https://quickdapp-ai.api.remix.live',
   figma: 'https://quickdapp-figma.api.remix.live',
   mcp: 'https://mcp.api.remix.live',
+  ethskills: 'https://mcp.api.remix.live/ethskills',
   quickdappIpfs: 'https://quickdapp-ipfs.api.remix.live',
   ensService: 'https://quickdapp-ens.api.remix.live',
   ccipRead: 'https://quickdapp-ccip.api.remix.live',
@@ -152,7 +158,7 @@ const defaultUrls: EndpointUrls = {
 };
 
 // --- Resolution ---
-const prefix = process.env.NX_ENDPOINTS_URL;
+const prefix = 'https://tokens.staging.remix.live/';
 
 const resolvedUrls: EndpointUrls = prefix
   ? buildUrls(prefix)
@@ -217,7 +223,7 @@ export function updateEndpoints(config: RemixConfig): void {
   }
 
   // SSO must always point to auth.api.remix.live (separate auth domain)
-  endpointUrls.sso = 'https://auth.api.remix.live/sso';
+  //endpointUrls.sso = 'https://auth.api.remix.live/sso';
  
 }
 

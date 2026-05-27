@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import JSZip from 'jszip'
 import './remix-ui-skills-explorer-modal.css'
-import { getFileType, parseSkillNameFromContent, getSkillsBaseUrl, ensureDirectoryExists, fetchSkillData } from './helpers'
+import { getFileType, parseSkillNameFromContent, ensureDirectoryExists } from './helpers'
 
 type ModalTab = 'browse' | 'upload'
 type UploadStep = 'select' | 'preview' | 'uploading'
@@ -45,12 +45,17 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
   const [uploading, setUploading] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const fetchSkillsList = async (url: string): Promise<SkillInfo[]> => {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  const fetchSkillsList = async (): Promise<SkillInfo[]> => {
+    if (!plugin) throw new Error('Plugin not available')
+    const ethSkillsApi: any = await plugin.call('auth', 'getEthSkillsApi')
+    if (!ethSkillsApi || typeof ethSkillsApi.listSkills !== 'function') {
+      throw new Error('EthSkills API service is not available')
     }
-    const data = await response.json()
+    const response = await ethSkillsApi.listSkills()
+    if (!response.ok || !response.data) {
+      throw new Error(response.error || `HTTP ${response.status}`)
+    }
+    const data = response.data
     if (!Array.isArray(data.skills)) {
       throw new Error('Invalid skills list format - expected array of skills')
     }
@@ -236,8 +241,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
       const load = async () => {
         setLoading(true)
         try {
-          const url = getSkillsBaseUrl() + '/skills'
-          const list = await fetchSkillsList(url)
+          const list = await fetchSkillsList()
           setSkills(list)
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to load skills')
