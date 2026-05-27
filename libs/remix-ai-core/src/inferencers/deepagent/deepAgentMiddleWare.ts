@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-useless-escape */
@@ -22,7 +23,7 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
    */
   async wrapModelCall(request: ModelRequest, handler: WrapModelCallHandler) {
     // Before model call - log the request
-    console.log('[RemixDeepAgentMiddleware] Before model call:', {
+    remixAILogger.log('[RemixDeepAgentMiddleware] Before model call:', {
       messages: request?.messages?.length || 0,
       timestamp: new Date().toISOString()
     })
@@ -34,20 +35,20 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
     const result = await handler(request as any)
 
     // After model call - log completion
-    console.log('[RemixDeepAgentMiddleware] After model call completed')
+    remixAILogger.log('[RemixDeepAgentMiddleware] After model call completed')
 
     return result
   }
 }
 
 const removePeviousContextFromMessages = (request: ModelRequest) => {
-  console.log('[RemixDeepAgentMiddleware] Removing previous context from messages if present', request)
+  remixAILogger.log('[RemixDeepAgentMiddleware] Removing previous context from messages if present', request)
   // Optimize message history by removing context from all human messages except the last one
   if (request.messages && request.messages.length > 1) {
     for (let i = 0; i < request.messages.length - 1; i++) {
       const message = request.messages[i]
       if (typeof message.content === 'string') {
-        console.log(`[RemixDeepAgentMiddleware] Processing string content for message ${i}`)
+        remixAILogger.log(`[RemixDeepAgentMiddleware] Processing string content for message ${i}`)
         const content = message.content
         if (content.startsWith('Context:')) {
           const questionIndex = content.indexOf('Question:')
@@ -55,13 +56,13 @@ const removePeviousContextFromMessages = (request: ModelRequest) => {
             // Strip out everything between "Context:" and "Question:", including "Question:"
             const newContent = content.substring(questionIndex + 'Question:'.length).trim()
             ;(message as any).content = newContent
-            console.log(`[RemixDeepAgentMiddleware] Stripped context from message ${i}`)
+            remixAILogger.log(`[RemixDeepAgentMiddleware] Stripped context from message ${i}`)
           }
         }
       }
       // Handle array content (complex message types for Mistral, OpenAI, etc.)
       else if (Array.isArray(message.content)) {
-        console.log(`[RemixDeepAgentMiddleware] Processing array content for message ${i}`)
+        remixAILogger.log(`[RemixDeepAgentMiddleware] Processing array content for message ${i}`)
         for (let j = 0; j < message.content.length; j++) {
           const contentPart = message.content[j]
           // Only process text type content
@@ -73,7 +74,7 @@ const removePeviousContextFromMessages = (request: ModelRequest) => {
                 // Strip out everything between "Context:" and "Question:", including "Question:"
                 const newText = text.substring(questionIndex + 'Question:'.length).trim()
                 contentPart.text = newText
-                console.log(`[RemixDeepAgentMiddleware] Stripped context from message ${i}, part ${j}`)
+                remixAILogger.log(`[RemixDeepAgentMiddleware] Stripped context from message ${i}, part ${j}`)
               }
             }
           }
@@ -124,7 +125,7 @@ const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => 
     const dirs = await plugin.call('fileManager', 'dirList', 'skills')
     hasSkills = dirs && Object.keys(dirs).length > 0
   } catch (e) {
-    console.warn('Unable to get skills folder. hasSkills set to true', e)
+    remixAILogger.warn('Unable to get skills folder. hasSkills set to true', e)
   }
 
   (request.systemMessage.content as any[]).map((part) => {

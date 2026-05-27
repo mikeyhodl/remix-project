@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * Compilation Tool Handlers for Remix MCP Server
  */
@@ -103,7 +104,7 @@ export class SolidityCompileHandler extends BaseToolHandler {
         contract[args.filePath] = { content: content }
         const compilerPayload: CompilerAbstract = await plugin.call('solidity' as any, 'compileWithParameters', contract, compilerConfig)
         const errors = compilerPayload.getErrors(false)
-        console.log('Compilation errors:', errors)
+        remixAILogger.log('Compilation errors:', errors)
         if (errors && errors.length > 0) {
           return this.createErrorResult(`Compilation failed with errors: ${errors.map((e) => e.formattedMessage).join('; ')}`);
         }
@@ -247,7 +248,7 @@ export class GetCompilationResultByFilePathHandler extends BaseToolHandler {
         return this.createErrorResult('No compilation result available for the specified file path');
       }
 
-      console.log('get_compilation_result_sources_by_file_path', compilationResult.source.sources)
+      remixAILogger.log('get_compilation_result_sources_by_file_path', compilationResult.source.sources)
 
       return this.createSuccessResult(compilationResult.source.sources);
     } catch (error) {
@@ -339,7 +340,7 @@ export class SetCompilerConfigHandler extends BaseToolHandler {
           }
         }
       } catch (resolveError) {
-        console.warn('Could not resolve compiler version:', resolveError.message);
+        remixAILogger.warn('Could not resolve compiler version:', resolveError.message);
       }
 
       const config = {
