@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * Skill Loader Tool Handler for Remix MCP Server
  * Loads skills and their resources from remote endpoints to the file manager
@@ -73,7 +74,7 @@ export class SkillLoaderHandler extends BaseToolHandler {
 
   async execute(args: LoadSkillArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log(`[SkillLoaderHandler] Loading skill: ${args.skill_id}`);
+      remixAILogger.log(`[SkillLoaderHandler] Loading skill: ${args.skill_id}`);
 
       // Fetch skill data via the authenticated EthSkills API service.
       // Going through the AuthPlugin's ApiClient means the Bearer token
@@ -110,12 +111,12 @@ export class SkillLoaderHandler extends BaseToolHandler {
         lastModified: new Date().toISOString()
       };
 
-      console.log(`[SkillLoaderHandler] Successfully loaded skill ${args.skill_id} to ${skillDir}`);
+      remixAILogger.log(`[SkillLoaderHandler] Successfully loaded skill ${args.skill_id} to ${skillDir}`);
       return this.createSuccessResult(result);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[SkillLoaderHandler] Failed to load skill ${args.skill_id}:`, error);
+      remixAILogger.error(`[SkillLoaderHandler] Failed to load skill ${args.skill_id}:`, error);
       return this.createErrorResult(`Failed to load skill: ${errorMessage}`);
     }
   }
@@ -187,7 +188,7 @@ export class ListSkillsHandler extends BaseToolHandler {
 
   async execute(_args: ListSkillsArgs, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log(`[ListSkillsHandler] Fetching skills list`);
+      remixAILogger.log(`[ListSkillsHandler] Fetching skills list`);
 
       // Fetch via the authenticated EthSkills API service (Bearer token +
       // auto-refresh wired through the shared ApiClient in AuthPlugin).
@@ -199,12 +200,12 @@ export class ListSkillsHandler extends BaseToolHandler {
         total_skills: skills.length
       };
 
-      console.log(`[ListSkillsHandler] Successfully fetched ${skills.length} skills`);
+      remixAILogger.log(`[ListSkillsHandler] Successfully fetched ${skills.length} skills`);
       return this.createSuccessResult(result);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[ListSkillsHandler] Failed to fetch skills list:`, error);
+      remixAILogger.error(`[ListSkillsHandler] Failed to fetch skills list:`, error);
       return this.createErrorResult(`Failed to fetch skills list: ${errorMessage}`);
     }
   }
@@ -232,7 +233,7 @@ export class ListSkillsHandler extends BaseToolHandler {
     const skills: SkillInfo[] = [];
     for (const skill of response.data.skills) {
       if (!skill.id || !skill.name) {
-        console.warn(`[ListSkillsHandler] Skipping invalid skill object:`, skill);
+        remixAILogger.warn(`[ListSkillsHandler] Skipping invalid skill object:`, skill);
         continue;
       }
 

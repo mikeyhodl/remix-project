@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import { ChatAnthropic } from '@langchain/anthropic'
 import { ChatMistralAI } from '@langchain/mistralai'
 import { ChatOpenAI } from '@langchain/openai'
@@ -105,10 +106,10 @@ async function captureMoonshotReasoningFromSSE(stream: ReadableStream<Uint8Array
       .filter((id): id is string => typeof id === 'string' && id.length > 0)
     if (ids.length > 0 && reasoning.length > 0) {
       cacheMoonshotReasoning(ids.sort().join('|'), reasoning)
-      if (AI_DEBUG) console.log('[Moonshot←] cached reasoning_content for tool_calls', ids, `(${reasoning.length} chars)`)
+      if (AI_DEBUG) remixAILogger.log('[Moonshot←] cached reasoning_content for tool_calls', ids, `(${reasoning.length} chars)`)
     }
   } catch (e) {
-    if (AI_DEBUG) console.warn('[Moonshot←] capture failed', e)
+    if (AI_DEBUG) remixAILogger.warn('[Moonshot←] capture failed', e)
   }
 }
 
@@ -131,7 +132,7 @@ function injectMoonshotReasoning(bodyText: string): string {
         // don't have the original (e.g. cache miss across page reload).
         m.reasoning_content = cached ?? ' '
         mutated = true
-        if (AI_DEBUG) console.log('[Moonshot→] injected reasoning_content', { key, fromCache: !!cached })
+        if (AI_DEBUG) remixAILogger.log('[Moonshot→] injected reasoning_content', { key, fromCache: !!cached })
       }
     }
     return mutated ? JSON.stringify(body) : bodyText
@@ -194,7 +195,7 @@ async function dumpMistralRequest(req: Request): Promise<void> {
     try { parsed = JSON.parse(text) } catch { /* not json */ }
     // Print the messages array — that's where the offending content blocks live.
     const msgs = parsed?.messages
-    console.groupCollapsed(`[Mistral→] ${req.method} ${req.url}`)
+    remixAILogger.groupCollapsed(`[Mistral→] ${req.method} ${req.url}`)
     if (Array.isArray(msgs)) {
       msgs.forEach((m: any, i: number) => {
         const c = m?.content
@@ -203,20 +204,20 @@ async function dumpMistralRequest(req: Request): Promise<void> {
           : Array.isArray(c)
             ? `array[${c.length}]: ${c.map((b: any) => b?.type ?? typeof b).join(',')}`
             : typeof c
-        console.log(`  msg[${i}] role=${m?.role} content=${shape}`)
+        remixAILogger.log(`  msg[${i}] role=${m?.role} content=${shape}`)
         if (Array.isArray(c)) {
           c.forEach((b: any, j: number) => {
             if (b?.type !== 'text' && b?.type !== 'image_url') {
-              console.warn(`    ⚠ block[${j}] OFFENDING type=${b?.type}`, b)
+              remixAILogger.warn(`    ⚠ block[${j}] OFFENDING type=${b?.type}`, b)
             }
           })
         }
       })
     }
-    console.log('full body:', parsed)
-    console.groupEnd()
+    remixAILogger.log('full body:', parsed)
+    remixAILogger.groupEnd()
   } catch (e) {
-    console.warn('[Mistral→] failed to dump request', e)
+    remixAILogger.warn('[Mistral→] failed to dump request', e)
   }
 }
 
@@ -243,7 +244,7 @@ function summarizeMessages(label: string, messages: any): void {
     const arr: any[] = Array.isArray(messages)
       ? messages
       : (messages?.messages && Array.isArray(messages.messages) ? messages.messages : [])
-    console.groupCollapsed(`[ModelInput ${label}] ${arr.length} message(s)`)
+    remixAILogger.groupCollapsed(`[ModelInput ${label}] ${arr.length} message(s)`)
     arr.forEach((m, i) => {
       const role = m?._getType?.() || m?.role || m?.constructor?.name || 'unknown'
       const c = m?.content
@@ -251,19 +252,19 @@ function summarizeMessages(label: string, messages: any): void {
       if (typeof c === 'string') shape = `string(${c.length})`
       else if (Array.isArray(c)) shape = `array[${c.length}]: ${c.map((b: any) => b?.type ?? typeof b).join(',')}`
       else shape = typeof c
-      console.log(`  [${i}] role=${role} content=${shape}`)
+      remixAILogger.log(`  [${i}] role=${role} content=${shape}`)
       if (Array.isArray(c)) {
         c.forEach((b: any, j: number) => {
           if (b?.type !== 'text' && b?.type !== 'image_url') {
-            console.warn(`     ⚠ block[${j}] OFFENDING-FOR-MISTRAL type=${b?.type}`, b)
+            remixAILogger.warn(`     ⚠ block[${j}] OFFENDING-FOR-MISTRAL type=${b?.type}`, b)
           }
         })
       }
     })
-    console.log('full messages:', messages)
-    console.groupEnd()
+    remixAILogger.log('full messages:', messages)
+    remixAILogger.groupEnd()
   } catch (e) {
-    console.warn(`[ModelInput ${label}] dump failed`, e)
+    remixAILogger.warn(`[ModelInput ${label}] dump failed`, e)
   }
 }
 
@@ -286,13 +287,13 @@ function wrapModelForDebug<T extends BaseChatModel>(model: T, label: string): T 
         const result = original.apply(this, args)
         if (result && typeof result.then === 'function') {
           return result.catch((err: any) => {
-            console.error(`[ModelInput ${label}.${method}] threw:`, err?.message || err)
+            remixAILogger.error(`[ModelInput ${label}.${method}] threw:`, err?.message || err)
             throw err
           })
         }
         return result
       } catch (err: any) {
-        console.error(`[ModelInput ${label}.${method}] threw sync:`, err?.message || err)
+        remixAILogger.error(`[ModelInput ${label}.${method}] threw sync:`, err?.message || err)
         throw err
       }
     }
@@ -310,7 +311,7 @@ export function createModelInstance(
   switch (provider) {
   case 'mistralai': {
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.mistralApiKey)
-    console.log(`[ModelFactory] Creating MistralAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating MistralAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     return wrapModelForDebug(new ChatMistralAI({
       apiKey: useDirectApi ? (userApiKeys!.mistralApiKey as string) : 'proxy-handled',
       model: modelId,
@@ -337,7 +338,7 @@ export function createModelInstance(
 
   case 'openai': {
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.openaiApiKey)
-    console.log(`[ModelFactory] Creating OpenAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating OpenAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     return wrapModelForDebug(new ChatOpenAI({
       apiKey: useDirectApi ? (userApiKeys!.openaiApiKey as string) : 'proxy-handled',
       model: modelId,
@@ -368,7 +369,7 @@ export function createModelInstance(
     //    thinking-enabled models (e.g. kimi-k2-thinking) don't reject
     //    follow-up assistant tool_call messages.
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.moonshotApiKey)
-    console.log(`[ModelFactory] Creating Moonshot model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating Moonshot model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     if (useDirectApi) {
       return wrapModelForDebug(new ChatOpenAI({
         apiKey: userApiKeys!.moonshotApiKey as string,
@@ -403,7 +404,7 @@ export function createModelInstance(
   case 'anthropic':
   default: {
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.anthropicApiKey)
-    console.log(`[ModelFactory] Creating Anthropic model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating Anthropic model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
     return wrapModelForDebug(new ChatAnthropic({
       apiKey: useDirectApi ? (userApiKeys!.anthropicApiKey as string) : 'proxy-handled',
       model: modelId,

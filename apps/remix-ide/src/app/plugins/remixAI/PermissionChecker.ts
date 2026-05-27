@@ -1,3 +1,4 @@
+import { remixAILogger } from '@remix/remix-ai-core'
 import { endpointUrls } from '@remix-endpoints-helper'
 import type { MCPAccessResult } from './types'
 import type { IRemixAIPlugin } from './types'
@@ -33,7 +34,7 @@ export class PermissionChecker {
       const isBetaUser = Array.isArray(groups) && groups.some((g) => g?.name === 'beta')
       return { hasBasicMcp, hasWebSearch, isBetaUser }
     } catch (error) {
-      console.error('[RemixAI Plugin] Failed to read MCP access from assistantState:', error)
+      remixAILogger.error('[RemixAI Plugin] Failed to read MCP access from assistantState:', error)
       return { hasBasicMcp: false, hasWebSearch: false, isBetaUser: false }
     }
   }
@@ -53,7 +54,7 @@ export class PermissionChecker {
         return data.allowed_models || []
       }
     } catch (err) {
-      console.error('Failed to fetch model access:', err)
+      remixAILogger.error('Failed to fetch model access:', err)
     }
 
     return []

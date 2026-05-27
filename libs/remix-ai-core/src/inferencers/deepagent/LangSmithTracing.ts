@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * LangSmith Tracing Configuration for Remix IDE DeepAgent
  *
@@ -43,7 +44,7 @@ export class LangSmithTracingManager {
     try {
       if (!this.isTracingAllowed()) {
         this.disable()
-        console.log('[LangSmith] Tracing disabled (opt-in required)')
+        remixAILogger.log('[LangSmith] Tracing disabled (opt-in required)')
         return
       }
 
@@ -71,9 +72,9 @@ export class LangSmithTracingManager {
       })
 
       this.enabled = true
-      console.log('[LangSmith] Tracing initialized via proxy')
+      remixAILogger.log('[LangSmith] Tracing initialized via proxy')
     } catch (error) {
-      console.error('[LangSmith] Failed to initialize:', error)
+      remixAILogger.error('[LangSmith] Failed to initialize:', error)
       this.enabled = false
     }
   }

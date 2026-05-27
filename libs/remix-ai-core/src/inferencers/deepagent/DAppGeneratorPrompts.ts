@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * DApp Generator Prompts for DeepAgent
  *
@@ -742,7 +743,7 @@ export const buildDAppUserMessage = (
       if (fileName === 'index.html' || fileName.startsWith('src/') || fileName.startsWith('/src/') || fileName === '/index.html') {
         // Safety: skip undefined/null/non-string content
         if (content === undefined || content === null || typeof content !== 'string') {
-          console.warn(`[DAppPrompts] Skipping file with invalid content: ${fileName} (type: ${typeof content})`)
+          remixAILogger.warn(`[DAppPrompts] Skipping file with invalid content: ${fileName} (type: ${typeof content})`)
           continue
         }
         filteredFiles[fileName] = content
@@ -750,7 +751,7 @@ export const buildDAppUserMessage = (
     }
 
     if (Object.keys(filteredFiles).length === 0) {
-      console.warn('[DAppPrompts] No valid source files found in currentFiles')
+      remixAILogger.warn('[DAppPrompts] No valid source files found in currentFiles')
     }
 
     const filesString = JSON.stringify(filteredFiles, null, 2)
@@ -950,7 +951,7 @@ export class QuickDappPromptMiddleware implements AgentMiddleware {
   name: string = 'QuickDappPromptMiddleware'
   async beforeModel(state: any, runtime: any) {
     const sysPromptContext = runtime.context?.ctx || "None";
-    console.log(`[${this.name}] Injecting system prompt context:`, sysPromptContext);
+    remixAILogger.log(`[${this.name}] Injecting system prompt context:`, sysPromptContext);
 
     return {
       ...state,

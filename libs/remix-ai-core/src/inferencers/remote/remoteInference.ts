@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import { ICompletions, IGeneration, IParams, AIRequestType, JsonStreamParser } from "../../types/types";
 import { GenerationParams, CompletionParams, InsertionParams } from "../../types/models";
 import { buildChatPrompt } from "../../prompts/promptBuilder";
@@ -76,7 +77,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
       currentBytes = encoder.encode(trimmedPrompt).length;
     }
 
-    console.warn(`[RemoteInferencer] Prompt exceeded ${maxBytes} bytes for provider '${provider || 'default'}'. Trimmed from ${promptBytes.length} to ${currentBytes} bytes.`);
+    remixAILogger.warn(`[RemoteInferencer] Prompt exceeded ${maxBytes} bytes for provider '${provider || 'default'}'. Trimmed from ${promptBytes.length} to ${currentBytes} bytes.`);
     return trimmedPrompt;
   }
 
@@ -100,7 +101,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
       const candidatePrompt = `${historyPrefix}${historySection}${currentPromptPrefix}${prompt}`;
       if (encoder.encode(candidatePrompt).length <= maxBytes) {
         if (startIndex > 0) {
-          console.warn(
+          remixAILogger.warn(
             `[RemoteInferencer] Embedded history exceeded ${maxBytes} bytes for provider '${provider || 'default'}'. ` +
             `Trimmed ${startIndex} oldest message entries before sending.`
           );
@@ -152,7 +153,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
 
     } catch (e) {
       ChatHistory.clearHistory()
-      console.error('Error making request to Inference server:', e.message)
+      remixAILogger.error('Error making request to Inference server:', e.message)
       // Always propagate so withAssistantGate can parse the AIError
       // envelope and report it to assistantState (cooldown banner,
       // plan-manager hand-off, notice strip). Completion callers (the
@@ -227,7 +228,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
             }
           }
         } catch (error) {
-          console.error('Error parsing JSON:', error);
+          remixAILogger.error('Error parsing JSON:', error);
           ChatHistory.clearHistory()
         }
       }
@@ -235,7 +236,7 @@ export class RemoteInferencer implements ICompletions, IGeneration {
       return resultText
     } catch (error) {
       ChatHistory.clearHistory()
-      console.error('Error making stream request to Inference server:', error.message);
+      remixAILogger.error('Error making stream request to Inference server:', error.message);
       // Propagate so withAssistantGate / chat UI can react. Aborts (user
       // cancelled) are still recognised by name === 'AbortError' downstream.
       throw error
