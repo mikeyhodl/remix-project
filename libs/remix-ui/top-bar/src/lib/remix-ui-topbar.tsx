@@ -70,7 +70,7 @@ export function RemixUiTopbar() {
   const [isNonMaximizedWindow, setIsNonMaximizedWindow] = useState(false)
 
   // Auth state for cloud backup/restore and support link
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, features } = useAuth()
 
   // Use the clone repository modal hook
   const { showCloneModal } = useCloneRepositoryModal({
@@ -108,7 +108,8 @@ export function RemixUiTopbar() {
     return true
   }
 
-  const showCloudToggle = showLoginUI && cloudEnabledByConfig && cloudEnabled && isVisibleByAudience(cloudVisibilityMode, isAuthenticated)
+  const hasCloudStoragePermission = features['storage:s3']?.is_enabled === true
+  const showCloudToggle = showLoginUI && cloudEnabledByConfig && cloudEnabled && hasCloudStoragePermission && isVisibleByAudience(cloudVisibilityMode, isAuthenticated)
   const showNotificationBell = isVisibleByAudience(notificationMode, isAuthenticated)
 
   const measureTopbarLayout = () => {
