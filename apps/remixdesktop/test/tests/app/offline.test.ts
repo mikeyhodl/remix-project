@@ -32,6 +32,7 @@ module.exports = {
       .waitForElementVisible('*[data-id="template-explorer-modal-react"]')
       .waitForElementVisible('*[data-id="template-explorer-template-container"]')
       .scrollInto('*[data-id="template-explorer-template-container"]')
+      .saveScreenshot('./reports/screenshots/template_modal.png')
       .waitForElementPresent('*[data-id="template-card-remixDefault-0"]')
       .click('*[data-id="template-card-remixDefault-0"]')
       .waitForElementVisible('*[data-id="workspace-details-section"]')
