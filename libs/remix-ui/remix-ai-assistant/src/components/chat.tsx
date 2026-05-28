@@ -92,7 +92,9 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
         messages.map(msg => {
           const bubbleClass =
             msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'
-          const hasContent = typeof msg.content === 'string' && msg.content.trim().length > 0
+          const isCorrupted = msg.role === 'assistant' && (msg.content === null || msg.content === undefined)
+          const displayContent = isCorrupted ? '*Unable to load response.*' : (msg.content ?? '')
+          const hasContent = typeof displayContent === 'string' && displayContent.trim().length > 0
           const hasAssistantActivity = !!(
             msg.isExecutingTools ||
             msg.activeSubagent ||
@@ -138,7 +140,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                       } : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        RemixMarkdownViewer(theme, msg.content ?? '')
+                        RemixMarkdownViewer(theme, displayContent)
                       ) : (
                         <div className="ai-paragraph pb-0">
                           {msg.content}
@@ -254,7 +256,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                         role="button"
                         aria-label="copy message"
                         className="message-copy-btn me-3"
-                        onClick={() => copy(msg.content)}
+                        onClick={() => copy(displayContent)}
                         onMouseDown={(e) => e.preventDefault()}
                       >
                         <i className="far fa-copy"></i>
