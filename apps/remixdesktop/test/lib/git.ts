@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from "child_process"
+import * as path from "path"
 
 export async function getBranches(path: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -168,14 +169,17 @@ export async function createCommitOnLocalServer(path: string, message: string) {
 }
 
 
-export async function spawnGitServer(path: string): Promise<ChildProcess> {
+export async function spawnGitServer(targetPath: string): Promise<ChildProcess> {
     console.log(process.cwd())
     try {
-        const server = spawn('yarn && sh setup.sh && yarn start:server', [`${path}`], { cwd: process.cwd() + '/../remix-ide-e2e/src/githttpbackend/', shell: true, detached: true })
+        // Resolve the git backend directory relative to this file's location
+        const gitBackendDir = path.resolve(__dirname, '../../../../../remix-ide-e2e/src/githttpbackend/')
+        console.log('Git backend directory:', gitBackendDir)
+        const server = spawn(`sh setup.sh && node ./dist/server.js "${targetPath}"`, [], { cwd: gitBackendDir, shell: true, detached: true })
         console.log('spawned', server.stdout.closed, server.stderr.closed)
         return new Promise((resolve, reject) => {
             server.stdout.on('data', function (data) {
-                console.log(data.toString())
+                console.log('Git server stdout:', data.toString())
                 if (
                     data.toString().includes('is listening')
                     || data.toString().includes('address already in use')
@@ -184,9 +188,13 @@ export async function spawnGitServer(path: string): Promise<ChildProcess> {
                     resolve(server)
                 }
             })
-            server.stderr.on('err', function (data) {
-                console.log(data.toString())
-                reject(data.toString())
+            server.stderr.on('data', function (data) {
+                console.log('Git server stderr:', data.toString())
+                // Don't reject on stderr, just log it
+            })
+            server.on('error', function(err) {
+                console.error('Git server error:', err)
+                reject(err)
             })
         })
     } catch (e) {
