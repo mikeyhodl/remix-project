@@ -36,7 +36,16 @@ export default function GroupListMenu(props: GroupListMenuProps) {
   const upgradeState: LockedPillState = props.upgradePillState ?? 'available'
   const buyCreditsState: LockedPillState = props.buyCreditsPillState ?? 'hidden'
   const hasVisibleLockedPill = upgradeState !== 'hidden' || buyCreditsState !== 'hidden'
-  const visibleItems = props.groupList.filter(item => !item.isLocked || hasVisibleLockedPill)
+  // The `__signin__` placeholder is its own CTA (clicking it opens the
+  // plan-manager sign-in hand-off) so it must remain visible even when no
+  // upgrade/buy-credits pills are shown — otherwise anonymous users see an
+  // empty model picker. Other locked rows are only meaningful alongside an
+  // upgrade or buy-credits pill, so we hide them when both pills are hidden.
+  const visibleItems = props.groupList.filter(item => {
+    if (!item.isLocked) return true
+    if (item.stateValue === '__signin__') return true
+    return hasVisibleLockedPill
+  })
 
   const renderPill = (
     item: groupListType,
