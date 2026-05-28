@@ -150,6 +150,56 @@ function HomeTabTitle() {
             isClick: true
           })}><FormattedMessage id="home.website" /></a>
         </div>
+        <div
+          className="d-flex flex-row flex-wrap gap-2 mt-2"
+          data-id="hometab-legal-links"
+          aria-label="Legal"
+        >
+          <a
+            className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
+            style={{ fontSize: '0.7rem' }}
+            href="https://remix.live/termsandconditions"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-id="hometab-link-terms"
+            onClick={() => trackMatomoEvent({
+              category: 'hometab',
+              action: 'titleCard',
+              name: 'terms',
+              isClick: true
+            })}
+          ><FormattedMessage id="home.termsAndConditions" /></a>
+          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>·</span>
+          <a
+            className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
+            style={{ fontSize: '0.7rem' }}
+            href="https://remix.live/refundpolicy"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-id="hometab-link-refund"
+            onClick={() => trackMatomoEvent({
+              category: 'hometab',
+              action: 'titleCard',
+              name: 'refundPolicy',
+              isClick: true
+            })}
+          ><FormattedMessage id="home.refundPolicy" /></a>
+          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>·</span>
+          <a
+            className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
+            style={{ fontSize: '0.7rem' }}
+            href="https://remix.live/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-id="hometab-link-privacy"
+            onClick={() => trackMatomoEvent({
+              category: 'hometab',
+              action: 'titleCard',
+              name: 'privacyStatement',
+              isClick: true
+            })}
+          ><FormattedMessage id="home.privacyStatement" /></a>
+        </div>
         <DesktopDownload className='mt-3' compact trackingContext="hometab" />
       </div>
     </div>
