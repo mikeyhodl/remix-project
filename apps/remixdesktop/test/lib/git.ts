@@ -181,19 +181,24 @@ export async function spawnGitServer(targetPath: string): Promise<ChildProcess> 
             server.stdout.on('data', function (data) {
                 console.log('Git server stdout:', data.toString())
                 if (
-                    data.toString().includes('is listening')
-                    || data.toString().includes('address already in use')
+                    data.toString().includes('is listening') ||
+                    data.toString().includes('already running')
                 ) {
-                    console.log('resolving')
+                    console.log('Git server is ready')
                     resolve(server)
                 }
             })
             server.stderr.on('data', function (data) {
-                console.log('Git server stderr:', data.toString())
-                // Don't reject on stderr, just log it
+                const output = data.toString()
+                console.log('Git server stderr:', output)
+                // Check if it's the EADDRINUSE error, which means server is already running
+                if (output.includes('EADDRINUSE') || output.includes('address already in use')) {
+                    console.log('Git server is already running, continuing with tests')
+                    resolve(server)
+                }
             })
             server.on('error', function(err) {
-                console.error('Git server error:', err)
+                console.error('Git server spawn error:', err)
                 reject(err)
             })
         })
