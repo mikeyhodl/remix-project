@@ -92,6 +92,17 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
         messages.map(msg => {
           const bubbleClass =
             msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'
+          const hasContent = typeof msg.content === 'string' && msg.content.trim().length > 0
+          const hasAssistantActivity = !!(
+            msg.isExecutingTools ||
+            msg.activeSubagent ||
+            msg.isSubagentStreaming ||
+            (msg.currentTask && msg.taskStatus === 'running') ||
+            (msg.todos && msg.todos.length > 0) ||
+            msg.dappUpdateReview?.status === 'pending'
+          )
+
+          if (msg.role === 'assistant' && !hasContent && !hasAssistantActivity) return null
 
           return (
             <div key={msg.id} className={`chat-row d-flex mb-2 ${msg.role === 'user' ? 'justify-content-end' : ''}`} style={{ minWidth: '90%' }}>
@@ -108,8 +119,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
               <div data-id="ai-response-chat-bubble-section" className={`overflow-y-scroll ${msg.role === 'assistant' ? 'me-3' : ''}`} style={{
                 width: '90%'
               }}>
-                {/* Only render bubble if there's content OR not currently executing tools */}
-                {(msg.content || !msg.isExecutingTools) && (
+                {(msg.role === 'user' || hasContent) && (
                   <div
                     className={`chat-bubble p-2 rounded ${bubbleClass}`}
                     data-id="ai-user-chat-bubble"
@@ -237,7 +247,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                 )}
 
                 {/* Feedback buttons */}
-                {msg.role === 'assistant' && (
+                {msg.role === 'assistant' && hasContent && (
                   <div className="feedback text-end mt-2 me-1">
                     <CustomTooltip tooltipText="Copy message" placement="top">
                       <span
@@ -423,4 +433,3 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
     {normalizeMarkdown(markDownContent)}
   </ReactMarkdown>
 }
-
