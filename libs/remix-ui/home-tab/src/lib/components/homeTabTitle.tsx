@@ -188,7 +188,7 @@ function HomeTabTitle() {
           <a
             className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
             style={{ fontSize: '0.7rem' }}
-            href="https://remix.live/privacy"
+            href="https://remix.live/termsandconditions"
             target="_blank"
             rel="noopener noreferrer"
             data-id="hometab-link-privacy"
