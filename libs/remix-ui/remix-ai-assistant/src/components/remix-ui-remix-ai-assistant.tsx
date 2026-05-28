@@ -104,6 +104,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // ready until they authenticate).
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
 
+  // Permission-derived state for the locked-model picker pills. Defaults
+  // to 'hidden' so an unauthenticated/loading account never flashes a
+  // checkout CTA. Re-computed whenever assistantState emits stateChanged.
+  // See contextOptMenu.tsx for the rendering rules.
+  type PillState = 'hidden' | 'coming_soon' | 'available'
+  const [pillStates, setPillStates] = useState<{ upgrade: PillState; buyCredits: PillState }>({
+    upgrade: 'hidden',
+    buyCredits: 'hidden'
+  })
+
   const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
   const approvalQueueRef = useRef<ToolApprovalRequest[]>([])
@@ -889,6 +899,24 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         ai_models_len: Array.isArray(snap?.permissions?.ai_models) ? snap.permissions.ai_models.length : 'absent'
       })
       setIsAuthenticated(!!snap?.isAuthenticated)
+      // Derive pill visibility from the same snapshot. `ai:modes_coming_soon`
+      // wins over the specific entitlement so a soft-launch account never
+      // exposes a working checkout pill.
+      const features = snap?.permissions?.features
+      const isOn = (key: string): boolean => {
+        if (!features) return false
+        if (Array.isArray(features)) return features.some((f: any) => f?.feature_name === key && f?.is_enabled !== false)
+        const entry = features[key]
+        if (entry == null) return false
+        if (typeof entry === 'boolean') return entry
+        return entry?.is_enabled !== false && entry?.allowed !== false
+      }
+      const comingSoon = isOn('ai:modes_coming_soon')
+      const nextPillStates = {
+        upgrade: comingSoon ? 'coming_soon' : isOn('ai:upgrade_available') ? 'available' : 'hidden',
+        buyCredits: comingSoon ? 'hidden' : isOn('ai:buy_credits') ? 'available' : 'hidden'
+      } as const
+      setPillStates(nextPillStates)
       void refreshCooldown()
       void refreshModels()
       void refreshFeatures()
@@ -907,7 +935,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     ;(async () => {
       try {
         const snap: any = await props.plugin.call('assistantState' as any, 'getSnapshot')
-        if (snap) setIsAuthenticated(!!snap.isAuthenticated)
+        if (snap) {
+          setIsAuthenticated(!!snap.isAuthenticated)
+          // Reuse the same derivation as the event handler so the initial
+          // pill state is correct without waiting for a stateChanged.
+          onAssistantStateChange(snap)
+        }
       } catch { /* assistantState not active */ }
     })()
 
@@ -2120,6 +2153,17 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'locked_model_click', value: modelId, isClick: true })
   }, [props.plugin, availableModels])
 
+  // Buy-credits pill route: opens plan-manager with the quota-exhausted
+  // intent so it lands on the top-up section directly. `modelName` is
+  // currently unused but kept symmetrical with handleLockedModelClick in
+  // case we want to surface "which model triggered this" later.
+  const handleBuyCreditsClick = useCallback((modelId: string, _modelName: string) => {
+    props.plugin.call('planManager' as any, 'open', { reason: 'quota-exhausted' }).catch(() => {
+      props.plugin.call('betaCornerWidget', 'show').catch(() => { /* noop */ })
+    })
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'buy_credits_pill_click', value: modelId, isClick: true })
+  }, [props.plugin])
+
   // Opens the plan-manager paywall/sign-in modal with reason=auth-required.
   // This is the same hand-off the locked-model picker uses for the
   // `__signin__` placeholder model — keeping it consistent means the user
@@ -2596,6 +2640,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               autoModeAvailable={autoModeAvailable}
               handleModelSelection={handleModelSelection}
               onLockedModelClick={handleLockedModelClick}
+              upgradePillState={pillStates.upgrade}
+              buyCreditsPillState={pillStates.buyCredits}
+              onBuyCreditsClick={handleBuyCreditsClick}
               input={input}
               setInput={setInput}
               isStreaming={isStreaming}
@@ -2646,6 +2693,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               autoModeAvailable={autoModeAvailable}
               handleModelSelection={handleModelSelection}
               onLockedModelClick={handleLockedModelClick}
+              upgradePillState={pillStates.upgrade}
+              buyCreditsPillState={pillStates.buyCredits}
+              onBuyCreditsClick={handleBuyCreditsClick}
               input={input}
               setInput={setInput}
               isStreaming={isStreaming}
