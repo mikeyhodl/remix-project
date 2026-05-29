@@ -95,7 +95,8 @@ export const CommitMessage = () => {
   }
 
   const showCommitButton = () => {
-    return !commitNotAllowed() || context.allchangesnotstaged.length > 0 || context.staged.length > 0 || syncEnabled()
+    // Always show commit button unless publish button is showing
+    return !showPublishButton()
   }
 
   const showSyncButton = () => {
