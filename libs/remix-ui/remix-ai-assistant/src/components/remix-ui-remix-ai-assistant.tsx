@@ -755,6 +755,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number; threadId?: string }) => {
       remixAILogger.log('[RemixAI Assistant] Todo list updated:', data)
       if (streamingAssistantIdRef.current) {
+        // Update existing assistant message with todos
         setMessages(prev =>
           prev.map(m =>
             m.id === streamingAssistantIdRef.current
@@ -762,6 +763,23 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               : m
           )
         )
+      } else {
+        // No assistant message exists yet - create one to show the todos
+        // This can happen if the todo tool is called before any streaming content
+        const assistantId = crypto.randomUUID()
+        streamingAssistantIdRef.current = assistantId
+        setMessages(prev => [
+          ...prev,
+          {
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            timestamp: Date.now(),
+            sentiment: 'none',
+            todos: data.todos,
+            currentTodoIndex: data.currentTodoIndex
+          }
+        ])
       }
     }
 

@@ -87,8 +87,10 @@ const removePeviousContextFromMessages = (request: ModelRequest) => {
 const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => {
   request.tools.find((tool) => {
     if (tool.name === 'write_todos') {
-      tool.description = '';
-      (tool as any).lc_kwargs.description = ''
+      // Keep a minimal description - full guidance is in system prompt
+      const minDesc = 'Track and display task progress to the user. Use for multi-step tasks.'
+      tool.description = minDesc;
+      (tool as any).lc_kwargs.description = minDesc
     }
     if (tool.name === 'ls') {
       tool.description = '';
@@ -146,7 +148,13 @@ const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => 
 }
 
 const shortSytemWriteTodo = `## \`write_todos\`
-Use \`write_todos\` to track progress on complex, multi-step objectives. Skip it for simple tasks — it costs time and tokens.
+Use \`write_todos\` to track and show progress on tasks. This provides visibility to the user.
+**Use when:**
+- Task involves 2+ steps (e.g., write contract, compile, deploy)
+- User asks to implement a feature, fix a bug, or perform multi-file changes
+- You need to coordinate multiple operations
+
+**Rules:**
 - Mark each todo complete immediately when done (no batching)
 - Revise the list as new information emerges
 - Never call in parallel`
@@ -172,7 +180,7 @@ Spawns ephemeral subagents for isolated, delegatable work. Each returns a single
 const shortSystemFilesystemTools = `## Filesystem Tools
 \`ls\`, \`read_file\`, \`write_file\`, \`edit_file\`, \`glob\`, \`grep\` — interact with the filesystem. All paths must be absolute (start with \`/\`).
 - \`ls\`: list directory contents
-- \`read_file\`: read a file
+- \`read_file\`: read entire file (always returns full content, offset/limit ignored)
 - \`write_file\`: write a file
 - \`edit_file\`: edit a file
 - \`glob\`: find files by pattern (e.g. \`\*\*/\*.py\`)
