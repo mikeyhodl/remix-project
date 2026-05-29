@@ -63,12 +63,9 @@ const server = http.createServer((req, res) => {
 
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
-    console.log('Server is already running on port 6868');
-    process.exit(0); // Exit gracefully
-  } else {
-    console.error('Server error:', err);
-    process.exit(1);
+    console.error('Server is already running on port 6868');
   }
+  process.exit(1);
 });
 
 server.listen(6868, () => {

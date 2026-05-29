@@ -170,39 +170,47 @@ export async function createCommitOnLocalServer(path: string, message: string) {
 
 
 export async function spawnGitServer(targetPath: string): Promise<ChildProcess> {
-    console.log(process.cwd())
-    try {
-        // Resolve the git backend directory relative to this file's location
-        const gitBackendDir = path.resolve(__dirname, '../../../../../remix-ide-e2e/src/githttpbackend/')
-        console.log('Git backend directory:', gitBackendDir)
-        const server = spawn(`sh setup.sh && node ./dist/server.js "${targetPath}"`, [], { cwd: gitBackendDir, shell: true, detached: true })
-        console.log('spawned', server.stdout.closed, server.stderr.closed)
-        return new Promise((resolve, reject) => {
-            server.stdout.on('data', function (data) {
-                console.log('Git server stdout:', data.toString())
-                if (
-                    data.toString().includes('is listening') ||
-                    data.toString().includes('already running')
-                ) {
-                    console.log('Git server is ready')
-                    resolve(server)
-                }
-            })
-            server.stderr.on('data', function (data) {
-                const output = data.toString()
-                console.log('Git server stderr:', output)
-                // Check if it's the EADDRINUSE error, which means server is already running
-                if (output.includes('EADDRINUSE') || output.includes('address already in use')) {
-                    console.log('Git server is already running, continuing with tests')
-                    resolve(server)
-                }
-            })
-            server.on('error', function(err) {
-                console.error('Git server spawn error:', err)
-                reject(err)
-            })
-        })
-    } catch (e) {
-        console.log(e)
-    }
+  console.log(process.cwd())
+  try {
+    // Kill any existing server on port 6868 first
+    const killProcess = spawn('sh', ['-c', 'lsof -ti:6868 | xargs kill -9 2>/dev/null || true'])
+    await new Promise((resolve) => {
+      killProcess.on('exit', () => resolve(undefined))
+      setTimeout(() => resolve(undefined), 2000)
+    })
+
+    // Wait for port to be released
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Resolve the git backend directory relative to this file's location
+    const gitBackendDir = path.resolve(__dirname, '../../../../../remix-ide-e2e/src/githttpbackend/')
+    console.log('Git backend directory:', gitBackendDir)
+    const server = spawn(`sh setup.sh && node ./dist/server.js "${targetPath}"`, [], { cwd: gitBackendDir, shell: true, detached: true })
+    console.log('spawned', server.stdout.closed, server.stderr.closed)
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Git server setup timeout'))
+      }, 60000)
+
+      server.stdout.on('data', function (data) {
+        console.log('Git server stdout:', data.toString())
+        if (data.toString().includes('is listening')) {
+          console.log('Git server is ready')
+          clearTimeout(timeout)
+          resolve(server)
+        }
+      })
+      server.stderr.on('data', function (data) {
+        console.log('Git server stderr:', data.toString())
+      })
+      server.on('error', function(err) {
+        console.error('Git server spawn error:', err)
+        clearTimeout(timeout)
+        reject(err)
+      })
+    })
+  } catch (e) {
+    console.log(e)
+    throw e
+  }
 }
