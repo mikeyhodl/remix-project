@@ -91,38 +91,21 @@ const tests = {
   // pagination test
   'clone repo #group3': function (browser: NightwatchBrowser) {
     browser
-      .waitForElementVisible('*[data-id="clone-panel"]')
-      .click('*[data-id="clone-panel"]')
+      .waitForElementVisible('*[data-id="cloneButton"]')
+      .click('*[data-id="cloneButton"]')
       .pause(1000)
-      .waitForElementVisible('*[data-id="clone-url"]')
-      .clearValue('*[data-id="clone-url"]')
-      .setValue('*[data-id="clone-url"]', 'https://github.com/yann300/remix-reward.git')
-      .waitForElementVisible('*[data-id="clone-branch"]')
-      .clearValue('*[data-id="clone-branch"]')
-      .setValue('*[data-id="clone-branch"]', 'master')
-      .pause(1000)
-      .waitForElementVisible('*[data-id="clone-btn"]')
-      .waitForElementPresent({
-        selector: '//*[@data-id="clone-btn" and not(@disabled)]',
-        locateStrategy: 'xpath'
-      })
-      .click('*[data-id="clone-btn"]')
-      .pause(3000)
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]', 120000)
+      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]')
       .click('[data-id="fileSystemModalDialogModalBody-react"]')
       .waitForElementVisible('[data-id="modalDialogCustomPromptTextClone"]')
-      .clearValue('[data-id="modalDialogCustomPromptTextClone"]')
-      .setValue('[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/yann300/remix-reward.git')
+      .setValue('*[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/yann300/remix-reward.git')
       .click('[data-id="fileSystem-modal-footer-ok-react"]')
-      .pause(10000)
-      .clickLaunchIcon('filePanel')
       .pause(5000)
       .windowHandles(function (result) {
         console.log(result.value)
         browser.hideToolTips().switchWindow(result.value[2])
           .hideToolTips()
-          .pause(1000)
           .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
+          .hideToolTips()
       })
   },
   'Update settings for git #group3': function (browser: NightwatchBrowser) {
