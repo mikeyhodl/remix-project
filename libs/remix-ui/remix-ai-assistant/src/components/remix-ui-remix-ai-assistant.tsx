@@ -512,11 +512,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       // into the main agent's message and pushes the Task Plan offscreen.
       // A new bubble is created on first subagent chunk OR when the
       // subagent name changes (Auditor → Gas Optimizer, etc.).
+      // NOTE: Subagent UI bubbles are temporarily disabled - uncomment to re-enable
+      /*
       if (isSubagent) {
         const current = streamingSubagentBubbleRef.current
-        if (!current || current.name !== subagentName) {
+        const effectiveName = subagentName || current?.name || ''
+        const needsNewBubble = !current || (subagentName && current.name !== subagentName)
+
+        if (needsNewBubble) {
           const subId = crypto.randomUUID()
-          streamingSubagentBubbleRef.current = { id: subId, name: subagentName }
+          streamingSubagentBubbleRef.current = { id: subId, name: effectiveName }
           setMessages(prev => [
             ...prev,
             {
@@ -527,7 +532,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               sentiment: 'none',
               isIntermediateContent: isIntermediate,
               isSubagentStreaming: true,
-              streamingSubagentName: subagentName
+              streamingSubagentName: effectiveName
             }
           ])
           return
@@ -540,13 +545,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 content: m.content + chunk,
                 isIntermediateContent: isIntermediate,
                 isSubagentStreaming: true,
-                streamingSubagentName: subagentName
+                streamingSubagentName: effectiveName
               }
               : m
           )
         )
         return
       }
+      */
 
       // ── MAIN AGENT CHUNK ────────────────────────────────────────────
       // Lazy-create the main bubble on first chunk (DeepAgent's `answer()`
@@ -681,9 +687,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     // Handle subagent complete events
+    // NOTE: Subagent UI bubbles are temporarily disabled - uncomment to re-enable
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
       remixAILogger.log('[RemixAI Assistant] Subagent completed:', data)
-      // Keep streamingSubagentName to preserve the cyan highlight styling.
+      /*
+      // Update subagent bubble styling when subagent completes
       const sub = streamingSubagentBubbleRef.current
       if (sub) {
         setMessages(prev =>
@@ -692,15 +700,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ? {
                 ...m,
                 isSubagentStreaming: false,
-                // Keep streamingSubagentName for persistent subagent styling
                 isIntermediateContent: false
               }
               : m
           )
         )
-        streamingSubagentBubbleRef.current = null
       }
-      // Also clear any subagent annotations stamped on the main bubble.
+      */
+      // Clear any subagent annotations stamped on the main bubble
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
