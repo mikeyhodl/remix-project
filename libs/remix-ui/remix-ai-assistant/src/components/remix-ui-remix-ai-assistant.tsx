@@ -170,6 +170,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const userHasScrolledRef = useRef(false)
   const lastMessageCountRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  // Tracks whether the current request has been stopped. Event handlers check this
+  // to early-return and avoid processing stale events after the user clicks stop.
+  const isStoppedRef = useRef<boolean>(false)
   const clearToolTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const uiToolCallbackRef = useRef<((isExecuting: boolean, toolName?: string, toolArgs?: Record<string, any>) => void) | null>(null)
   const wasInitializingRef = useRef(props.isInitializing)
@@ -499,6 +502,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useEffect(() => {
     // Handle stream chunks - supports both legacy string format and new object format
     const handleStreamChunk = (data: string | { content: string; isIntermediate?: boolean; source?: string; isSubagent?: boolean; subagentName?: string; threadId?: string }) => {
+      // Early-return if the request has been stopped to prevent stale events from updating UI
+      if (isStoppedRef.current) {
+        remixAILogger.log('[RemixAI Assistant] Ignoring stream chunk - request was stopped')
+        return
+      }
+
       const chunk = typeof data === 'string' ? data : data.content
       const isIntermediate = typeof data === 'object' ? data.isIntermediate : false
       const isSubagent = typeof data === 'object' ? !!data.isSubagent : false
@@ -593,6 +602,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     const handleStreamComplete = (finalText: string) => {
+      // Early-return if the request has been stopped
+      if (isStoppedRef.current) {
+        remixAILogger.log('[RemixAI Assistant] Ignoring stream complete - request was stopped')
+        return
+      }
+
       // Mark consumed even if there was no streaming bubble (e.g. an empty
       // turn that finished before the first chunk) so the post-await
       // branch in sendPrompt doesn't paint the full text again.
@@ -633,6 +648,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle tool call events from DeepAgent
     const handleToolCall = (data: { toolName: string; toolInput?: any; toolUIString?: string; toolOutput?: any; status: 'start' | 'end'; threadId?: string }) => {
+      // Early-return if the request has been stopped
+      if (isStoppedRef.current) return
+
       remixAILogger.log('[RemixAI Assistant] Tool call event:', data)
       const assistantId = streamingAssistantIdRef.current
       if (!assistantId) return
@@ -674,6 +692,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle subagent start events
     const handleSubagentStart = (data: { id: string; name: string; task: string; status: string; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Subagent started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -689,6 +708,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // Handle subagent complete events
     // NOTE: Subagent UI bubbles are temporarily disabled - uncomment to re-enable
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Subagent completed:', data)
       /*
       // Update subagent bubble styling when subagent completes
@@ -725,6 +745,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task start events
     const handleTaskStart = (data: { id: string; name: string; status: string; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Task started:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -739,6 +760,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle task complete events
     const handleTaskComplete = (data: { id: string; name: string; status: string; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Task completed:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -753,6 +775,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle todo update events from DeepAgent's write_todos tool
     const handleTodoUpdate = (data: { todos: any[]; currentTodoIndex?: number; timestamp: number; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Todo list updated:', data)
       if (streamingAssistantIdRef.current) {
         // Update existing assistant message with todos
@@ -785,6 +808,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle error events - mark current todo as failed
     const handleTodoError = (data: { error: string; timestamp: number; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.log('[RemixAI Assistant] Todo error received:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -812,6 +836,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle agent error events - display error message
     const handleAgentError = (data: { message: string; timestamp: number; type: string; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.error('[RemixAI Assistant] Agent error:', data)
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
@@ -833,6 +858,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Handle API errors (rate limits, quota exceeded, etc.)
     const handleApiError = (data: { type: string; message: string; retryable: boolean; retryAfter?: number; originalError?: string; timestamp: number; threadId?: string }) => {
+      if (isStoppedRef.current) return
       remixAILogger.error('[RemixAI Assistant] API error:', data)
       setIsStreaming(false)
 
@@ -970,6 +996,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
     const handleToolApproval = (request: ToolApprovalRequest) => {
+      // Don't show new approval dialogs if the request has been stopped
+      if (isStoppedRef.current) return
       remixAILogger.log('[Assistant UI] approval requested', request.toolName, request.requestId)
       if (hitlAutoAcceptRef.current) {
         try {
@@ -1436,61 +1464,74 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [props.queuedMessage])
 
-  // Stop ongoing request
+  // Stop ongoing request - ALWAYS execute stop logic regardless of abort controller state
   const stopRequest = useCallback(() => {
+    remixAILogger.log('[RemixAI Assistant] Stop request triggered, isStreaming:', isStreaming, 'abortController:', !!abortControllerRef.current)
+
+    // Mark as stopped FIRST so event handlers will early-return
+    isStoppedRef.current = true
+
+    // Always abort the controller if it exists
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
-      setIsStreaming(false)
-
-      if (clearToolTimeoutRef.current) {
-        clearTimeout(clearToolTimeoutRef.current)
-        clearToolTimeoutRef.current = null
-      }
-
-      uiToolCallbackRef.current = null
-      streamingAssistantIdRef.current = null
-      setMessages(prev => {
-        const cleanedMessages = prev
-          .filter(m => {
-            if (m.role !== 'assistant') return true
-            const content = m.content.trim()
-            return content !== '' && !content.startsWith('***')
-          })
-          .map(m => ({
-            ...m,
-            isExecutingTools: false,
-            executingToolName: undefined,
-            executingToolArgs: undefined,
-            executingToolUIString: undefined,
-            activeSubagent: undefined,
-            subagentTask: undefined,
-            currentTask: undefined,
-            taskStatus: undefined,
-            isIntermediateContent: undefined
-          }))
-
-        return [
-          ...cleanedMessages,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '**Request stopped by user!**',
-            timestamp: Date.now(),
-            sentiment: 'none'
-          }
-        ]
-      })
-
-      // Cancel the backend fetch so the server stops generating
-      props.plugin.call('remixAI', 'cancelRequest').catch(() => { /* best-effort */ })
-
-      // Clear all pending HITL approval modals from the aborted request
-      setPendingApprovals([])
-      setReviewingApprovals(new Set())
-
-      trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
+      abortControllerRef.current = null
     }
-  }, [props.plugin])
+
+    // Always cancel the backend request - this is critical even if frontend controller is missing
+    props.plugin.call('remixAI', 'cancelRequest').catch((err) => {
+      remixAILogger.warn('[RemixAI Assistant] cancelRequest failed:', err)
+    })
+
+    // Always stop streaming state
+    setIsStreaming(false)
+
+    if (clearToolTimeoutRef.current) {
+      clearTimeout(clearToolTimeoutRef.current)
+      clearToolTimeoutRef.current = null
+    }
+
+    uiToolCallbackRef.current = null
+    streamingAssistantIdRef.current = null
+    streamingSubagentBubbleRef.current = null
+
+    setMessages(prev => {
+      const cleanedMessages = prev
+        .filter(m => {
+          if (m.role !== 'assistant') return true
+          const content = m.content.trim()
+          return content !== '' && !content.startsWith('***')
+        })
+        .map(m => ({
+          ...m,
+          isExecutingTools: false,
+          executingToolName: undefined,
+          executingToolArgs: undefined,
+          executingToolUIString: undefined,
+          activeSubagent: undefined,
+          subagentTask: undefined,
+          currentTask: undefined,
+          taskStatus: undefined,
+          isIntermediateContent: undefined
+        }))
+
+      return [
+        ...cleanedMessages,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '**Request stopped by user!**',
+          timestamp: Date.now(),
+          sentiment: 'none'
+        }
+      ]
+    })
+
+    // Clear all pending HITL approval modals from the aborted request
+    setPendingApprovals([])
+    setReviewingApprovals(new Set())
+
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
+  }, [props.plugin, isStreaming])
 
   // reusable sender (used by both UI button and imperative ref)
   const sendPrompt = useCallback(
@@ -1551,6 +1592,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
 
       try {
+        // Reset the stopped flag at the start of a new request
+        isStoppedRef.current = false
         // Create new AbortController for this request
         abortControllerRef.current = new AbortController()
         setIsStreaming(true)
