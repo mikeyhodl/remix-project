@@ -41,7 +41,7 @@ const tests = {
       })
 
   },
-  'Update settings for git #group1 #group2 #group3': function (browser: NightwatchBrowser) {
+  'Update settings for git #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('dgit')
       .pause(1000)
@@ -56,7 +56,7 @@ const tests = {
   //     .waitForElementVisible('*[data-id="filepanel-login-github"]')
   //     .click('*[data-id="filepanel-login-github"]')
   // },
-  'login to github #group1 #group2 #group3': function (browser: NightwatchBrowser) {
+  'login to github #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="github-panel"]')
       .click('*[data-id="github-panel"]')
@@ -69,14 +69,14 @@ const tests = {
       .pause(1000)
       .click('*[data-id="saveGitHubCredentials"]')
   },
-  'check if the settings are loaded #group1 #group2 #group3': function (browser: NightwatchBrowser) {
+  'check if the settings are loaded #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="connected-as-EthereumRemix"]')
       .waitForElementVisible('*[data-id="connected-img-EthereumRemix"]')
       .waitForElementVisible('*[data-id="connected-link-EthereumRemix"]')
       .waitForElementVisible('*[data-id="remotes-panel"]')
   },
-  'check the FE shows logged in user #group1 #group2 #group3': function (browser: NightwatchBrowser) {
+  'check the FE shows logged in user #group1 #group2': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible({
         selector: '//*[@data-id="github-dropdown-toggle-login"]//span[contains(text(), "EthereumRemix")]',
