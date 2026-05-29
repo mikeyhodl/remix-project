@@ -91,8 +91,6 @@ const tests = {
   // pagination test
   'clone repo #group3': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('dgit')
-      .pause(2000)
       .waitForElementVisible('*[data-id="clone-panel"]')
       .click('*[data-id="clone-panel"]')
       .pause(1000)
