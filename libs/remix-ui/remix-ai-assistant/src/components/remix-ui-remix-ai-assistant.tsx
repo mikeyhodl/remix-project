@@ -599,13 +599,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           if (userMsg && userMsg.role === 'user' && finalText) {
             Promise.resolve(ChatHistory.pushHistory(userMsg.content, finalText)).then(() => props.plugin.loadConversations())
           }
-          // Clear all streaming and agent-related states
+          // Clear streaming states but preserve subagent name for persistent styling
           return prev.map(m =>
             m.id === assistantId
               ? {
                 ...m,
                 isSubagentStreaming: false,
-                streamingSubagentName: undefined,
+                // Keep streamingSubagentName to preserve subagent styling after completion
                 activeSubagent: undefined,
                 subagentTask: undefined,
                 isExecutingTools: false,
@@ -683,8 +683,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // Handle subagent complete events
     const handleSubagentComplete = (data: { id: string; name: string; status: string; duration: number; threadId?: string }) => {
       remixAILogger.log('[RemixAI Assistant] Subagent completed:', data)
-      // Finalize the subagent's own bubble: clear streaming flags so the
-      // "Comprehensive Auditor is responding…" indicator goes away.
+      // Keep streamingSubagentName to preserve the cyan highlight styling.
       const sub = streamingSubagentBubbleRef.current
       if (sub) {
         setMessages(prev =>
@@ -693,7 +692,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               ? {
                 ...m,
                 isSubagentStreaming: false,
-                streamingSubagentName: undefined,
+                // Keep streamingSubagentName for persistent subagent styling
                 isIntermediateContent: false
               }
               : m
