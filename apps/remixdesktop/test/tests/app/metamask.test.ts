@@ -49,13 +49,10 @@ const tests = {
   'connect to Wallet': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('udapp')
-      .waitForElementVisible('[data-id="settingsSelectEnvOptions"]')
-      .click('[data-id="settingsSelectEnvOptions"] button')
-      .waitForElementVisible(`[data-id="dropdown-item-desktopHost"]`)
-      .click('[data-id="dropdown-item-desktopHost"]') // close the dropdown
+      .switchEnvironment('desktopHost') // close the dropdown
       .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: '//*[@data-id="settingsNetworkEnv" and contains(.,"1337")]',
+        selector: '//*[@data-id="detectedNetworkEnv" and contains(.,"1337")]',
         timeout: 50000
       })
       .clickLaunchIcon('solidity')

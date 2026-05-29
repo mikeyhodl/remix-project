@@ -280,7 +280,7 @@ function DeployPortraitView() {
             <h6 className="my-auto" style={{ color: themeQuality === 'dark' ? 'white' : 'black', margin: 0 }}>
               <FormattedMessage id="udapp.deploy" defaultMessage="Deploy" />
             </h6>
-            <span className="small text-secondary">{ widgetState.networkDetected }</span>
+            <span className="small text-secondary" data-id="detectedNetworkEnv">{ widgetState.networkDetected }</span>
           </div>
           <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`} style={{ color: 'var(--bs-tertiary-color)' }}></i>
         </div>
