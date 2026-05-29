@@ -91,14 +91,21 @@ const tests = {
   // pagination test
   'clone repo #group3': function (browser: NightwatchBrowser) {
     browser
+      .clickLaunchIcon('dgit')
+      .pause(2000)
       .waitForElementVisible('*[data-id="clone-panel"]')
       .click('*[data-id="clone-panel"]')
+      .pause(1000)
       .waitForElementVisible('*[data-id="clone-url"]')
+      .clearValue('*[data-id="clone-url"]')
       .setValue('*[data-id="clone-url"]', 'https://github.com/yann300/remix-reward.git')
       .waitForElementVisible('*[data-id="clone-branch"]')
+      .clearValue('*[data-id="clone-branch"]')
       .setValue('*[data-id="clone-branch"]', 'master')
+      .pause(1000)
       .waitForElementVisible('*[data-id="clone-btn"]')
       .click('*[data-id="clone-btn"]')
+      .pause(10000)
       .clickLaunchIcon('filePanel')
       .pause(5000)
       .windowHandles(function (result) {
