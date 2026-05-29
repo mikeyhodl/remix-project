@@ -41,7 +41,7 @@ const tests = {
       })
 
   },
-  'Update settings for git #group1 #group2': function (browser: NightwatchBrowser) {
+  'Update settings for git #group1 #group2 #group3': function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('dgit')
       .pause(1000)
