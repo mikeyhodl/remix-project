@@ -102,9 +102,13 @@ const tests = {
       .setValue('*[data-id="clone-branch"]', 'master')
       .pause(1000)
       .waitForElementVisible('*[data-id="clone-btn"]')
+      .waitForElementPresent({
+        selector: '//*[@data-id="clone-btn" and not(@disabled)]',
+        locateStrategy: 'xpath'
+      })
       .click('*[data-id="clone-btn"]')
-      .pause(1000)
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]')
+      .pause(3000)
+      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]', 120000)
       .click('[data-id="fileSystemModalDialogModalBody-react"]')
       .waitForElementVisible('[data-id="modalDialogCustomPromptTextClone"]')
       .clearValue('[data-id="modalDialogCustomPromptTextClone"]')
