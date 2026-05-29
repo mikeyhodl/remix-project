@@ -81,7 +81,9 @@ export class StreamEventHandler {
     const metadata = event.metadata || {}
     const checkpoint_ns = metadata.langgraph_checkpoint_ns || ''
     const agent_name = metadata.lc_agent_name || ''
-    const is_subagent = checkpoint_ns.includes('tools:')
+    // Subagent detection requires BOTH: tools namespace AND a populated agent name
+    // This prevents false positives when main agent events pass through tool-related nodes
+    const is_subagent = checkpoint_ns.includes('tools:') && agent_name.trim().length > 0
 
     if (is_subagent) {
       remixAILogger.log(`[StreamEventHandler] Stream event from subagent detected: ${eventType} (agent: ${agent_name})`, event)
