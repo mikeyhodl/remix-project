@@ -1466,18 +1466,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   // Stop ongoing request - ALWAYS execute stop logic regardless of abort controller state
   const stopRequest = useCallback(() => {
-    remixAILogger.log('[RemixAI Assistant] Stop request triggered, isStreaming:', isStreaming, 'abortController:', !!abortControllerRef.current)
-
-    // Mark as stopped FIRST so event handlers will early-return
     isStoppedRef.current = true
 
-    // Always abort the controller if it exists
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
 
-    // Always cancel the backend request - this is critical even if frontend controller is missing
     props.plugin.call('remixAI', 'cancelRequest').catch((err) => {
       remixAILogger.warn('[RemixAI Assistant] cancelRequest failed:', err)
     })
@@ -1592,9 +1587,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
 
       try {
-        // Reset the stopped flag at the start of a new request
         isStoppedRef.current = false
-        // Create new AbortController for this request
         abortControllerRef.current = new AbortController()
         setIsStreaming(true)
 
