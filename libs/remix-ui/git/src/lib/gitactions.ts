@@ -63,6 +63,20 @@ export const getBranches = async () => {
 
   dispatch(setBranches(branches));
   await showCurrentBranch();
+
+  // Get the current branch and fetch differences to update sync button state
+  try {
+    const branch = await currentBranch();
+    if (branch && branch.name) {
+      const state = {
+        defaultRemote: null,
+        remotes: await plugin.call('dgitApi', 'remotes')
+      }
+      await getBranchDifferences(branch, null, state as any);
+    }
+  } catch (e) {
+    // Silently fail if unable to get branch differences
+  }
 }
 export const getRemotes = async () => {
 
