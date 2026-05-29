@@ -69,7 +69,7 @@ const tests = {
       .pause(1000)
       .click('*[data-id="saveGitHubCredentials"]')
   },
-  'check if the settings are loaded #group1 #group2': function (browser: NightwatchBrowser) {
+  'check if the settings are loaded #group1 #group2 #group3': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="connected-as-EthereumRemix"]')
       .waitForElementVisible('*[data-id="connected-img-EthereumRemix"]')
