@@ -352,15 +352,26 @@ export const clone = async (input: cloneInputType) => {
     await disableCallBacks()
     const token = await plugin.call('config' as any, 'getAppParameter' as any, 'settings/gist-access-token')
 
-    await plugin.call('dgitApi', 'clone', { ...input, workspaceName: repoNameWithTimestamp });
+    // On desktop, if no directory is specified, ask the user to select one
+    let cloneDir = input.dir
+    const isDesktop = await plugin.call('platform' as any, 'isDesktop')
+    if (isDesktop && !cloneDir) {
+      cloneDir = await plugin.call('fs' as any, 'selectFolder', null, 'Select or create a folder to clone the repository into', 'Select as clone destination')
+      if (!cloneDir) {
+        dispatch(setLoading(false))
+        return // User cancelled folder selection
+      }
+    }
+
+    await plugin.call('dgitApi', 'clone', { ...input, dir: cloneDir, workspaceName: repoNameWithTimestamp });
     await enableCallBacks()
 
     sendToGitLog({
       type: 'success',
-      message: `Cloned ${input.url} to ${repoNameWithTimestamp}`
+      message: `Cloned ${input.url} to ${cloneDir || repoNameWithTimestamp}`
     })
 
-    plugin.call('notification', 'toast', `Cloned ${input.url} to ${repoNameWithTimestamp}`)
+    plugin.call('notification', 'toast', `Cloned ${input.url} to ${cloneDir || repoNameWithTimestamp}`)
 
   } catch (e: any) {
     await parseError(e)
