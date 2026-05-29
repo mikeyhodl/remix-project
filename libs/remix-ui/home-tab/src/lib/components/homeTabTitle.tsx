@@ -154,7 +154,21 @@ function HomeTabTitle() {
           className="d-flex flex-row flex-wrap gap-2 mt-2"
           data-id="hometab-legal-links"
           aria-label="Legal"
-        >
+        > <a
+            className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
+            style={{ fontSize: '0.7rem' }}
+            href="https://remix.live/organization"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-id="hometab-link-company"
+            onClick={() => trackMatomoEvent({
+              category: 'hometab',
+              action: 'titleCard',
+              name: 'company',
+              isClick: true
+            })}
+          ><FormattedMessage id="home.company" /></a>
+          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>·</span>
           <a
             className={`text-decoration-underline ${isDark ? 'text-white' : 'text-black'}`}
             style={{ fontSize: '0.7rem' }}
