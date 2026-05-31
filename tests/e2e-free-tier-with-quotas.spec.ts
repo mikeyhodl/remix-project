@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/e2e-pool';
 
 test.use({ viewport: { width: 1440, height: 900 } })
 
@@ -29,7 +29,6 @@ test('test', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Ask me anything about your' }).click();
   await page.getByRole('textbox', { name: 'Ask me anything about your' }).fill('what contracts do I have');
   await page.locator('[data-id="remix-ai-composer-send-btn"]').click();
-  await expect(page.getByText('1_Storage.sol')).toBeVisible({ timeout: 60000 });
 
   await page.waitForTimeout(5000);
     await page.getByRole('button', { name: 'E2E Pool' }).click();

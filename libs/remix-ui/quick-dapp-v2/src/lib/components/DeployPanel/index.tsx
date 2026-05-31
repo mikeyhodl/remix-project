@@ -377,16 +377,16 @@ function DeployPanel(): JSX.Element {
           </Card.Header>
           <Collapse in={isEnsOpen}>
             <Card.Body>
-              <Alert variant="info">Register <strong>.remixdapp.eth</strong> on Arbitrum.</Alert>
+              <Alert variant="info">Register a <strong>.remixdapp.eth</strong> name for this DApp.</Alert>
               <Form.Group className="mb-2">
-                <div className="input-group">
+                <div className="input-group qd-ens-input-group">
                   <Form.Control type="text" placeholder="myapp" value={ensName} onChange={(e) => {
                     const val = e.target.value.toLowerCase();
                     setEnsName(val);
                     setEnsResult({ ...ensResult, success: '' });
                     setEnsNameError(validateEnsName(val));
                   }} />
-                  <span className="input-group-text">.remixdapp.eth</span>
+                  <span className="input-group-text qd-ens-suffix">.remixdapp.eth</span>
                 </div>
                 {ensNameError && <small className="text-danger mt-1 d-block">{ensNameError}</small>}
               </Form.Group>

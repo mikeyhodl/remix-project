@@ -1,7 +1,7 @@
 import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent } from '@remix-api'
-import { RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
+import { remixAILogger, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
@@ -130,7 +130,7 @@ export class RemixAIPlugin extends Plugin {
 
     // Listen for API key settings changes and reinitialize DeepAgent
     onApiKeysChange(() => {
-      console.log('[RemixAI Plugin] API keys changed, reinitializing DeepAgent...')
+      remixAILogger.log('[RemixAI Plugin] API keys changed, reinitializing DeepAgent...')
       if (this.deepAgentEnabled) {
         this.deepAgentManager.reinitialize()
       }
@@ -144,7 +144,7 @@ export class RemixAIPlugin extends Plugin {
 
   /**
    * Single source of truth for diagnosing "why did this request go to
-   * solcoder/remote?". Emits a tagged console.group with every prereq
+    * solcoder/remote?". Emits a tagged debug log group with every prereq
    * we evaluate in the routing decision plus the current lifecycle
    * state for DeepAgent / MCP / model selection.
    *
@@ -181,29 +181,23 @@ export class RemixAIPlugin extends Plugin {
         },
         extra
       }
-      // eslint-disable-next-line no-console
-      console.group(`[route-trace][${stage}] chosen=${card.chosenRoute}`)
-      // eslint-disable-next-line no-console
-      console.log(card)
+      remixAILogger.group(`[route-trace][${stage}] chosen=${card.chosenRoute}`)
+      remixAILogger.log(card)
       if (card.chosenRoute === 'remote') {
         // Make the fallback impossible to miss — also dump a stack
         // snippet so we can see who is calling us.
-        // eslint-disable-next-line no-console
-        console.warn('[route-trace][SOLCODER-FALLBACK] DeepAgent/MCP unavailable, falling back to remote (solcoder).')
-        // eslint-disable-next-line no-console
-        console.warn('[route-trace][SOLCODER-FALLBACK] reason flags:', {
+        remixAILogger.warn('[route-trace][SOLCODER-FALLBACK] DeepAgent/MCP unavailable, falling back to remote (solcoder).')
+        remixAILogger.warn('[route-trace][SOLCODER-FALLBACK] reason flags:', {
           mcpEnabledButNoInferencer: this.mcpEnabled && !this.mcpInferencer,
           deepAgentEnabledButNoInferencer: this.deepAgentEnabled && !this.deepAgentInferencer,
           deepAgentDisabled: !this.deepAgentEnabled,
           mcpDisabled: !this.mcpEnabled
         })
         try { throw new Error('route-trace stack') } catch (e: any) {
-          // eslint-disable-next-line no-console
-          console.warn('[route-trace][SOLCODER-FALLBACK] stack:\n' + (e?.stack || '').split('\n').slice(0, 12).join('\n'))
+          remixAILogger.warn('[route-trace][SOLCODER-FALLBACK] stack:\n' + (e?.stack || '').split('\n').slice(0, 12).join('\n'))
         }
       }
-      // eslint-disable-next-line no-console
-      console.groupEnd()
+      remixAILogger.groupEnd()
     } catch { /* logging must never throw */ }
   }
 
@@ -215,8 +209,7 @@ export class RemixAIPlugin extends Plugin {
    */
   public traceDeepAgentLifecycle(event: string, reason: string, extra: Record<string, any> = {}): void {
     try {
-      // eslint-disable-next-line no-console
-      console.log('[deepagent-lifecycle]', {
+      remixAILogger.log('[deepagent-lifecycle]', {
         event,
         reason,
         deepAgentEnabled: this.deepAgentEnabled,
@@ -304,7 +297,7 @@ export class RemixAIPlugin extends Plugin {
       const locale = await this.call('locale', 'currentLocale')
       return locale.messages[key] || key
     } catch (error) {
-      console.warn('Failed to get localized message for key:', key, error)
+      remixAILogger.warn('Failed to get localized message for key:', key, error)
       return key
     }
   }
@@ -336,7 +329,7 @@ export class RemixAIPlugin extends Plugin {
         // "Sign in" row. The plugin must NEVER commit to it; otherwise
         // we end up sending `model: "__signin__"` to the backend.
         if (!def || !def.id || def.available === false) {
-          console.log('[RemixAI Plugin] /permissions has no usable default model yet — waiting for stateChanged', { id: def?.id, available: def?.available })
+          remixAILogger.log('[RemixAI Plugin] /permissions has no usable default model yet — waiting for stateChanged', { id: def?.id, available: def?.available })
           return
         }
         // Re-apply when:
@@ -349,7 +342,7 @@ export class RemixAIPlugin extends Plugin {
         if (this.selectedModelId && currentIsUsable) {
           return
         }
-        console.log('[RemixAI Plugin] Initial/refreshed default model from /permissions:', def.provider, def.id)
+        remixAILogger.log('[RemixAI Plugin] Initial/refreshed default model from /permissions:', def.provider, def.id)
         this.selectedModel = def
         this.selectedModelId = def.id
         this.emit('modelChanged', def.id)
@@ -359,7 +352,7 @@ export class RemixAIPlugin extends Plugin {
         try {
           await this.setModel(def.id)
         } catch (e) {
-          console.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
+          remixAILogger.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
         }
         // If DeepAgent is intended-on but wasn't initialised at startup
         // because selectedModel was null, do it now.
@@ -367,11 +360,11 @@ export class RemixAIPlugin extends Plugin {
           try {
             await this.deepAgentManager.enable()
           } catch (e) {
-            console.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
+            remixAILogger.warn('[RemixAI Plugin] deferred DeepAgent enable failed', e)
           }
         }
       } catch (e) {
-        console.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
+        remixAILogger.warn('[RemixAI Plugin] assistantState.getDefaultModel failed', e)
       }
     }
 
@@ -393,7 +386,7 @@ export class RemixAIPlugin extends Plugin {
       try {
         await this.refreshMCPServersOnAuthChange({ isAuthenticated: true })
       } catch (e) {
-        console.warn('[RemixAI Plugin] MCP sync from ready permissions failed', e)
+        remixAILogger.warn('[RemixAI Plugin] MCP sync from ready permissions failed', e)
       } finally {
         mcpPermissionSyncInFlight = false
       }
@@ -434,10 +427,10 @@ export class RemixAIPlugin extends Plugin {
     if (this.mcpServers.length > 0 && this.remixMCPServer) {
       this.mcpInferencer = new MCPInferencer(this.mcpServers, undefined, undefined, this.remixMCPServer, this.remoteInferencer, this.getMcpAuthToken);
       this.mcpInferencer.event.on('mcpServerConnected', (serverName: string) => {
-        console.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
+        remixAILogger.log(`[RemixAI Plugin] MCP server connected: ${serverName}`);
       });
       this.mcpInferencer.event.on('mcpServerError', (serverName: string, error: Error) => {
-        console.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
+        remixAILogger.error(`[RemixAI Plugin] MCP server error (${serverName}):`, error);
       });
 
       // Connect to enabled servers for status tracking
@@ -445,11 +438,11 @@ export class RemixAIPlugin extends Plugin {
       if (enabledServers.length > 0) {
         const waitPromise = this.waitForMCPServersReady();
         await this.mcpInferencer.connectAllServers();
-        console.log('[RemixAI Plugin] connectAllServers() completed, now waiting for all servers to fully connect...');
+        remixAILogger.log('[RemixAI Plugin] connectAllServers() completed, now waiting for all servers to fully connect...');
 
         // Wait for all connection events to be received
         await waitPromise;
-        console.log('[RemixAI Plugin] All MCP servers fully connected');
+        remixAILogger.log('[RemixAI Plugin] All MCP servers fully connected');
         this.emit('mcpServersLoaded');
       }
     }
@@ -460,7 +453,7 @@ export class RemixAIPlugin extends Plugin {
     });
 
     const allTools = await this.mcpInferencer?.getAllTools();
-    console.log('[RemixAI Plugin] MCP tools available after wait:', allTools);
+    remixAILogger.log('[RemixAI Plugin] MCP tools available after wait:', allTools);
 
     this.traceDeepAgentLifecycle('onActivation:preInitCheck', 'evaluating prereqs before constructing DeepAgentInferencer', {
       deepAgentEnabled: this.deepAgentEnabled,
@@ -471,14 +464,14 @@ export class RemixAIPlugin extends Plugin {
     })
     if (this.deepAgentEnabled && this.remixMCPServer && this.selectedModel && this.selectedModelId) {
       try {
-        console.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
-        console.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
+        remixAILogger.log('[RemixAI Plugin] Initializing DeepAgent with mcpInferencer:', !!this.mcpInferencer);
+        remixAILogger.log('[RemixAI Plugin] Using model for DeepAgent:', this.selectedModel.provider, this.selectedModelId);
 
         // Read user API keys from settings using helper
         const apiKeyHelper = new ApiKeySettingsHelper(this)
         const userApiKeys = await apiKeyHelper.getUserApiKeysConfig()
         if (userApiKeys?.useOwnKeys) {
-          console.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
+          remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
         }
 
         this.deepAgentInferencer = new DeepAgentInferencer(
@@ -501,7 +494,7 @@ export class RemixAIPlugin extends Plugin {
         // Push allowed models directly to avoid re-entrant deadlock
         ;(this.deepAgentInferencer as any).setAllowedModels(this.getAllowedModels() || [])
 
-        console.log('[RemixAI Plugin] DeepAgent initialized successfully')
+        remixAILogger.log('[RemixAI Plugin] DeepAgent initialized successfully')
 
         // Apply pending thread_id if setDeepAgentThread was called before init completed
         if (this.pendingDeepAgentThreadId) {
@@ -509,7 +502,7 @@ export class RemixAIPlugin extends Plugin {
           this.pendingDeepAgentThreadId = null
         }
       } catch (error) {
-        console.error('[RemixAI Plugin] Failed to initialize DeepAgent:', error)
+        remixAILogger.error('[RemixAI Plugin] Failed to initialize DeepAgent:', error)
         this.deepAgentEnabled = false
         this.deepAgentInferencer = null
         this.traceDeepAgentLifecycle('onActivation:initFailed', 'caught error during DeepAgentInferencer construction/initialize', {
@@ -543,7 +536,7 @@ export class RemixAIPlugin extends Plugin {
     if (this.selectedModelId) {
       await this.setModel(this.selectedModelId)
     } else {
-      console.log('[RemixAI Plugin] initialize: no selectedModelId yet, deferring setModel until /permissions loads')
+      remixAILogger.log('[RemixAI Plugin] initialize: no selectedModelId yet, deferring setModel until /permissions loads')
     }
 
     this.aiIsActivated = true
@@ -720,18 +713,18 @@ export class RemixAIPlugin extends Plugin {
           threadId: params?.threadId ?? ''
         }
       }
-      console.log('[answer][route-flow]', routeFlow)
+      remixAILogger.log('[answer][route-flow]', routeFlow)
       if (!remoteRouteCheck && route === 'remote') {
-        console.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
+        remixAILogger.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
       }
       if (route === 'deepagent') {
-        console.log('[answer][route-flow] dispatch=deepagent.answer')
+        remixAILogger.log('[answer][route-flow] dispatch=deepagent.answer')
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
       } else if (route === 'mcp'){
-        console.log('[answer][route-flow] dispatch=mcp.answer')
+        remixAILogger.log('[answer][route-flow] dispatch=mcp.answer')
         return await this.mcpInferencer.answer(prompt, params)
       } else {
-        console.log('[answer][route-flow] dispatch=remote.answer')
+        remixAILogger.log('[answer][route-flow] dispatch=remote.answer')
         return await this.remoteInferencer.answer(newPrompt, params)
       }
     })
@@ -815,10 +808,10 @@ export class RemixAIPlugin extends Plugin {
           ragContext = response.data.response
           userPrompt = "Using the following context: ```\n\n" + JSON.stringify(ragContext) + "```\n\n" + userPrompt
         } else {
-          console.log('Invalid response from RAG context API:', response.data)
+          remixAILogger.log('Invalid response from RAG context API:', response.data)
         }
       } catch (error) {
-        console.log('RAG context error:', error)
+        remixAILogger.log('RAG context error:', error)
       }
     } else {
       userPrompt = prompt
@@ -864,10 +857,10 @@ export class RemixAIPlugin extends Plugin {
           userPrompt = "Using the following context: ```\n\n" + ragContext + "```\n\n" + userPrompt
         }
         else {
-          console.log('Invalid response from RAG context API:', response.data)
+          remixAILogger.log('Invalid response from RAG context API:', response.data)
         }
       } catch (error) {
-        console.log('RAG context error:', error)
+        remixAILogger.log('RAG context error:', error)
       }
     }
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.loadingWorkspaceContext'))
@@ -926,11 +919,11 @@ export class RemixAIPlugin extends Plugin {
         else if (fn === "error_explaining") this.call('remixaiassistant', 'chatPipe', "Explain the error")
         else if (fn === "answer") this.call('remixaiassistant', 'chatPipe', "Answer the following question")
         else if (fn === "vulnerability_check") this.call('remixaiassistant', 'chatPipe',"Is there any vulnerability in the pasted code?")
-        else console.log("chatRequestBuffer function name not recognized.")
+        else remixAILogger.log("chatRequestBuffer function name not recognized.")
       }
     }
     else {
-      console.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
+      remixAILogger.log("chatRequestBuffer is not empty. First process the last request.", this.chatRequestBuffer)
     }
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'remixAI_chat', isClick: false })
     this.emit('chatPipeRequested', fn)
@@ -943,7 +936,7 @@ export class RemixAIPlugin extends Plugin {
       return result
     }
     else {
-      console.log("chatRequestBuffer is empty.")
+      remixAILogger.log("chatRequestBuffer is empty.")
       return ""
     }
   }

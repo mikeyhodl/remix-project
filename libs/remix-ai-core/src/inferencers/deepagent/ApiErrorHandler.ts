@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import { DeepAgentErrorType } from '../../types/deepagent'
 
 export interface ApiErrorClassification {
@@ -104,7 +105,7 @@ export function extractRetryAfter(error: any): number {
 export function getErrorMessage(errorType: DeepAgentErrorType, error: any, retryAfter?: number): string {
   // Prefer a structured envelope message when one is available — the
   // backend's text is always more accurate than our generic strings.
-  console.log('[Classified error:]', { errorType, error, retryAfter })
+  remixAILogger.log('[Classified error:]', { errorType, error, retryAfter })
   const envelopeMessage: string | undefined =
     error?.aiError?.message ??
     error?.response?.data?.error?.message ??

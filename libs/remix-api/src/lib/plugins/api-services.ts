@@ -472,6 +472,32 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     required_feature: 'ai:opus-4.6',
     available: true,
     sort_order: 50
+  },
+  {
+    id: 'ministral-3b-latest',
+    display_name: 'Mistral 3B',
+    provider: 'mistralai',
+    description: 'Lightning fast and efficient for basic tasks',
+    requires_auth: true,
+    required_feature: 'ai:mistral-small',
+    is_default: false,
+    available: true,
+    category: 'general',
+    capabilities: ['chat', 'code', 'completion'],
+    sort_order: 60
+  },
+  {
+    id: 'ministral-8b-latest',
+    display_name: 'Mistral 8B',
+    provider: 'mistralai',
+    description: 'Fast and efficient for basic tasks',
+    requires_auth: true,
+    required_feature: 'ai:mistral-small',
+    available: true,
+    is_default: false,
+    category: 'general',
+    capabilities: ['chat', 'code', 'completion'],
+    sort_order: 70
   }
 ]
 
@@ -506,6 +532,7 @@ export class PermissionsApiService {
     if (res?.ok && res.data) {
       const existing = res.data.ai_models
       if (!Array.isArray(existing) || existing.length === 0) {
+        console.log('[PermissionsApiService] Backfilling ai_models:', res.data.ai_models)
         res.data.ai_models = HARDCODED_AI_MODELS
       }
     }

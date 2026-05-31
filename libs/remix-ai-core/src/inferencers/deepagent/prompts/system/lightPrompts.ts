@@ -3,7 +3,7 @@
  * Each system prompt limited to maximum 2 lines for optimal performance
  */
 
-export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE. When you are being asked a specific task, always check if one of your subagents is able to fullfill it and use it.`
+export const REMIX_DEEPAGENT_SYSTEM_PROMPT = `Expert Web3 assistant in Remix IDE. Be brief, short, and on point — avoid lengthy explanations. Do NOT repeat or summarize what you just did. When asked a specific task, check if a subagent can fulfill it and use it.`
 
 export const CONTRACT_COMPILER_PROMPT = 'Access to the following tools: solidity_compile, get_compilation_result, get_compilation_result_sources_by_file_path, set_compiler_config, get_compiler_config, get_compiler_versions'
 
@@ -52,7 +52,7 @@ When being asked to perform a conversion, always use the conversion tools and ne
 export const CIRCLE_SUBAGENT_PROMPT = `Circle Specialist: Expert in Circle product documentation, APIs, and development resources.
 Searches Circle docs, retrieves product summaries, lists coding resources, and provides detailed resource information.`
 
-export const QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT = `QuickDapp Specialist: Full DApp lifecycle — use list_dapps, generate_dapp, update_dapp for orchestration, then file_write for implementation, and finalize_dapp_generation to complete.
+export const QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT = `QuickDapp Specialist: Full DApp lifecycle — use list_dapps, generate_dapp, update_dapp for orchestration, then write_file for implementation, and finalize_dapp_generation to complete.
 File paths are relative to workspace root. After writing all files, call finalize_dapp_generation.`
 
 export const CONTRACT_CLASSIFIER_PROMPT = 'Contract Classifier: Analyze smart contract structure and classify features (proxy patterns, token standards, DeFi protocols, governance mechanisms). Extract contract skeleton and identify architectural patterns, complexity indicators, and risk factors using structured analysis.'

@@ -73,6 +73,14 @@ export class NudgePlugin extends Plugin {
     }
   }
 
+  private log(...args: any[]): void {
+    if (this.debug) console.log(...args)
+  }
+
+  private warn(...args: any[]): void {
+    if (this.debug) console.warn(...args)
+  }
+
   /* ─── Lifecycle ─── */
 
   async onActivation(): Promise<void> {
@@ -222,7 +230,7 @@ export class NudgePlugin extends Plugin {
   private async _fetchConfigEvents(): Promise<void> {
     try {
       const appConfig = await this.call('auth' as any, 'getAppConfig')
-      console.log('[NudgePlugin] App config:', appConfig)
+      this.log('[NudgePlugin] App config:', appConfig)
 
       const getConfigValue = (key: string): any => {
         if (Array.isArray(appConfig)) {
@@ -237,7 +245,7 @@ export class NudgePlugin extends Plugin {
       if (!accessPolicy) accessPolicy = getConfigValue('auth.registration_mode')
       if (!accessPolicy) accessPolicy = await this.call('auth' as any, 'getRegistrationMode')
 
-      console.log('[NudgePlugin] Access policy:', accessPolicy)
+      this.log('[NudgePlugin] Access policy:', accessPolicy)
       if (accessPolicy === 'open') {
         this.engine_.fire('config:registration_open')
       } else if (accessPolicy === 'invite_required' || accessPolicy === 'invite_only') {
@@ -281,7 +289,7 @@ export class NudgePlugin extends Plugin {
   private async _checkBetaMembership(): Promise<void> {
     try {
       const permissions = await this.call('auth' as any, 'getAllPermissions')
-      if (this.debug)console.log('User permissions:', permissions)
+      this.log('User permissions:', permissions)
       const groups = permissions?.feature_groups || []
       const betaGroup = groups.find((g: any) => g.name === 'beta')
       if (betaGroup) {
@@ -661,7 +669,7 @@ export class NudgePlugin extends Plugin {
       try {
         await this.call(pluginName as any, method as any, ...args)
       } catch (e) {
-        console.warn(`[NudgePlugin] Failed to call ${pluginName}.${method}:`, e)
+        this.warn(`[NudgePlugin] Failed to call ${pluginName}.${method}:`, e)
       }
     }
     this.dismiss()

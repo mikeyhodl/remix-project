@@ -172,22 +172,28 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
               <CustomTooltip tooltipText="Create New Workspace">
                 <button data-id="landingPageImportFromTemplate" className="btn btn-primary btn-md me-2" onClick={openTemplateSelection}><i className="fa-solid fa-plus me-1"></i><FormattedMessage id="home.createNewWorkspace" /></button>
               </CustomTooltip>
-              <CustomTooltip tooltipText={hasSkillsPermission ? "Load Skills" : "Available in Starter plan"}>
-                <div>
-                  <button data-id="landingPageLoadSkills" className="btn btn-primary btn-md me-2" disabled={!hasSkillsPermission} onClick={openSkillsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadSkills" /></button>
-                </div>
-              </CustomTooltip>
-              <CustomTooltip tooltipText={hasAuditorPermission ? intl.formatMessage({ id: 'home.selectCheckListAndStart' }) : intl.formatMessage({ id: 'home.availableInProPlan' })}>
-                <div className="btn-group me-2" role="group">
-                  <button data-id="landingPageLoadAudits" className="btn btn-primary btn-md" disabled={!hasAuditorPermission} onClick={openAuditsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadAudits" /></button>
-                  <button data-id="landingPageLoadAuditsPlay" className="btn btn-primary btn-md" disabled={!hasAuditorPermission} style={{ borderLeft: '1px solid var(--bs-border-color, var(--bs-secondary))' }} onClick={startAudit}><i className="fa-solid fa-play me-1"></i></button>
-                </div>
-              </CustomTooltip>
-              <CustomTooltip tooltipText={hasAuditorPermission ? intl.formatMessage({ id: 'home.startGasOptimization' }) : intl.formatMessage({ id: 'home.availableInProPlan' }) }>
-                <div>
-                  <button data-id="landingPageGasOptimization" className="btn btn-primary btn-md me-2" disabled={!hasAuditorPermission} onClick={startGasOptimization}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.startGasOptimizationBtn" /></button>
-                </div>
-              </CustomTooltip>
+              {hasSkillsPermission && (
+                <CustomTooltip tooltipText="Load Skills">
+                  <div>
+                    <button data-id="landingPageLoadSkills" className="btn btn-primary btn-md me-2" onClick={openSkillsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadSkills" /></button>
+                  </div>
+                </CustomTooltip>
+              )}
+              {hasAuditorPermission && (
+                <CustomTooltip tooltipText={intl.formatMessage({ id: 'home.selectCheckListAndStart' })}>
+                  <div className="btn-group me-2" role="group">
+                    <button data-id="landingPageLoadAudits" className="btn btn-primary btn-md" onClick={openAuditsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadAudits" /></button>
+                    <button data-id="landingPageLoadAuditsPlay" className="btn btn-primary btn-md" style={{ borderLeft: '1px solid var(--bs-border-color, var(--bs-secondary))' }} onClick={startAudit}><i className="fa-solid fa-play me-1"></i></button>
+                  </div>
+                </CustomTooltip>
+              )}
+              {hasAuditorPermission && (
+                <CustomTooltip tooltipText={intl.formatMessage({ id: 'home.startGasOptimization' })}>
+                  <div>
+                    <button data-id="landingPageGasOptimization" className="btn btn-primary btn-md me-2" onClick={startGasOptimization}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.startGasOptimizationBtn" /></button>
+                  </div>
+                </CustomTooltip>
+              )}
             </div>
             <div className="col-lg-8 col-xl-5 col-sm-12 mb-4">
               <HomeTabTitle />

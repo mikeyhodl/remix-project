@@ -131,7 +131,7 @@ export async function buildSubagentConfigs(
       systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
       model: modelAny,
       tools: quickDappTools,
-      description: 'Specializes in generating and updating React-based DApp frontends using file_write tools.'
+      description: 'Specializes in generating and updating React-based DApp frontends using write_file tools.'
     })
   }
 

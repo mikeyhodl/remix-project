@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../../helpers/logger'
 import { Plugin } from '@remixproject/engine'
 import EventEmitter from 'events'
 import {
@@ -24,7 +25,7 @@ export class ToolApprovalGate {
     this.eventEmitter.on('onToolApprovalResponse', (response: ToolApprovalResponse) => {
 
       const pending = this.pendingApprovals.get(response.requestId)
-      console.log('[ToolApprovalGate] onToolApprovalResponse', response.requestId, 'approved=', response.approved, 'pendingFound=', !!pending, 'pendingKeys=', Array.from(this.pendingApprovals.keys()))
+      remixAILogger.log('[ToolApprovalGate] onToolApprovalResponse', response.requestId, 'approved=', response.approved, 'pendingFound=', !!pending, 'pendingKeys=', Array.from(this.pendingApprovals.keys()))
       if (pending) {
         pending.resolve(response.approved, response.modifiedArgs)
         this.pendingApprovals.delete(response.requestId)
@@ -90,7 +91,7 @@ export class ToolApprovalGate {
               proposedContent = existingContent.replace(new RegExp(args.regEx, 'g'), args.contentToReplace)
 
             } catch (regexErr) {
-              console.warn('[HITL][ApprovalGate] file_replace: regex failed:', regexErr)
+              remixAILogger.warn('[HITL][ApprovalGate] file_replace: regex failed:', regexErr)
               proposedContent = undefined
             }
           }
@@ -122,11 +123,11 @@ export class ToolApprovalGate {
           this.pendingApprovals.set(requestId, {
             resolve: (approved, modified) => resolve({ approved, modifiedArgs: modified })
           })
-          console.log('[ToolApprovalGate] awaiting approval', toolName, requestId, 'listeners(onToolApprovalResponse)=', this.eventEmitter.listenerCount('onToolApprovalResponse'))
+          remixAILogger.log('[ToolApprovalGate] awaiting approval', toolName, requestId, 'listeners(onToolApprovalResponse)=', this.eventEmitter.listenerCount('onToolApprovalResponse'))
           this.eventEmitter.emit('onToolApprovalRequired', request)
         }
       )
-      console.log('[ToolApprovalGate] approval resolved', toolName, requestId, 'approved=', approved)
+      remixAILogger.log('[ToolApprovalGate] approval resolved', toolName, requestId, 'approved=', approved)
 
       if (!approved) {
         return JSON.stringify({ cancelled: true, reason: `REJECTED: The user explicitly rejected this ${toolName} operation. Do NOT retry this operation or use alternative tools/methods. Inform the user and move on.` })
@@ -142,7 +143,7 @@ export class ToolApprovalGate {
         try {
           const currentWs = await this.plugin.call('filePanel' as any, 'getCurrentWorkspace')
           if (currentWs?.name && filePath.startsWith(currentWs.name + '/')) {
-            console.warn(`[QuickDapp] MCP ${toolName}: workspace name in path detected: "${filePath}" (ws: "${currentWs.name}")`)
+            remixAILogger.warn(`[QuickDapp] MCP ${toolName}: workspace name in path detected: "${filePath}" (ws: "${currentWs.name}")`)
           }
         } catch (_) {}
 
@@ -171,7 +172,7 @@ export class ToolApprovalGate {
             return JSON.stringify({ success: true, path: filePath, message: 'File written successfully' })
           }
         } catch (writeErr) {
-          console.error('[HITL][ApprovalGate][DirectWrite] Write failed:', writeErr)
+          remixAILogger.error('[HITL][ApprovalGate][DirectWrite] Write failed:', writeErr)
           return JSON.stringify({ success: false, error: `Failed to write file: ${writeErr.message}` })
         }
       }

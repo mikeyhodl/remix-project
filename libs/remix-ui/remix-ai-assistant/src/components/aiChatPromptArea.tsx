@@ -25,6 +25,12 @@ interface AiChatPromptAreaProps {
     autoModeAvailable: boolean
     handleModelSelection: (modelName: string) => void
     onLockedModelClick?: (modelId: string, modelName: string) => void
+    /** Permission-derived state of the per-model "Upgrade plan" pill. */
+    upgradePillState?: 'hidden' | 'coming_soon' | 'available'
+    /** Permission-derived state of the per-model "Buy credits" pill. */
+    buyCreditsPillState?: 'hidden' | 'coming_soon' | 'available'
+    /** Called when the user clicks the "Buy credits" pill on a locked model. */
+    onBuyCreditsClick?: (modelId: string, modelName: string) => void
     input: string
     setInput: React.Dispatch<React.SetStateAction<string>>
     isStreaming: boolean
@@ -83,6 +89,10 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
     props.onLockedModelClick?.(item.stateValue, item.label)
   }
 
+  const handleBuyCreditsClick = (item: groupListType) => {
+    props.onBuyCreditsClick?.(item.stateValue, item.label)
+  }
+
   {/* Prompt area - fixed at bottom */}
   return (
     <section
@@ -104,6 +114,9 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
             choice={props.autoModeEnabled ? 'auto' : props.selectedModelId}
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
+            upgradePillState={props.upgradePillState}
+            buyCreditsPillState={props.buyCreditsPillState}
+            onBuyCreditsClick={props.onBuyCreditsClick ? handleBuyCreditsClick : undefined}
           />
           {false && props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
