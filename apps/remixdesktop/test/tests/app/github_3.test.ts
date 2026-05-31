@@ -107,7 +107,10 @@ const tests = {
         locateStrategy: 'xpath'
       })
       .click('*[data-id="clone-btn"]')
-      .pause(10000)
+      .pause(3000)
+      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]', 120000)
+      .click('[data-id="fileSystemModalDialogModalBody-react"]')
+      .pause(5000)
       .windowHandles(function (result) {
         console.log('Window handles:', result.value)
         console.log('Number of windows:', (result.value as any).length)
