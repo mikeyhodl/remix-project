@@ -1834,7 +1834,7 @@ module.exports = {
   //  Group 11 — AI workspace generation in cloud mode
   // ══════════════════════════════════════════════════════════════
 
-  'Should login and enable cloud for AI workspace test #group11': function (browser: NightwatchBrowser) {
+  'Should login and enable cloud for AI workspace test #group11': '' + function (browser: NightwatchBrowser) {
     browser
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
@@ -1856,7 +1856,7 @@ module.exports = {
       .pause(10000)
   },
 
-  'Should open template explorer and generate workspace with AI #group11': function (browser: NightwatchBrowser) {
+  'Should open template explorer and generate workspace with AI #group11': '' + function (browser: NightwatchBrowser) {
     browser
       .clickWorkspaceDropdown()
       .pause(2000)
@@ -1878,7 +1878,7 @@ module.exports = {
       .pause(3000)
   },
 
-  'Should wait for AI workspace generation to complete #group11': async function (browser: NightwatchBrowser) {
+  'Should wait for AI workspace generation to complete #group11': '' +  async function (browser: NightwatchBrowser) {
     // The AI generates files asynchronously — poll until the workspace has at least one .sol file
     let hasSolFile = false
     const start = Date.now()
@@ -1905,7 +1905,7 @@ module.exports = {
     browser.assert.ok(hasSolFile, 'AI generated at least one .sol file in the workspace')
   },
 
-  'Should verify AI workspace has files and sync to S3 #group11': async function (browser: NightwatchBrowser) {
+  'Should verify AI workspace has files and sync to S3 #group11': '' +  async function (browser: NightwatchBrowser) {
     // Wait for sync to push the AI-generated files to S3
     await waitForSyncIdle(browser, 60_000)
 
@@ -1915,7 +1915,7 @@ module.exports = {
     browser.assert.ok(result.manifestFileCount > 0, 'AI workspace has files in manifest')
   },
 
-  'Should wipe local data and restore AI workspace from S3 #group11': async function (browser: NightwatchBrowser) {
+  'Should wipe local data and restore AI workspace from S3 #group11': '' + async function (browser: NightwatchBrowser) {
     // Save workspace name before wipe
     const wsName = await new Promise<string>((resolve) => {
       browser.execute(
@@ -1943,7 +1943,7 @@ module.exports = {
     await waitForSyncIdle(browser, 120_000)
   },
 
-  'Should verify AI workspace restored from S3 with .sol files #group11': async function (browser: NightwatchBrowser) {
+  'Should verify AI workspace restored from S3 with .sol files #group11': '' + async function (browser: NightwatchBrowser) {
     // After restore, check that at least one .sol file exists in the file tree
     // The AI workspace should be auto-selected or available in the dropdown
     browser.clickLaunchIcon('filePanel').expandAllFolders()
