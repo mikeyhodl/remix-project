@@ -89,7 +89,7 @@ const tests = {
   //     .waitForElementVisible('*[data-id="filepanel-connected-img-bunsenstraat"]')
   // },
   // pagination test
-  'clone repo #group3': function (browser: NightwatchBrowser) {
+  'clone repo #group3': '' + function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="clone-panel"]')
       .click('*[data-id="clone-panel"]')
@@ -122,7 +122,7 @@ const tests = {
           .hideToolTips()
       })
   },
-  'Update settings for git #group3': function (browser: NightwatchBrowser) {
+  'Update settings for git #group3': '' + function (browser: NightwatchBrowser) {
     browser.
       clickLaunchIcon('dgit')
       .waitForElementVisible('*[data-id="github-panel"]')
@@ -138,7 +138,7 @@ const tests = {
       .click('*[data-id="saveGitHubCredentials"]')
       .pause(1000)
   },
-  'check the commits panel for pagination #group3': function (browser: NightwatchBrowser) {
+  'check the commits panel for pagination #group3': '' + function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="commits-panel"]')
       .click('*[data-id="commits-panel"]')
@@ -154,7 +154,7 @@ const tests = {
       })
 
   },
-  'load more commits #group3': function (browser: NightwatchBrowser) {
+  'load more commits #group3': '' + function (browser: NightwatchBrowser) {
     console.log('commitCount:', commitCount)
     browser
       .waitForElementVisible('*[data-id="load-more-commits"]')
@@ -167,7 +167,7 @@ const tests = {
         browser.assert.ok((result.value as any).length > commitCount)
       }).pause(10000)
   },
-  'load more branches from remote #group3': function (browser: NightwatchBrowser) {
+  'load more branches from remote #group3': '' + function (browser: NightwatchBrowser) {
 
     browser
       .click('*[data-id="branches-panel"]')
