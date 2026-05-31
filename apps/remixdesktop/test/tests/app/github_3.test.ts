@@ -109,8 +109,11 @@ const tests = {
       .click('*[data-id="clone-btn"]')
       .pause(10000)
       .windowHandles(function (result) {
-        console.log(result.value)
-        browser.hideToolTips().switchWindow(result.value[2])
+        console.log('Window handles:', result.value)
+        console.log('Number of windows:', (result.value as any).length)
+        // Switch to the last window (most recent)
+        const lastWindowIndex = (result.value as any).length - 1
+        browser.hideToolTips().switchWindow((result.value as any)[lastWindowIndex])
           .hideToolTips()
           .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
           .hideToolTips()
