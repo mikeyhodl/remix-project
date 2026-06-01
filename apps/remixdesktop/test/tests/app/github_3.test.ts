@@ -89,40 +89,28 @@ const tests = {
   //     .waitForElementVisible('*[data-id="filepanel-connected-img-bunsenstraat"]')
   // },
   // pagination test
-  'clone repo #group3': '' + function (browser: NightwatchBrowser) {
+  'clone repo #group3': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="clone-panel"]')
       .click('*[data-id="clone-panel"]')
-      .pause(1000)
       .waitForElementVisible('*[data-id="clone-url"]')
-      .clearValue('*[data-id="clone-url"]')
-      .setValue('*[data-id="clone-url"]', 'https://github.com/yann300/remix-reward.git')
+      .setValue('*[data-id="clone-url"]', 'https://github.com/yann300/remix-reward')
       .waitForElementVisible('*[data-id="clone-branch"]')
-      .clearValue('*[data-id="clone-branch"]')
       .setValue('*[data-id="clone-branch"]', 'master')
-      .pause(1000)
       .waitForElementVisible('*[data-id="clone-btn"]')
-      .waitForElementPresent({
-        selector: '//*[@data-id="clone-btn" and not(@disabled)]',
-        locateStrategy: 'xpath'
-      })
       .click('*[data-id="clone-btn"]')
-      .pause(3000)
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]', 120000)
-      .click('[data-id="fileSystemModalDialogModalBody-react"]')
+      .clickLaunchIcon('filePanel')
       .pause(5000)
       .windowHandles(function (result) {
-        console.log('Window handles:', result.value)
-        console.log('Number of windows:', (result.value as any).length)
-        // Switch to the last window (most recent)
-        const lastWindowIndex = (result.value as any).length - 1
-        browser.hideToolTips().switchWindow((result.value as any)[lastWindowIndex])
+        console.log(result.value)
+        browser.hideToolTips().switchWindow(result.value[2])
           .hideToolTips()
+          .pause(1000)
           .waitForElementVisible('*[data-id="treeViewLitreeViewItem.git"]')
-          .hideToolTips()
       })
   },
-  'Update settings for git #group3': '' + function (browser: NightwatchBrowser) {
+
+  'Update settings for git #group3': function (browser: NightwatchBrowser) {
     browser.
       clickLaunchIcon('dgit')
       .waitForElementVisible('*[data-id="github-panel"]')
@@ -138,7 +126,7 @@ const tests = {
       .click('*[data-id="saveGitHubCredentials"]')
       .pause(1000)
   },
-  'check the commits panel for pagination #group3': '' + function (browser: NightwatchBrowser) {
+  'check the commits panel for pagination #group3': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="commits-panel"]')
       .click('*[data-id="commits-panel"]')
@@ -154,7 +142,7 @@ const tests = {
       })
 
   },
-  'load more commits #group3': '' + function (browser: NightwatchBrowser) {
+  'load more commits #group3': function (browser: NightwatchBrowser) {
     console.log('commitCount:', commitCount)
     browser
       .waitForElementVisible('*[data-id="load-more-commits"]')
@@ -167,7 +155,7 @@ const tests = {
         browser.assert.ok((result.value as any).length > commitCount)
       }).pause(10000)
   },
-  'load more branches from remote #group3': '' + function (browser: NightwatchBrowser) {
+  'load more branches from remote #group3': function (browser: NightwatchBrowser) {
 
     browser
       .click('*[data-id="branches-panel"]')

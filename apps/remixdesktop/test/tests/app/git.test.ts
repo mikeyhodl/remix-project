@@ -7,7 +7,7 @@ module.exports = {
     browser.hideToolTips()
     done()
   },
-  'clone a repo': '' + function (browser: NightwatchBrowser) {
+  'clone a repo': function (browser: NightwatchBrowser) {
     browser
       .hideToolTips()
       .waitForElementVisible('*[data-id="remixIdeIconPanel"]', 10000)
