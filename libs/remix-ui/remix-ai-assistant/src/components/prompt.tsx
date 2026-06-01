@@ -168,7 +168,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                     <CustomTooltip tooltipText="Using your own API key">
                       <span
                         className="badge bg-success ms-2"
-                        style={{ fontSize: '0.6rem', padding: '2px 4px' }}
+                        style={{ fontSize: '0.6rem', padding: '2px 4px', color: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '' :'#000' }}
                         data-id="own-api-key-badge"
                       >
                         <i className="fas fa-key me-1" style={{ fontSize: '0.5rem' }}></i>
