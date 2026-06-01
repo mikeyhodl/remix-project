@@ -104,8 +104,9 @@ export const CommitMessage = () => {
   }
 
   const showPublishButton = () => {
-    const hasNoChanges = context.allchangesnotstaged.length == 0 && context.staged.length == 0 && message.value === ""
-    return hasNoChanges && publishEnabled() && !syncEnabled()
+    // Show publish button when branch doesn't exist on remote and we're not in the middle of committing
+    const notCommitting = message.value === ""
+    return notCommitting && publishEnabled() && !syncEnabled()
   }
 
   return (

@@ -328,7 +328,6 @@ export const checkoutfile = async (filename: string) => {
 export const checkout = async (cmd: checkoutInputType) => {
   trackGitEvent("CHECKOUT", undefined, true)
   await disableCallBacks();
-  await plugin.call('fileManager', 'closeAllFiles')
   try {
     await plugin.call('dgitApi', 'checkout', cmd)
   } catch (e) {
