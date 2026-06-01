@@ -128,13 +128,6 @@ const tests = {
         selector: '//*[@data-id="clone-panel-content"]//*[@data-id="clonebtn-remix-project-org/awesome-remix-master"]',
         locateStrategy: 'xpath'
       })
-      .pause(1000)
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalBody-react"]')
-      .click('[data-id="fileSystemModalDialogModalBody-react"]')
-      .waitForElementVisible('[data-id="modalDialogCustomPromptTextClone"]')
-      .clearValue('[data-id="modalDialogCustomPromptTextClone"]')
-      .setValue('[data-id="modalDialogCustomPromptTextClone"]', 'https://github.com/remix-project-org/awesome-remix.git')
-      .click('[data-id="fileSystem-modal-footer-ok-react"]')
       .pause(5000)
       .windowHandles(function (result) {
         console.log(result.value)
