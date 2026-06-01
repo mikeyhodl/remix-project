@@ -520,9 +520,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   private async runAgent(messages: any[], _params: IParams): Promise<string> {
-    // Track controllers created by this run to avoid race conditions with concurrent requests.
-    // If a new request starts while this one's finally block is running,
-    // we don't want to null out the new request's AbortController.
     const thisRunControllers = new Set<AbortController>()
     const localAbortController = new AbortController()
     thisRunControllers.add(localAbortController)
