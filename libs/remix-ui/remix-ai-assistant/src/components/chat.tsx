@@ -210,6 +210,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                               {todo.status === 'in_progress' && <i className="fa fa-spinner fa-spin text-primary"></i>}
                               {todo.status === 'pending' && <i className="fa fa-circle text-muted" style={{ opacity: 0.4 }}></i>}
                               {todo.status === 'failed' && <i className="fa fa-times-circle text-danger"></i>}
+                              {todo.status === 'stopped' && <i className="fa fa-stop-circle text-warning"></i>}
                             </span>
                             <span className={`todo-task ${todo.status === 'completed' ? 'text-success' : ''} ${isCurrentTodo && todo.status !== 'completed' ? 'text-primary' : ''}`}>
                               {todo.content || todo.task}
