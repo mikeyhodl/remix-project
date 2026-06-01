@@ -210,35 +210,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  private async gatherMCPResourcesContext(prompt?: string): Promise<string> {
+  private async gatherMCPResourcesContext(_prompt?: string): Promise<string> {
+    // Project structure is now included in the system prompt during agent creation
+    // This method is kept for backward compatibility but returns empty
     return ''
-    if (!this.mcpInferencer || !prompt) {
-      return ''
-    }
-
-    try {
-      const connectedServers = this.mcpInferencer.getConnectedServers()
-      if (!connectedServers || connectedServers.length === 0) {
-        return ''
-      }
-
-      const mcpParams = {
-        mcpServers: connectedServers,
-        enableIntentMatching: true,
-        maxResources: 5,
-        selectionStrategy: 'hybrid'
-      }
-      const mcpContext = await this.mcpInferencer.intelligentResourceSelection(prompt, mcpParams)
-
-      if (mcpContext) {
-        remixAILogger.log(`[DeepAgentInferencer] Gathered MCP resources context using intelligentResourceSelection`)
-      }
-
-      return mcpContext
-    } catch (error) {
-      remixAILogger.warn('[DeepAgentInferencer] Failed to gather MCP resources:', error)
-      return ''
-    }
   }
 
   private emitErrorToTodos(error: any): void {
@@ -545,7 +520,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   private async runAgent(messages: any[], _params: IParams): Promise<string> {
-    this.currentAbortController = new AbortController()
+    // Track controllers created by this run to avoid race conditions with concurrent requests.
+    // If a new request starts while this one's finally block is running,
+    // we don't want to null out the new request's AbortController.
+    const thisRunControllers = new Set<AbortController>()
+    const localAbortController = new AbortController()
+    thisRunControllers.add(localAbortController)
+    this.currentAbortController = localAbortController
     let fullResponse = ''
 
     // Filter out system messages - they're already set during agent creation
@@ -582,13 +563,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
             thread_id: this.sessionThreadId
           },
           subgraphs: true,
-          signal: this.currentAbortController?.signal
+          signal: localAbortController.signal
         }
       )
 
       let finalMessageFromChain = ''
       for await (const event of eventStream) {
-        if (this.currentAbortController?.signal.aborted) {
+        if (localAbortController.signal.aborted) {
           this.event.emit('onStreamComplete', { content: fullResponse, threadId: this.sessionThreadId })
           break
         }
@@ -617,7 +598,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       remixAILogger.log('[DeepAgentInferencer] Full response length:', fullResponse.length)
       return fullResponse
     } catch (error: any) {
-      if (error?.name === 'AbortError' || this.currentAbortController?.signal.aborted) {
+      if (error?.name === 'AbortError' || localAbortController.signal.aborted) {
         remixAILogger.log('[DeepAgentInferencer] Request cancelled by user')
         return fullResponse
       }
@@ -632,7 +613,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
 
         // Retry with fresh thread_id (only once — if it fails again, propagate the error)
         try {
-          this.currentAbortController = new AbortController()
+          const retryAbortController = new AbortController()
+          thisRunControllers.add(retryAbortController)
+          this.currentAbortController = retryAbortController
           fullResponse = ''
 
           if (!this.agent) {
@@ -648,11 +631,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
               version: 'v2',
               configurable: { thread_id: this.sessionThreadId },
               subgraphs: true,
-              signal: this.currentAbortController?.signal
+              signal: retryAbortController.signal
             }
           )
           for await (const event of retryStream) {
-            if (this.currentAbortController?.signal.aborted) break
+            if (retryAbortController.signal.aborted) break
             if (event.event === 'on_chat_model_stream' && event.data?.chunk?.content) {
               const content = typeof event.data.chunk.content === 'string'
                 ? event.data.chunk.content
@@ -734,8 +717,40 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       throw error
     } finally {
       this.streamEventHandler.stopInactivityTracking()
-      this.currentAbortController = null
+      // Only null out if still one of this run's controllers (a new request might have started)
+      if (this.currentAbortController && thisRunControllers.has(this.currentAbortController)) {
+        this.currentAbortController = null
+      }
       this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end', threadId: this.sessionThreadId })
+    }
+  }
+
+  private async getProjectStructure(): Promise<string> {
+    if (!this.mcpInferencer) {
+      return ''
+    }
+
+    try {
+      const connectedServers = this.mcpInferencer.getConnectedServers()
+      if (!connectedServers || !connectedServers.includes('Remix IDE Server')) {
+        return ''
+      }
+
+      const mcpClient = (this.mcpInferencer as any).mcpClients?.get('Remix IDE Server')
+      if (!mcpClient || !mcpClient.isConnected()) {
+        return ''
+      }
+
+      const content = await mcpClient.readResource('project://structure')
+      if (!content?.text) {
+        return ''
+      }
+
+      remixAILogger.log('[DeepAgentInferencer] Added project structure to system prompt')
+      return `\n\n## Current Project Structure\n${content.text}`
+    } catch (error) {
+      remixAILogger.warn('[DeepAgentInferencer] Failed to get project structure:', error)
+      return ''
     }
   }
 
@@ -756,13 +771,17 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           return false
         }
       })()
+
+      const projectStructure = await this.getProjectStructure()
+      const systemPromptWithContext = REMIX_DEEPAGENT_SYSTEM_PROMPT + projectStructure
+
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
         tools: [],
         model: this.model,
-        systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
+        systemPrompt: systemPromptWithContext,
         skills: hasSkillsPermission ? ["skills/"] : [],
         checkpointer,
         middleware: [new RemixDeepAgentMiddleware(this.plugin)]

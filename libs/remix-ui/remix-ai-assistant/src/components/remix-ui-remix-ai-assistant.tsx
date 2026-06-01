@@ -1594,7 +1594,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
 
       try {
-        isStoppedRef.current = false
         abortControllerRef.current = new AbortController()
         setIsStreaming(true)
 
@@ -1964,7 +1963,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     // only. If the user wants to retry while rate-limited, that's their
     // call; the backend will reject it and we surface the error normally.
     const trimmed = input.trim()
-    if (!trimmed || isStreaming) return
+    if (!trimmed) return
+    // Allow send if we just stopped (isStreaming state might not have updated yet)
+    const justStopped = isStoppedRef.current
+    if (isStreaming && !justStopped) return
 
     // Pre-flight the assistant gate so we only clear the textarea when
     // the prompt will actually be processed. If the user is anonymous,
