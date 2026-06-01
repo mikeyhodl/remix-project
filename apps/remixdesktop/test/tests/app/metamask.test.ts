@@ -59,13 +59,11 @@ const tests = {
       .click('*[data-id="compilerContainerCompileBtn"]')
       .pause(2000)
       .clickLaunchIcon('udapp')
-      .waitForElementVisible('*[data-id="Deploy - transact (not payable)"]', 45000) // wait for the contract to compile
-      .pause(2000)
-      .click('*[data-id="Deploy - transact (not payable)"]')
-      .waitForElementPresent('*[data-id="universalDappUiContractActionWrapper"]', 60000)
+      .createContract('')
+      .waitForElementVisible('[data-id="deployedContractItem-0"]')
       .clickInstance(0)
-      .clickFunction('store - transact (not payable)', { types: 'uint256 num', values: '10' })
-      .clickFunction('retrieve - call')
+      .clickFunction(0, 0, ['10'])
+      .clickFunction(0, 1)
       .waitForElementContainsText('[data-id="treeViewLi0"]', 'uint256: 10')
   },
 }
