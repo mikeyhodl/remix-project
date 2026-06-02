@@ -185,7 +185,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       let workspaceSlug: string
       if (!args.contractAbi) {
         // try to get the abi
-        const data = (await  plugin.call('compilerArtefacts', 'get', args.contractAddress) as CompilerAbstract)
+        const data = (await plugin.call('compilerArtefacts', 'get', args.contractAddress) as CompilerAbstract)
         args.contractAbi = data?.getContract(args.contractName)?.object?.abi || null
         if (!args.contractAbi) {
           const data = (await plugin.call('udappDeployedContracts', 'getDeployedContracts') as DeployedContract)
