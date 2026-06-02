@@ -1473,7 +1473,29 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       abortControllerRef.current = null
     }
 
-    props.plugin.call('remixAI', 'cancelRequest').catch((err) => {
+    // Capture the current user/assistant conversation so the reinitialized
+    // LangGraph (after cancelRequest tears down the running graph) can be
+    // seeded with the existing context. We snapshot from the React state
+    // BEFORE the cleanup setState below mutates the array, and we filter
+    // out empty/intermediate/status-only assistant bubbles.
+    const historyMessages = messages
+      .filter(m => {
+        if (!m || (m.role !== 'user' && m.role !== 'assistant')) return false
+        const content = (m.content || '').trim()
+        if (!content) return false
+        if (m.role === 'assistant') {
+          if (content.startsWith('***')) return false
+          if (content.startsWith('**Request stopped by user!**')) return false
+        }
+        return true
+      })
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+    // Fire-and-forget so the Stop button stays instant. The plugin-side
+    // cancelRequest is async (rebuilds DeepAgent), but the next prompt
+    // dispatch is gated in remixAIPlugin.answer/code_generation/code_explaining
+    // via DeepAgentManager.awaitReady(), not here.
+    props.plugin.call('remixAI', 'cancelRequest', historyMessages).catch((err) => {
       remixAILogger.warn('[RemixAI Assistant] cancelRequest failed:', err)
     })
 
@@ -1533,7 +1555,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setReviewingApprovals(new Set())
 
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'StopRequest', isClick: true })
-  }, [props.plugin, isStreaming])
+  }, [props.plugin, isStreaming, messages])
 
   // reusable sender (used by both UI button and imperative ref)
   const sendPrompt = useCallback(
@@ -1557,6 +1579,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       // Clear any leftover subagent bubble ref from a previous turn so
       // the next subagent chunk creates a fresh bubble.
       streamingSubagentBubbleRef.current = null
+      // Reset the stopped flag from any previous stop. Without this,
+      // every event handler short-circuits and the new request appears
+      // to silently swallow all stream chunks/tool events.
+      isStoppedRef.current = false
+      // Make sure no stale streaming bubble id leaks from a previous,
+      // stopped turn — otherwise new chunks could append into an old
+      // bubble that belongs to a different conversation/turn.
+      streamingAssistantIdRef.current = null
 
       // optimistic user message
       const userMsg: ChatMessage = {

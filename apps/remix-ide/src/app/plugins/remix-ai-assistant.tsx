@@ -100,18 +100,12 @@ export class RemixAIAssistant extends ViewPlugin {
       // Initialize ChatHistory with storage
       await ChatHistory.init(this.storageManager)
 
-      // Load conversations
+      // Load conversations (populates the sidebar with prior history)
       await this.loadConversations()
 
-      // Check for existing conversation or create new one
-      if (this.conversations.length > 0) {
-        // Load the most recent conversation
-        const recent = this.conversations[0]
-        await this.loadConversation(recent.id)
-      } else {
-        // Create first conversation
-        await this.newConversation()
-      }
+      // On page reload we ALWAYS start a fresh conversation rather than
+      // restoring the most recent one. Restoring caused two regressions:
+      await this.newConversation()
 
       // Run auto-archive check
       await this.autoArchiveCheck()

@@ -632,6 +632,7 @@ export class RemixAIPlugin extends Plugin {
       if (this.mcpEnabled && this.mcpInferencer){
         return this.mcpInferencer.code_generation(prompt, params)
       } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        await this.deepAgentManager.awaitReady()
         return this.deepAgentInferencer.code_generation(prompt, params)
       } else {
         return await this.remoteInferencer.code_generation(prompt, params)
@@ -718,6 +719,11 @@ export class RemixAIPlugin extends Plugin {
         remixAILogger.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
       }
       if (route === 'deepagent') {
+        // If a previous cancelRequest is still rebuilding the inferencer,
+        // wait for it to finish so this dispatch lands on the new
+        // instance with a clean LangGraph pipe rather than racing the
+        // about-to-be-discarded one.
+        await this.deepAgentManager.awaitReady()
         remixAILogger.log('[answer][route-flow] dispatch=deepagent.answer')
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
       } else if (route === 'mcp'){
@@ -740,6 +746,7 @@ export class RemixAIPlugin extends Plugin {
       if (this.mcpEnabled && this.mcpInferencer){
         return await this.mcpInferencer.code_explaining(prompt, context, params)
       } else if (this.deepAgentEnabled && this.deepAgentInferencer) {
+        await this.deepAgentManager.awaitReady()
         return await this.deepAgentInferencer.code_explaining(prompt, context, params)
       } else {
         return await this.remoteInferencer.code_explaining(prompt, context, params)
@@ -1118,9 +1125,15 @@ export class RemixAIPlugin extends Plugin {
     }
   }
 
-  cancelRequest(): void {
+  async cancelRequest(historyMessages?: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<void> {
     if (this.deepAgentEnabled && this.deepAgentInferencer) {
-      this.deepAgentManager.cancelRequest()
+      // Forward the current chat history so the post-reinit DeepAgent
+      // thread can be seeded with the prior turns instead of starting
+      // amnesiac. We AWAIT here so that any subsequent answer() dispatch
+      // from the UI (e.g. user immediately retypes a new prompt) lands
+      // on the rebuilt inferencer rather than racing the old one.
+      // See DeepAgentManager.cancelRequest() for details.
+      await this.deepAgentManager.cancelRequest(historyMessages)
     } else if (this.mcpEnabled && this.mcpInferencer) {
       this.mcpInferencer.cancelRequest()
     } else if (this.remoteInferencer) {
