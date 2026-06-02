@@ -5,8 +5,6 @@ import { CustomTooltip } from '@remix-ui/helper'
 import { PromptStopButton } from './promptStopButton'
 
 interface PromptDefaultProps {
-  handleRecording: () => void
-  isRecording: boolean
   isStreaming: boolean
   handleSend: () => void
   themeTracker: any

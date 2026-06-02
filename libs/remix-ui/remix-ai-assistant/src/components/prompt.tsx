@@ -21,9 +21,7 @@ export interface PromptAreaProps {
   setShowOllamaModelSelector: React.Dispatch<React.SetStateAction<boolean>>
   showOllamaModelSelector: boolean
   handleGenerateWorkspace: () => void
-  handleRecord: () => void
   selectedModel: AIModel | null
-  isRecording: boolean
   dispatchActivity: (type: ActivityType, payload?: any) => void
   modelBtnRef: React.RefObject<HTMLButtonElement>
   modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
@@ -55,8 +53,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleSend,
   selectedModel,
   handleSetModel,
-  handleRecord,
-  isRecording,
   modelBtnRef,
   textareaRef,
   themeTracker,
@@ -222,8 +218,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 </button>
               )}
               <PromptDefault
-                handleRecording={handleRecord}
-                isRecording={isRecording}
                 // Only render the cancel/stop affordance for an actual
                 // in-flight inference. When the route is merely "not
                 // ready yet" (e.g. anonymous user, agents still booting)
