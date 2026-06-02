@@ -48,8 +48,8 @@ export class DappManager {
   }
 
   private sanitizeConfig(config: DappConfig): DappConfig {
-    if (config.config && config.config.logo) {
-      config.config.logo = this.normalizeLogo(config.config.logo) as string | undefined;
+    if (config?.config && config?.config?.logo) {
+      config.config.logo = this.normalizeLogo(config?.config?.logo) as string | undefined;
     }
     return config;
   }
