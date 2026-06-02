@@ -646,6 +646,15 @@ mark,
   background: #2a2c3f !important;
 }
 
+#remix-ai-chat-history .bubble-user,
+#remix-ai-chat-history .bubble-user .aiMarkup,
+#remix-ai-chat-history .bubble-user .ai-paragraph {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Better scrollbar for code blocks */
 .ai-code-pre::-webkit-scrollbar {
   height: 8px;

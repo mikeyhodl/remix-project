@@ -672,7 +672,6 @@ export const TabsUI = (props: TabsUIProps) => {
     if (matchingInstances.length === 1) {
       // Best case: exactly one matching deployed contract
       const inst = matchingInstances[0]
-      const abi = inst.abi || inst.contractData?.abi || []
       let chainId: string
       try {
         const providerObject = await props.plugin.call('blockchain', 'getProviderObject')
@@ -693,7 +692,6 @@ export const TabsUI = (props: TabsUIProps) => {
         `contractName: ${inst.name}`,
         `contractAddress: ${inst.address}`,
         `chainId: ${chainId}`,
-        `contractAbi: ${JSON.stringify(abi)}`,
         ``,
         `Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
       )

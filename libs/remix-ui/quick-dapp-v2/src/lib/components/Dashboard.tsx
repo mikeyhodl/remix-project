@@ -36,9 +36,13 @@ const Dashboard: React.FC<DashboardProps> = ({
   const availableNetworks = useMemo(() => {
     const networks = new Set<string>();
     validDapps.forEach(dapp => {
-      if (dapp.contract.networkName) {
-        networks.add(dapp.contract.networkName);
-      } else {
+      try {
+        if (dapp.contract.networkName) {
+          networks.add(dapp.contract.networkName);
+        } else {
+          networks.add('Unknown Network');
+        }
+      } catch (e) {
         networks.add('Unknown Network');
       }
     });
