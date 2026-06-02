@@ -96,7 +96,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. IMPORTANT: Do NOT call this tool immediately. First, ask the user ALL 3 of these questions together in a single message: 1) Describe the DApp design you want (free text). 2) Do you have a Figma design URL? (optional). 3) Should it be a Base Mini App? (optional). You MUST ask these questions BEFORE calling this tool, UNLESS the user has explicitly indicated they want to skip preferences (e.g., "just make it", "use defaults", "quickly"). After collecting answers, call this tool with ALL parameters including the contract details from the user prompt.'
+  description = 'Create a new DApp frontend from a deployed smart contract. When the user provides contract details (contractName, contractAddress, chainId, contractAbi) and says "use defaults" or "without asking questions", call this tool DIRECTLY with description="Modern dark mode single-page DApp using React and Ethers.js". Only ask design preference questions if the user explicitly requests customization or does not provide "use defaults".'
   inputSchema = {
     type: 'object',
     properties: {

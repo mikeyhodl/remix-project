@@ -416,7 +416,7 @@ contractAddress: ${contract.address}
 chainId: ${chainId}
 contractAbi: ${abiJson}
 
-Before generating, please ask me about my design preferences first.`
+Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
 
       console.log('[QuickDapp] prompt assembled, length:', prompt.length);
 

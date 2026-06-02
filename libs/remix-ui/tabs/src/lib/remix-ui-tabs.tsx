@@ -695,7 +695,7 @@ export const TabsUI = (props: TabsUIProps) => {
         `chainId: ${chainId}`,
         `contractAbi: ${JSON.stringify(abi)}`,
         ``,
-        `Before generating, please ask me about my design preferences first.`
+        `Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
       )
     } else if (matchingInstances.length > 1) {
       // Multiple matching contracts — let AI ask the user to choose

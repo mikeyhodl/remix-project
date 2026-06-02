@@ -14,10 +14,32 @@ export interface DeepAgentManagerDeps {
 export class DeepAgentManager {
   private deps: DeepAgentManagerDeps
   private apiKeyHelper: ApiKeySettingsHelper
+  // Tracks an in-flight reinitialize so any subsequent answer()/prompt()
+  // dispatch can await the rebuilt inferencer instead of racing the
+  // about-to-be-replaced one.
+  private reinitPromise: Promise<void> | null = null
 
   constructor(deps: DeepAgentManagerDeps) {
     this.deps = deps
     this.apiKeyHelper = new ApiKeySettingsHelper(deps.plugin)
+  }
+
+  /**
+   * Resolves once any pending DeepAgent reinitialization (triggered by
+   * cancelRequest / fallbackToProxy / MCP refresh) has finished. Call
+   * before dispatching a new turn so the request never lands on the
+   * about-to-be-replaced inferencer.
+   */
+  async awaitReady(): Promise<void> {
+    if (this.reinitPromise) {
+      try {
+        await this.reinitPromise
+      } catch {
+        // reinitialize() already logs; swallow so callers can still
+        // proceed (they will hit the deepAgentInferencer null-check
+        // downstream).
+      }
+    }
   }
 
   async enable(): Promise<void> {
@@ -174,11 +196,49 @@ export class DeepAgentManager {
     }
   }
 
-  cancelRequest(): void {
+  async cancelRequest(historyMessages?: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<void> {
     const plugin = this.deps.plugin
 
     if (plugin.deepAgentEnabled && plugin.deepAgentInferencer) {
       plugin.deepAgentInferencer.cancelRequest()
+
+      // After cancelling, the underlying LangGraph stream and checkpointer
+      // can still have in-flight events queued in the pipe (the abort
+      // signal only stops the next iteration of the for-await loop — any
+      // events already produced by subgraphs/tools will continue to be
+      // emitted on the inferencer's EventEmitter). Those stale events
+      // would otherwise leak into the NEXT user request and alter its
+      // output. Rebuilding the inferencer drops the old EventEmitter,
+      // tears down the old checkpointer-bound agent, and gives the next
+      // turn a clean pipe. Fire-and-forget so the UI stop button stays
+      // instantaneous.
+      //
+      // The caller may pass the current user/assistant chat history so
+      // that the freshly-built graph still has the prior conversation as
+      // context (otherwise the user would lose all memory the moment they
+      // click Stop). We seed it on the NEW inferencer instance once the
+      // async reinit completes.
+      // Track the in-flight reinit on `reinitPromise` so awaitReady()
+      // (called by answer() dispatch in the plugin) blocks the next turn
+      // until the new inferencer is fully built. We still await locally
+      // so this method's own promise also resolves only after reinit.
+      const pending = this.reinitialize()
+        .then(() => {
+          remixAILogger.log('[DeepAgentManager] reinitialize after cancel completed successfully')
+          if (historyMessages && historyMessages.length > 0 && plugin.deepAgentInferencer) {
+            plugin.deepAgentInferencer.setPendingHistoryMessages(historyMessages)
+            remixAILogger.log('[DeepAgentManager] cancelRequest: pending history messages set on new inferencer after reinit', historyMessages.length)
+          }
+        })
+        .catch((err) => {
+          remixAILogger.warn('[DeepAgentManager] reinitialize after cancel failed:', err)
+        })
+      this.reinitPromise = pending
+      try {
+        await pending
+      } finally {
+        if (this.reinitPromise === pending) this.reinitPromise = null
+      }
     }
   }
 
@@ -215,6 +275,7 @@ export class DeepAgentManager {
    * Used when MCP servers are refreshed, reset, or API key settings change.
    */
   async reinitialize(): Promise<void> {
+    console.log('[DeepAgentManager] reinitialize() called')
     const plugin = this.deps.plugin
     // Use actual plugin state - default is enabled, localStorage is only set when explicitly changed
     const deepAgentEnabled = plugin.deepAgentEnabled || plugin.deepAgentInferencer !== null
