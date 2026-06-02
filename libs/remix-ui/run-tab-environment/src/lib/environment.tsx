@@ -168,14 +168,6 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
       }
     })
 
-    plugin.on('filePanel', 'setWorkspace', async () => {
-      try {
-        await plugin.changeExecutionContext({ context: 'vm-osaka' })
-      } catch (e) {
-        console.error(e)
-      }
-    })
-
     plugin.on('desktopHost', 'disconnected', async () => {
       await plugin.changeExecutionContext({ context: 'vm-osaka' })
     })
@@ -192,7 +184,6 @@ function EnvironmentWidget({ plugin }: { plugin: EnvironmentPlugin }) {
         plugin.off(injectedPlugin, 'accountsChanged')
       })
       plugin.off('manager', 'pluginActivated')
-      plugin.off('filePanel', 'setWorkspace')
       plugin.off('desktopHost', 'disconnected')
     }
   }, [])
