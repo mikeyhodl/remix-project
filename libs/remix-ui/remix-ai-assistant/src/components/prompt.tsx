@@ -1,14 +1,11 @@
 import { ActivityType } from "../lib/types"
 import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState } from 'react'
-import GroupListMenu from "./contextOptMenu"
 import { AiAssistantType, AiContextType, groupListType } from '../types/componentTypes'
 import { AIEvent, MatomoEvent, trackMatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
-import { ModelAccess } from '../hooks/useModelAccess'
 import { PromptDefault } from "./promptDefault";
-import { PromptActiveButtons } from "./promptActiveButtons";
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -58,7 +55,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleSend,
   selectedModel,
   handleSetModel,
-  handleGenerateWorkspace,
   handleRecord,
   isRecording,
   modelBtnRef,
@@ -69,10 +65,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   stopRequest,
   setShowOllamaModelSelector,
   showOllamaModelSelector,
-  selectedOllamaModel,
   modelSelectorBtnRef,
   autoModeEnabled,
-  handleLoadSkills,
   usingOwnApiKey,
   aiRoute = 'chat',
   aiRouteReady = true,
