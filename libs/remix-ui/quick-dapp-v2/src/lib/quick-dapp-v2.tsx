@@ -232,7 +232,7 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
             }
           }
           const updatedDapps = await dappManager.getDapps();
-          dispatch({ type: 'SET_DAPPS', payload: updatedDapps || [] });
+          dispatch({ type: 'SET_DAPPS', payload: updatedDapps || []});
         }
       }
 
