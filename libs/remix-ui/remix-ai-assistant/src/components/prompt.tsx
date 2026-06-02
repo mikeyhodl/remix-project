@@ -227,8 +227,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   </div>
                 </button>
               )}
-              {/* </div> */}
-              { !isRecording ? <PromptDefault
+              <PromptDefault
                 handleRecording={handleRecord}
                 isRecording={isRecording}
                 // Only render the cancel/stop affordance for an actual
@@ -244,13 +243,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 handleCancel={stopRequest}
                 showSignIn={needsSignIn}
                 onSignIn={onSignIn}
-              /> : <PromptActiveButtons
-                handleRecordingStoppage={handleRecord}
-                isStreaming={isStreaming}
-                isRecording={isRecording}
-                themeTracker={themeTracker}
-                handleCancel={stopRequest}
-              /> }
+              />
             </div>
           </div>
         </div>

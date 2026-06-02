@@ -34,7 +34,7 @@ export function PromptDefault(props: PromptDefaultProps) {
         backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#d9dee8' : '#222336',
       }}
     >
-      <CustomTooltip
+      {/* <CustomTooltip
         placement="top"
         tooltipText={props.isRecording ? 'Stop recording' : 'Voice input'}
         tooltipId="audioPromptTooltip"
@@ -50,7 +50,7 @@ export function PromptDefault(props: PromptDefaultProps) {
           <i className="fas fa-microphone"></i>
           <span className="ms-1">Audio</span>
         </button>
-      </CustomTooltip>
+      </CustomTooltip> */}
       {props.showSignIn && !props.isStreaming ? (
         <CustomTooltip placement="top" tooltipText="Sign in to chat with RemixAI" tooltipId="signInPromptTooltip">
           <button
