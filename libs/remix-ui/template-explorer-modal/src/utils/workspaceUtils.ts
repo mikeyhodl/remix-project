@@ -155,6 +155,15 @@ export class TemplateExplorerModalFacade {
 
     // If in Files mode, add to current workspace instead of creating new one
     if (this.state.manageCategory === 'Files') {
+      // Exception: Templates that require customization should show UI before adding artifacts
+      if (item.requiresCustomization) {
+        templateCategoryStrategy.setStrategy(new WizardStrategy())
+        templateCategoryStrategy.switchScreen(dispatch)
+        // Don't close wizard - let user interact with customization UI
+        return
+      }
+
+      // For templates without customization, add artifacts and close immediately
       templateCategoryStrategy.setStrategy(new ScriptsStrategy())
       templateCategoryStrategy.switchScreen(dispatch)
       await this.plugin.call('templateexplorermodal', 'addArtefactsToWorkspace', item.value, {}, false, (err: Error) => {
