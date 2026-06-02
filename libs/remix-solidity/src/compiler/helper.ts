@@ -10,7 +10,7 @@ export default {
    * @param contracts 'contracts' object from last compilation result
    */
 
-  getContract: (contractName: string, contracts: CompilationResult['contracts']) :  { object: CompiledContract, file: string } | null => {
+  getContract: (contractName: string, contracts: CompilationResult['contracts']) : { object: CompiledContract, file: string } | null => {
     for (const file in contracts) {
       if (contracts[file][contractName]) {
         return { object: contracts[file][contractName], file: file }
