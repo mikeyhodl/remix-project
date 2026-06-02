@@ -36,9 +36,35 @@ export function AiChatButtons({ theme, plugin, sendPrompt, handleGenerateWorkspa
         }
         const compilationResult = await plugin.call('solidity', 'getCompilationResult')
         if (compilationResult && compilationResult.data && compilationResult.data.contracts) {
-          const contracts = Object.keys(compilationResult.data.contracts[currentFile] || {})
-          if (contracts && contracts.length > 0) {
-            setLatestCompiledContracts(contracts)
+          const fileContracts = compilationResult.data.contracts[currentFile] || {}
+          const ast = compilationResult.data.sources?.[currentFile]?.ast
+
+          // Get contract definitions from AST to check contractKind and abstract
+          const contractDefinitions = ast?.nodes?.filter(
+            (node: any) => node.nodeType === 'ContractDefinition'
+          ) || []
+
+          // Filter to only include deployable contracts:
+          // - Has bytecode (excludes interfaces)
+          // - Not a library (contractKind !== 'library')
+          // - Not abstract (abstract !== true)
+          const deployableContracts = Object.keys(fileContracts).filter(contractName => {
+            const contract = fileContracts[contractName]
+            const bytecode = contract?.evm?.bytecode?.object
+            if (!bytecode || bytecode.length === 0) return false
+
+            // Check AST for library and abstract contracts
+            const contractDef = contractDefinitions.find((node: any) => node.name === contractName)
+            if (contractDef) {
+              if (contractDef.contractKind === 'library') return false
+              if (contractDef.abstract === true) return false
+            }
+            return true
+          })
+
+          if (deployableContracts && deployableContracts.length > 0) {
+            // Show all deployable contracts (filtered: no interfaces, libraries, or abstract)
+            setLatestCompiledContracts(deployableContracts)
           } else {
             setLatestCompiledContracts(null)
           }
