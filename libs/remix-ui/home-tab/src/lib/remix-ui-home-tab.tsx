@@ -42,7 +42,6 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   const [isTerminalHidden, setIsTerminalHidden] = useState<boolean>(false)
   const { features } = useAuth()
   const hasAuditorPermission = features['ai:auditor']?.is_enabled === true
-  const hasSkillsPermission = features['ai:skills']?.is_enabled === true
 
   useEffect(() => {
     plugin.call('theme', 'currentTheme').then((theme) => {
@@ -172,7 +171,7 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
               <CustomTooltip tooltipText="Create New Workspace">
                 <button data-id="landingPageImportFromTemplate" className="btn btn-primary btn-md me-2" onClick={openTemplateSelection}><i className="fa-solid fa-plus me-1"></i><FormattedMessage id="home.createNewWorkspace" /></button>
               </CustomTooltip>
-              {hasSkillsPermission && (
+              {(
                 <CustomTooltip tooltipText="Load Skills">
                   <div>
                     <button data-id="landingPageLoadSkills" className="btn btn-primary btn-md me-2" onClick={openSkillsSelection}><i className="fa-solid fa-cube me-1"></i><FormattedMessage id="home.loadSkills" /></button>

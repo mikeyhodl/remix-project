@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@remix-ui/app'
+import { CustomTooltip } from '@remix-ui/helper'
 import JSZip from 'jszip'
 import './remix-ui-skills-explorer-modal.css'
 import { getFileType, parseSkillNameFromContent, ensureDirectoryExists } from './helpers'
@@ -26,6 +28,8 @@ export interface RemixUiSkillsExplorerModalProps {
 }
 
 export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProps) {
+  const { features } = useAuth()
+  const hasSkillsPermission = features['ai:skills']?.is_enabled === true
   const { isOpen, onClose, plugin } = props
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -253,12 +257,35 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     }
   }, [isOpen])
 
+  // Define basic skills that are always available to free users
+  const basicSkillNames = [
+    'hello-world',
+    'simple-storage', 
+    'basic-token',
+    'ownable',
+    'erc20-basics',
+    'events-basics'
+  ]
+
+  // Filter skills based on search term only (show all skills regardless of permissions)
   const filteredSkills = skills.filter(skill =>
     skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     skill.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
+  
+  // Helper function to check if a skill is basic (free)
+  const isBasicSkill = (skillName: string) => {
+    return basicSkillNames.includes(skillName.toLowerCase())
+  }
 
   const toggleSkill = (id: string) => {
+    // Find the skill to check if it's basic
+    const skill = skills.find(s => s.id === id)
+    if (!skill) return
+    
+    // Only allow selection if user has permissions OR if it's a basic skill
+    if (!hasSkillsPermission && !isBasicSkill(skill.name)) return
+    
     setSelectedSkills(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -380,13 +407,34 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
               <i className="fa-solid fa-compass me-2"></i>
               Browse Skills
             </button>
-            <button
-              className={`skills-explorer-tab ${activeTab === 'upload' ? 'active' : ''}`}
-              onClick={() => setActiveTab('upload')}
-            >
-              <i className="fa-solid fa-upload me-2"></i>
-              Upload Skill
-            </button>
+            {!hasSkillsPermission ? (
+              <CustomTooltip
+                placement="top"
+                tooltipText="Upgrade to a paid plan to enable the upload feature."
+                tooltipClasses="text-nowrap"
+                tooltipId="skills-upload-disabled-tooltip"
+              >
+                <span className="d-inline-block" style={{ cursor: 'not-allowed' }}>
+                  <button
+                    className={`skills-explorer-tab disabled`}
+                    onClick={(e) => e.preventDefault()}
+                    style={{ opacity: 0.5, pointerEvents: 'none' }}
+                    tabIndex={-1}
+                  >
+                    <i className="fa-solid fa-upload me-2"></i>
+                    Upload Skill
+                  </button>
+                </span>
+              </CustomTooltip>
+            ) : (
+              <button
+                className={`skills-explorer-tab ${activeTab === 'upload' ? 'active' : ''}`}
+                onClick={() => setActiveTab('upload')}
+              >
+                <i className="fa-solid fa-upload me-2"></i>
+                Upload Skill
+              </button>
+            )}
           </div>
         )}
 
@@ -419,6 +467,13 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                       <div className="category-description mb-4">
                         Select one or more Ethereum development skills to add to your workspace
                       </div>
+                      
+                      {!hasSkillsPermission && (
+                        <div className="alert alert-info mb-3" role="alert">
+                          <i className="fa-solid fa-info-circle me-2"></i>
+                          Basic skills (marked as "Free") are available to all users. Upgrade to a paid plan to access all premium skills.
+                        </div>
+                      )}
 
                       {filteredSkills.length === 0 ? (
                         <div className="text-center py-5 text-muted">
@@ -429,20 +484,35 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                         <div className="d-flex flex-wrap gap-3">
                           {filteredSkills.map((skill) => {
                             const isSelected = selectedSkills.has(skill.id)
+                            const isBasic = isBasicSkill(skill.name)
+                            const isDisabled = !hasSkillsPermission && !isBasic
+                            
                             return (
                               <div
                                 key={skill.id}
-                                className={`skill-card bg-light border p-3 ${isSelected ? 'border-primary' : ''}`}
-                                style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
+                                className={`skill-card bg-light border p-3 ${isSelected ? 'border-primary' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                style={{
+                                  ...(isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}),
+                                  ...(isDisabled ? { opacity: 0.6, cursor: 'not-allowed' } : { cursor: 'pointer' })
+                                }}
                                 onClick={() => toggleSkill(skill.id)}
                                 data-id={`skill-card-${skill.id}`}
+                                title={isDisabled ? 'Upgrade to a paid plan to select this skill' : ''}
                               >
                                 <div className="card-body">
                                   <div className="d-flex justify-content-between align-items-start mb-2">
                                     <h6 className="card-title text-dark mb-0">{skill.name}</h6>
-                                    {isSelected && (
-                                      <i className="fa-solid fa-circle-check text-primary ms-2 flex-shrink-0"></i>
-                                    )}
+                                    <div className="d-flex align-items-center">
+                                      {isBasic && !hasSkillsPermission && (
+                                        <span className="badge bg-success me-2">Free</span>
+                                      )}
+                                      {isSelected && (
+                                        <i className="fa-solid fa-circle-check text-primary flex-shrink-0"></i>
+                                      )}
+                                      {isDisabled && (
+                                        <i className="fa-solid fa-lock text-muted flex-shrink-0"></i>
+                                      )}
+                                    </div>
                                   </div>
                                   <p className="card-description text-muted mb-0">
                                     {skill.description || 'No description available'}
@@ -518,6 +588,17 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
           {/* ===== UPLOAD TAB ===== */}
           {activeTab === 'upload' && (
             <>
+              {/* Check permissions first */}
+              {!hasSkillsPermission ? (
+                <div className="d-flex flex-column align-items-center py-5">
+                  <i className="fa-solid fa-lock fa-3x mb-4 text-muted"></i>
+                  <h3 className="mb-3">Upload Feature Restricted</h3>
+                  <p className="text-muted text-center">
+                    Upgrade to a paid plan to enable the upload feature.
+                  </p>
+                </div>
+              ) : (
+                <>
               {/* Upload Step 1: Select file */}
               {uploadStep === 'select' && (
                 <div className="upload-skill-step">
@@ -640,6 +721,8 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                     </p>
                   </div>
                 </div>
+              )}
+                </>
               )}
             </>
           )}
