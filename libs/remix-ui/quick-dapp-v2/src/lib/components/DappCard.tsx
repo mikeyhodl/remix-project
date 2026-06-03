@@ -87,12 +87,12 @@ const DappCard: React.FC<DappCardProps> = ({ dapp, isProcessing, generationProgr
             borderBottom: '1px solid #444'
           }}
         >
-          {!dapp.thumbnailPath && dapp.config.logo && (
-            <img src={dapp.config.logo} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%' }} />
+          {!dapp.thumbnailPath && dapp?.config?.logo && (
+            <img src={dapp?.config?.logo} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%' }} />
           )}
 
           <div className="position-absolute top-0 start-0 m-2 badge bg-primary opacity-75" data-id={`dapp-network-${dapp.slug}`}>
-            {dapp.contract.networkName || 'Remix VM'}
+            {dapp?.contract?.networkName || 'Remix VM'}
           </div>
 
           {!isProcessing && (

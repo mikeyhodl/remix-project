@@ -109,7 +109,6 @@ export function getModelById(id: string, list: ReadonlyArray<AIModel> = ANONYMOU
  *   }
  */
 export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null {
-  console.log('[parseAIModelsFromPermissions] Raw permissions.ai_models:', permissions?.ai_models)
   const raw = permissions?.ai_models
   if (!Array.isArray(raw)) return null
   const parsed: AIModel[] = raw

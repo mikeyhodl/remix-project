@@ -54,6 +54,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   private sessionThreadId: string = DeepAgentInferencer.generateThreadId()
   private streamEventHandler: StreamEventHandler
   private userApiKeys?: IUserApiKeyConfig
+  // Conversation history to seed into the agent on the next answer() call.
+  // Used after a cancel-and-reinitialize so the brand-new LangGraph thread
+  // still has the prior user/assistant turns as context — otherwise the
+  // model loses all memory whenever the user clicks Stop.
+  private pendingHistoryMessages: Array<{ role: 'user' | 'assistant'; content: string }> | null = null
 
   private static generateThreadId(): string {
     return CONVERSATION_THREAD_PREFIX + `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -68,6 +73,27 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   setSessionThreadId(threadId: string): void {
     remixAILogger.log('[DeepAgent-Thread] setSessionThreadId:', threadId, '(was:', this.sessionThreadId, ')')
     this.sessionThreadId = threadId
+  }
+
+  /**
+   * Stash a list of user/assistant messages to be prepended on the next
+   * answer() call. Used by the cancel-and-reinit flow so a freshly-built
+   * LangGraph thread still has the prior conversation context even though
+   * its checkpointer is empty (the old, possibly-mid-stream checkpoint
+   * was discarded along with the previous inferencer instance).
+   *
+   * One-shot: cleared as soon as it's consumed by answer().
+   */
+  setPendingHistoryMessages(messages: Array<{ role: 'user' | 'assistant'; content: string }> | null): void {
+    if (!messages || messages.length === 0) {
+      this.pendingHistoryMessages = null
+      return
+    }
+    // Defensive copy + filter to the only two roles the graph accepts.
+    this.pendingHistoryMessages = messages
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim().length > 0)
+      .map(m => ({ role: m.role, content: m.content }))
+    remixAILogger.log('[DeepAgentInferencer] setPendingHistoryMessages: queued', this.pendingHistoryMessages.length, 'messages for next turn')
   }
 
   getSessionThreadId(): string {
@@ -210,35 +236,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  private async gatherMCPResourcesContext(prompt?: string): Promise<string> {
+  private async gatherMCPResourcesContext(_prompt?: string): Promise<string> {
+    // Project structure is now included in the system prompt during agent creation
+    // This method is kept for backward compatibility but returns empty
     return ''
-    if (!this.mcpInferencer || !prompt) {
-      return ''
-    }
-
-    try {
-      const connectedServers = this.mcpInferencer.getConnectedServers()
-      if (!connectedServers || connectedServers.length === 0) {
-        return ''
-      }
-
-      const mcpParams = {
-        mcpServers: connectedServers,
-        enableIntentMatching: true,
-        maxResources: 5,
-        selectionStrategy: 'hybrid'
-      }
-      const mcpContext = await this.mcpInferencer.intelligentResourceSelection(prompt, mcpParams)
-
-      if (mcpContext) {
-        remixAILogger.log(`[DeepAgentInferencer] Gathered MCP resources context using intelligentResourceSelection`)
-      }
-
-      return mcpContext
-    } catch (error) {
-      remixAILogger.warn('[DeepAgentInferencer] Failed to gather MCP resources:', error)
-      return ''
-    }
   }
 
   private emitErrorToTodos(error: any): void {
@@ -403,32 +404,22 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         remixAILogger.log('[DeepAgent.answer] autoMode=DISABLED, using static model:', this.modelSelection)
       }
 
-      // NOTE: previously this branch hard-failed (or swapped to Anthropic)
-      // when the selected provider was 'mistralai', on the assumption that
-      // ChatMistralAI's converter would throw on cache_control / non-text
-      // content blocks injected by the deepagents middleware. Verified in
-      // 2026-05 against @langchain/mistralai@1.0.7 + deepagents@1.0.0:
-      //   - deepagents only ever emits `type: "text"` blocks.
-      //   - ChatMistralAI's converter only throws on unknown `type` values;
-      //     extra sibling props like `cache_control` are silently dropped.
-      // So all three Langchain integrations (Mistral / OpenAI / Anthropic)
-      // can drive the agent. Access control happens earlier (permissions /
-      // model availability); runtime errors will surface from langgraph
-      // directly. Gate removed intentionally.
-
       const mcpContext = await this.gatherMCPResourcesContext(prompt)
       const enrichedContext = mcpContext
         ? (context ? `${mcpContext}\n\n${context}` : mcpContext)
         : context
+
+      const seeded = this.pendingHistoryMessages || []
+      this.pendingHistoryMessages = null
+      if (seeded.length > 0) {
+        remixAILogger.log('[DeepAgentInferencer] answer(): seeding', seeded.length, 'history messages into new thread', this.sessionThreadId)
+      }
+
       const messages = [
+        ...seeded,
         { role: 'user', content: enrichedContext ? `Context:\n${enrichedContext}\n\nQuestion: ${prompt}` : prompt }
       ]
 
-      // We MUST await runAgent so withAssistantGate sees rejections (and
-      // gets the AIError envelope routed to assistantState → cooldown
-      // banner / plan-manager / notice strip). Previous fire-and-forget
-      // pattern emitted onApiError + onAgentError directly, which painted
-      // the chat bubble twice and bypassed every gate.
       try {
         const response = await this.runAgent(messages, params)
         this.event.emit('onStreamComplete', response)
@@ -441,12 +432,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           return ''
         }
         remixAILogger.error('[DeepAgentInferencer] Answer error:', error)
-
-        // If the error carries a structured AIError envelope (or one
-        // can be parsed out of it), stamp it on and propagate so
-        // withAssistantGate can route through assistantState. NEVER emit
-        // onApiError/onAgentError for envelope errors — those are owned
-        // by the cooldown banner / plan-manager / notice strip.
         const envelope = aiErrorFromException(error)
         if (envelope && envelope.code !== 'INTERNAL_ERROR' && envelope.status > 0) {
           try {
@@ -545,7 +530,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   private async runAgent(messages: any[], _params: IParams): Promise<string> {
-    this.currentAbortController = new AbortController()
+    const thisRunControllers = new Set<AbortController>()
+    const localAbortController = new AbortController()
+    thisRunControllers.add(localAbortController)
+    this.currentAbortController = localAbortController
     let fullResponse = ''
 
     // Filter out system messages - they're already set during agent creation
@@ -582,13 +570,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
             thread_id: this.sessionThreadId
           },
           subgraphs: true,
-          signal: this.currentAbortController?.signal
+          signal: localAbortController.signal
         }
       )
 
       let finalMessageFromChain = ''
       for await (const event of eventStream) {
-        if (this.currentAbortController?.signal.aborted) {
+        if (localAbortController.signal.aborted) {
           this.event.emit('onStreamComplete', { content: fullResponse, threadId: this.sessionThreadId })
           break
         }
@@ -617,7 +605,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       remixAILogger.log('[DeepAgentInferencer] Full response length:', fullResponse.length)
       return fullResponse
     } catch (error: any) {
-      if (error?.name === 'AbortError' || this.currentAbortController?.signal.aborted) {
+      if (error?.name === 'AbortError' || localAbortController.signal.aborted) {
         remixAILogger.log('[DeepAgentInferencer] Request cancelled by user')
         return fullResponse
       }
@@ -632,7 +620,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
 
         // Retry with fresh thread_id (only once — if it fails again, propagate the error)
         try {
-          this.currentAbortController = new AbortController()
+          const retryAbortController = new AbortController()
+          thisRunControllers.add(retryAbortController)
+          this.currentAbortController = retryAbortController
           fullResponse = ''
 
           if (!this.agent) {
@@ -648,11 +638,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
               version: 'v2',
               configurable: { thread_id: this.sessionThreadId },
               subgraphs: true,
-              signal: this.currentAbortController?.signal
+              signal: retryAbortController.signal
             }
           )
           for await (const event of retryStream) {
-            if (this.currentAbortController?.signal.aborted) break
+            if (retryAbortController.signal.aborted) break
             if (event.event === 'on_chat_model_stream' && event.data?.chunk?.content) {
               const content = typeof event.data.chunk.content === 'string'
                 ? event.data.chunk.content
@@ -734,8 +724,40 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       throw error
     } finally {
       this.streamEventHandler.stopInactivityTracking()
-      this.currentAbortController = null
+      // Only null out if still one of this run's controllers (a new request might have started)
+      if (this.currentAbortController && thisRunControllers.has(this.currentAbortController)) {
+        this.currentAbortController = null
+      }
       this.event.emit('onToolCall', { toolName: '', toolInput: '', toolUIString: '', status: 'end', threadId: this.sessionThreadId })
+    }
+  }
+
+  private async getProjectStructure(): Promise<string> {
+    if (!this.mcpInferencer) {
+      return ''
+    }
+
+    try {
+      const connectedServers = this.mcpInferencer.getConnectedServers()
+      if (!connectedServers || !connectedServers.includes('Remix IDE Server')) {
+        return ''
+      }
+
+      const mcpClient = (this.mcpInferencer as any).mcpClients?.get('Remix IDE Server')
+      if (!mcpClient || !mcpClient.isConnected()) {
+        return ''
+      }
+
+      const content = await mcpClient.readResource('project://structure')
+      if (!content?.text) {
+        return ''
+      }
+
+      remixAILogger.log('[DeepAgentInferencer] Added project structure to system prompt')
+      return `\n\n## Current Project Structure\n${content.text}`
+    } catch (error) {
+      remixAILogger.warn('[DeepAgentInferencer] Failed to get project structure:', error)
+      return ''
     }
   }
 
@@ -756,13 +778,17 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           return false
         }
       })()
+
+      const projectStructure = await this.getProjectStructure()
+      const systemPromptWithContext = REMIX_DEEPAGENT_SYSTEM_PROMPT + projectStructure
+
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
         tools: [],
         model: this.model,
-        systemPrompt: REMIX_DEEPAGENT_SYSTEM_PROMPT,
+        systemPrompt: systemPromptWithContext,
         skills: hasSkillsPermission ? ["skills/"] : [],
         checkpointer,
         middleware: [new RemixDeepAgentMiddleware(this.plugin)]
@@ -789,9 +815,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  /**
-   * Update agent model based on auto selection
-   */
   private async updateAgentModel(selectedModel: ModelSelection): Promise<void> {
     // Only recreate if the model has changed
     if (this.modelSelection.provider === selectedModel.provider &&
@@ -813,18 +836,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  /**
-   * Handle errors with fallback strategy.
-   *
-   * IMPORTANT: when the underlying error is a backend AIError envelope
-   * (FEATURE_DENIED / PROVIDER_DENIED / EMAIL_NOT_VERIFIED / RATE_LIMITED /
-   * IP_BLOCKED / ABUSE_BLOCKED / BAD_REQUEST / ...), we MUST NOT
-   *   - emit `onApiError` (UI handler would dump the raw body into the chat bubble), or
-   *   - fall back to RemoteInferencer (it will hit the same envelope error again).
-   * Instead we re-throw the error with the envelope stamped on it so
-   * `withAssistantGate` can route it through assistantState and the
-   * notice strip / plan-manager hand-off render the right thing.
-   */
   private async handleError(error: any, method: string, prompt: string, params: IParams): Promise<string> {
     remixAILogger.error(`[DeepAgentInferencer] Error in ${method}:`, error)
 

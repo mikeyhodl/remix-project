@@ -391,8 +391,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
       console.log('[QuickDapp] handleCreateDapp START', { name: contract.name, address: contract.address, timestamp: Date.now() });
 
       // Send contract details to AI Assistant for DApp generation
-      const abi = contract.abi || contract.contractData?.abi || []
-      const abiJson = JSON.stringify(abi)
 
       let chainId: string
       try {
@@ -414,7 +412,6 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
 contractName: ${contract.name}
 contractAddress: ${contract.address}
 chainId: ${chainId}
-contractAbi: ${abiJson}
 
 Before generating, please ask me first about my design preferences and my desired location for my frontend (inline or workspace).`
 

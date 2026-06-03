@@ -1,4 +1,6 @@
 import { remixAILogger } from '../../helpers/logger'
+import { CompilerAbstract } from '@remix-project/remix-solidity'
+import { DeployedContract } from '@remix-ui/run-tab-deployed-contracts'
 /**
  * DApp Generator Tool Handlers for Remix MCP Server
  *
@@ -63,7 +65,7 @@ const QUICKDAPP_DESIGN_RULES =
 export interface GenerateDAppArgs {
   description: string
   contractAddress: string
-  contractAbi: any[]
+  contractAbi: any[] | null
   chainId: number | string
   contractName: string
   imageBase64?: string
@@ -99,7 +101,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. IMPORTANT: Do NOT call this tool immediately. First, ask the user ALL 3 of these questions together in a single message: 1) Describe the DApp design you want (free text). 2) Do you have a Figma design URL? (optional). 3) Should it be a Base Mini App? (optional). You MUST ask these questions BEFORE calling this tool, UNLESS the user has explicitly indicated they want to skip preferences (e.g., "just make it", "use defaults", "quickly"). After collecting answers, call this tool with ALL parameters including the contract details from the user prompt.'
+  description = 'Create a new DApp frontend from a deployed smart contract. When the user provides contract details (contractName, contractAddress, chainId, contractAbi) and says "use defaults" or "without asking questions", call this tool DIRECTLY with description="Modern dark mode single-page DApp using React and Ethers.js". Only ask design preference questions if the user explicitly requests customization or does not provide "use defaults".'
   inputSchema = {
     type: 'object',
     properties: {
@@ -114,7 +116,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       },
       contractAbi: {
         type: 'array',
-        description: 'Contract ABI (Application Binary Interface)',
+        description: 'Contract ABI (Application Binary Interface). OPTIONAL: only provide it if the user explicitly included it in their prompt.',
         items: { type: 'object' }
       },
       chainId: {
@@ -154,7 +156,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
         default: false
       }
     },
-    required: ['description', 'contractName', 'contractAddress', 'contractAbi', 'chainId']
+    required: ['description', 'contractName', 'contractAddress', 'chainId']
   }
 
   getPermissions(): string[] {
@@ -162,21 +164,22 @@ export class GenerateDAppHandler extends BaseToolHandler {
   }
 
   validate(args: GenerateDAppArgs): boolean | string {
-    const required = this.validateRequired(args, ['description', 'contractAddress', 'contractAbi', 'chainId', 'contractName'])
+    const required = this.validateRequired(args, ['description', 'contractAddress', 'chainId', 'contractName'])
     if (required !== true) return required
 
     if (!args.contractAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       return 'Invalid contract address format'
     }
-
-    if (!Array.isArray(args.contractAbi)) {
-      try {
-        args.contractAbi = JSON.parse(args.contractAbi as any)
-        if (!Array.isArray(args.contractAbi)) {
-          return 'Contract ABI must be an array'
+    if (args.contractAbi) {
+      if (!Array.isArray(args.contractAbi)) {
+        try {
+          args.contractAbi = JSON.parse(args.contractAbi as any)
+          if (!Array.isArray(args.contractAbi)) {
+            return 'Contract ABI must be an array'
+          }
+        } catch (e) {
+          return 'Contract ABI must be a valid JSON array'
         }
-      } catch (e) {
-        return 'Contract ABI must be a valid JSON array'
       }
     }
 
@@ -190,7 +193,26 @@ export class GenerateDAppHandler extends BaseToolHandler {
   async execute(args: GenerateDAppArgs, plugin: Plugin): Promise<IMCPToolResult> {
     let dappOps: DappOperations | undefined
     try {
+      remixAILogger.log('[GenerateDApp] Received args:', args)
       const targetMode = args.frontendMode || 'workspace'
+
+      // ── ABI Resolution (from master) ──
+      if (!args.contractAbi) {
+        // try to get the abi
+        const data = (await plugin.call('compilerArtefacts', 'get', args.contractAddress) as CompilerAbstract)
+        args.contractAbi = data?.getContract(args.contractName)?.object?.abi || null
+        if (!args.contractAbi) {
+          const data = (await plugin.call('udappDeployedContracts', 'getDeployedContracts') as DeployedContract)
+          if (Array.isArray(data) && data.length > 0) {
+            const contract = data.find((contract) => contract.address.toLowerCase() === args.contractAddress.toLowerCase())
+            args.contractAbi = contract?.abi || null
+          }
+        }
+        if (!args.contractAbi) {
+          remixAILogger.error('[QuickDapp] createDappWorkspace failed:', `ABI not found for contract at ${args.contractAddress}`)
+          return this.createErrorResult(`Failed to create DApp, ABI not found for contract at ${args.contractAddress}. Please provide the ABI directly or ensure it is available in the compiler artifacts or deployed contracts.`)
+        }
+      }
 
       // ── Workspace Setup ──
       if (targetMode === 'inline') {
