@@ -36,6 +36,8 @@ import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
+export const notSuitableForCodeGeneration = ['mistral-medium-latest', 'mistral-small-latest', 'ministral-3b', 'ministral-8b-latest']
+
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
   private config: IDeepAgentConfig
@@ -236,12 +238,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  private async gatherMCPResourcesContext(_prompt?: string): Promise<string> {
-    // Project structure is now included in the system prompt during agent creation
-    // This method is kept for backward compatibility but returns empty
-    return ''
-  }
-
   private emitErrorToTodos(error: any): void {
     const errorMessage = error?.message || String(error) || 'Unknown error'
 
@@ -308,18 +304,14 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      // Gather MCP resources context
-      const mcpContext = await this.gatherMCPResourcesContext(prompt)
-      const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt
-
       // Build messages
       const messages = [
         { role: 'system', content: REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + SOLIDITY_CODE_GENERATION_PROMPT },
-        { role: 'user', content: enrichedPrompt }
+        { role: 'user', content: prompt }
       ]
 
       // Run the agent
-      const response = await this.runAgent(messages, params)
+      const response = await this.runAgent(messages)
 
       this.event.emit('onInferenceDone')
       return response
@@ -340,16 +332,12 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      // Gather MCP resources context
-      const mcpContext = await this.gatherMCPResourcesContext(prompt)
-      const enrichedContext = mcpContext ? `${mcpContext}\n\n${context}` : context
-
       const messages = [
         { role: 'system', content: REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + CODE_EXPLANATION_PROMPT },
-        { role: 'user', content: `Context:\n${enrichedContext}\n\nQuestion: ${prompt}` }
+        { role: 'user', content: `Context:\n${context}\n\nQuestion: ${prompt}` }
       ]
 
-      const response = await this.runAgent(messages, params)
+      const response = await this.runAgent(messages)
 
       this.event.emit('onInferenceDone')
       return response
@@ -404,11 +392,6 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         remixAILogger.log('[DeepAgent.answer] autoMode=DISABLED, using static model:', this.modelSelection)
       }
 
-      const mcpContext = await this.gatherMCPResourcesContext(prompt)
-      const enrichedContext = mcpContext
-        ? (context ? `${mcpContext}\n\n${context}` : mcpContext)
-        : context
-
       const seeded = this.pendingHistoryMessages || []
       this.pendingHistoryMessages = null
       if (seeded.length > 0) {
@@ -417,11 +400,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
 
       const messages = [
         ...seeded,
-        { role: 'user', content: enrichedContext ? `Context:\n${enrichedContext}\n\nQuestion: ${prompt}` : prompt }
+        { role: 'user', content: context ? `Context:\n${context}\n\nQuestion: ${prompt}` : prompt }
       ]
 
       try {
-        const response = await this.runAgent(messages, params)
+        const response = await this.runAgent(messages)
         this.event.emit('onStreamComplete', response)
         this.event.emit('onInferenceDone')
         return response
@@ -491,16 +474,12 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         )
       }
 
-      // Gather MCP resources context
-      const mcpContext = await this.gatherMCPResourcesContext(prompt)
-      const enrichedPrompt = mcpContext ? `${mcpContext}\n\n${prompt}` : prompt
-
       const messages = [
         { role: 'system', content: REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + SECURITY_ANALYSIS_PROMPT },
-        { role: 'user', content: enrichedPrompt }
+        { role: 'user', content: prompt }
       ]
 
-      const response = await this.runAgent(messages, params)
+      const response = await this.runAgent(messages)
 
       this.event.emit('onInferenceDone')
       return response
@@ -529,7 +508,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     return ''
   }
 
-  private async runAgent(messages: any[], _params: IParams): Promise<string> {
+  private async runAgent(messages: any[]): Promise<string> {
     const thisRunControllers = new Set<AbortController>()
     const localAbortController = new AbortController()
     thisRunControllers.add(localAbortController)
@@ -795,10 +774,19 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       if (this.config.enableSubagents && this.model) {
+        let fallbackModel = this.model
+        if (notSuitableForCodeGeneration.includes(this.modelSelection.modelId)) {
+          fallbackModel = createModelInstance({
+            provider: 'anthropic',
+            modelId: 'claude-sonnet-4-6',
+          }, DAPP_MAX_TOKENS, this.userApiKeys)
+          remixAILogger.log(`[DeepAgentInferencer] Using fallback model claude-sonnet-4-6 for subagents due to unsuitability of selected model ${this.modelSelection.modelId} for code generation`)
+        }
         agentConfig.subagents = await buildSubagentConfigs(
           this.tools,
           this.model,
-          this.filesystemBackend
+          this.filesystemBackend,
+          fallbackModel
         )
       }
 

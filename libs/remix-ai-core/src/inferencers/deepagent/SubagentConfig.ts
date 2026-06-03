@@ -48,7 +48,8 @@ export interface SubagentConfigItem {
 export async function buildSubagentConfigs(
   tools: DynamicStructuredTool[],
   model: BaseChatModel,
-  filesystemBackend: any
+  filesystemBackend: any,
+  fallbackModel: BaseChatModel,
 ): Promise<(SubAgent | CompiledSubAgent)[]> {
   // Check permissions
   const plugin = filesystemBackend.plugin
@@ -129,7 +130,7 @@ export async function buildSubagentConfigs(
     agents.push({
       name: 'QuickDapp_Specialist',
       systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
-      model: modelAny,
+      model: fallbackModel,
       tools: quickDappTools,
       description: 'Specializes in generating and updating React-based DApp frontends using write_file tools.'
     })

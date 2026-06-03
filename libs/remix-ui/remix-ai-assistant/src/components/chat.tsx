@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import copy from 'copy-to-clipboard'
 import { ChatMessage, assistantAvatar, assitantAvatarLight } from '../lib/types'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, SetStateAction, Dispatch } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
 import {
   sampleConversationStarters,
@@ -81,6 +81,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   onDappReviewViewDiff,
   handleLoadSkills
 }) => {
+  const [btnColor, setBtnColor] = useState('')
   return (
     <div
       ref={historyRef}
@@ -140,7 +141,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                       } : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        RemixMarkdownViewer(theme, displayContent)
+                        RemixMarkdownViewer(theme, msg.content, btnColor, setBtnColor)
                       ) : (
                         <div className="ai-paragraph pb-0">
                           {msg.content}
@@ -310,7 +311,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   )
 }
 
-function RemixMarkdownViewer(theme: string, markDownContent: string): React.ReactNode {
+function RemixMarkdownViewer(theme: string, markDownContent: string, btnColor: string, setBtnColor: Dispatch<SetStateAction<string>>): React.ReactNode {
   return <ReactMarkdown
     remarkPlugins={[[remarkGfm, {}]]}
     remarkRehypeOptions={{}}
@@ -336,8 +337,12 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
                 <span className="ai-code-language">{language}</span>
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-info border border-info"
-                  onClick={() => copy(text)}
+                  className={`btn btn-sm ${btnColor.length > 0 ? 'btn-outline-success border border-success' : 'btn-outline-info border border-info'}`}
+                  onClick={() => {
+                    setBtnColor('successfulCopy')
+                    copy(text)
+                    setTimeout(() => setBtnColor(''), 2000)
+                  }}
                 >
                   <i className="fa-regular fa-copy"></i>
                 </button>

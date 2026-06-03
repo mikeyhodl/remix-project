@@ -687,6 +687,7 @@ export function RemixUiTopbar() {
       tooltip: 'Toggle Left Side Panel',
       label: 'Left Side Panel',
       iconClass: `codicon codicon-layout-sidebar-left${leftPanelHidden ? '-off' : ''}`,
+      isActive: !leftPanelHidden,
       onClick: () => {
         if (leftPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'showLeftSidePanelClicked', isClick: true })
         else trackMatomoEvent({ category: 'topbar', action: 'leftSidePanel', name: 'hideLeftSidePanelClicked', isClick: true })
@@ -698,6 +699,7 @@ export function RemixUiTopbar() {
       tooltip: 'Toggle Bottom Panel',
       label: 'Bottom Panel',
       iconClass: `codicon codicon-layout-panel${bottomPanelHidden ? '-off' : ''}`,
+      isActive: !bottomPanelHidden,
       onClick: () => {
         if (bottomPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'showTerminalPanelClicked', isClick: true })
         else trackMatomoEvent({ category: 'topbar', action: 'terminalPanel', name: 'hideTerminalPanelClicked', isClick: true })
@@ -709,6 +711,7 @@ export function RemixUiTopbar() {
       tooltip: 'Toggle Right Side Panel',
       label: 'Right Side Panel',
       iconClass: `codicon codicon-layout-sidebar-right${rightPanelHidden ? '-off' : ''}`,
+      isActive: !rightPanelHidden,
       onClick: async () => {
         if (rightPanelHidden) trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'showRightSidePanelClicked', isClick: true })
         else trackMatomoEvent({ category: 'topbar', action: 'rightSidePanel', name: 'hideRightSidePanelClicked', isClick: true })
@@ -817,7 +820,7 @@ export function RemixUiTopbar() {
             <div
               ref={panelControlRef}
               data-id="panel-control"
-              className="d-flex gap-2 align-items-center"
+              className="d-flex gap-1 align-items-center"
               style={{ marginLeft: isNonMaximizedWindow ? '0.75rem' : '1.5rem', flexShrink: 0 }}
             >
               {compactPanelControl && !isE2E ? (
@@ -831,7 +834,7 @@ export function RemixUiTopbar() {
                     className="btn btn-link p-0 border-0 shadow-none"
                   >
                     <CustomTooltip placement="bottom-start" tooltipText="Control layout" hide={panelControlMenuOpen}>
-                      <i className="codicon codicon-layout fs-5" />
+                      <i className="codicon codicon-layout fs-6" />
                     </CustomTooltip>
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
@@ -846,7 +849,13 @@ export function RemixUiTopbar() {
               ) : (
                 panelControls.map(ctrl => (
                   <CustomTooltip key={ctrl.id} placement="bottom-start" tooltipText={ctrl.tooltip}>
-                    <div className={`${ctrl.iconClass} fs-5`} data-id={ctrl.id} onClick={ctrl.onClick} />
+                    <div
+                      className={`panel-control-btn${ctrl.isActive ? ' active' : ''}`}
+                      data-id={ctrl.id}
+                      onClick={ctrl.onClick}
+                    >
+                      <i className={`${ctrl.iconClass} fs-6`} />
+                    </div>
                   </CustomTooltip>
                 ))
               )}
@@ -915,7 +924,7 @@ export function RemixUiTopbar() {
             </CustomTooltip>
           )}
           <span
-            style={{ fontSize: '1.5rem', cursor: 'pointer' }}
+            style={{ fontSize: '1rem', cursor: 'pointer' }}
             className="ms-3"
             onClick={async () => {
               const isActive = await plugin.call('manager', 'isActive', 'settings')

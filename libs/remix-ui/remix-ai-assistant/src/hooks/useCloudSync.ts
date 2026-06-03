@@ -95,7 +95,6 @@ export const useCloudSync = ({
 
     if (!storageManager.isSyncEnabled()) {
       return
-      return
     }
 
     setIsSyncing(true)

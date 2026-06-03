@@ -29,8 +29,6 @@ export class ToolApprovalGate {
       if (pending) {
         pending.resolve(response.approved, response.modifiedArgs)
         this.pendingApprovals.delete(response.requestId)
-      } else {
-
       }
     })
   }
