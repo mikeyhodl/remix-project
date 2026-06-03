@@ -915,7 +915,7 @@ export function RemixUiTopbar() {
             </CustomTooltip>
           )}
           <span
-            style={{ fontSize: '1.5rem', cursor: 'pointer' }}
+            style={{ fontSize: '1rem', cursor: 'pointer' }}
             className="ms-3"
             onClick={async () => {
               const isActive = await plugin.call('manager', 'isActive', 'settings')

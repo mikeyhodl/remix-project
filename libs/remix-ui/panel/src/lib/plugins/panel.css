@@ -40,7 +40,7 @@
 
 .swapitTitle {
     margin: 0;
-    text-transform: uppercase;
+    /* text-transform: uppercase; */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -55,7 +55,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    text-transform: uppercase;
+    /* text-transform: uppercase; */
 }
 
 .icons i {
