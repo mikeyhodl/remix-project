@@ -803,7 +803,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <div className="d-flex flex-column h-100">
       <div className="py-2 px-3 border-bottom d-flex align-items-center flex-shrink-0">
         <button
-          className="btn btn-sm btn-secondary me-3"
+          className="btn btn-sm btn-secondary me-3 text-nowrap"
           onClick={handleBack}
           disabled={isCapturing}
           data-id="back-to-dashboard-btn"

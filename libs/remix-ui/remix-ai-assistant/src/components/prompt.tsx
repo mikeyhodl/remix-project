@@ -155,7 +155,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               {/* <div className="d-flex flex-row align-items-center"> */}
               <button
                 onClick={handleSetModel}
-                className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
+                className="btn btn-text btn-sm small font-weight-light text-dark align-self-end border-0 rounded"
                 data-assist-btn="assistant-selector-btn"
                 data-id="ai-model-selector-btn"
                 ref={modelBtnRef}
@@ -168,7 +168,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                     <CustomTooltip tooltipText="Using your own API key">
                       <span
                         className="badge bg-success ms-2"
-                        style={{ fontSize: '0.6rem', padding: '2px 4px' }}
+                        style={{ fontSize: '0.6rem', padding: '2px 4px', color: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '' :'#000' }}
                         data-id="own-api-key-badge"
                       >
                         <i className="fas fa-key me-1" style={{ fontSize: '0.5rem' }}></i>
@@ -197,7 +197,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                               ? 'bg-secondary'
                               : 'bg-warning'
                       }`}
-                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden' }}
+                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden', color: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '' :'#000' }}
                       data-id="ai-route-status"
                       data-route={aiRoute}
                     >

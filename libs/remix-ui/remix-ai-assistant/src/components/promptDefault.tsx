@@ -40,7 +40,7 @@ export function PromptDefault(props: PromptDefaultProps) {
         tooltipId="audioPromptTooltip"
       >
         <button
-          className="btn btn-sm small font-weight-light text-secondary rounded-3 text-nowrap"
+          className="btn btn-sm small font-weight-light text-dark rounded-3 text-nowrap"
           onClick={props.handleRecording}
           style={{
             backgroundColor: props.themeTracker && props.themeTracker?.name.toLowerCase() === 'light' ? '#e4e8f1' : '#2a2c3f',
