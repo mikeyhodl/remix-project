@@ -36,7 +36,7 @@ import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
-export const notSuitableForCodeGeneration = ['mistral-small-latest', 'ministral-3b', 'ministral-8b-latest']
+export const notSuitableForCodeGeneration = ['mistral-medium-latest', 'mistral-small-latest', 'ministral-3b', 'ministral-8b-latest']
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
