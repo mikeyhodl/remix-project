@@ -36,8 +36,6 @@ interface AiChatPromptAreaForHistoryProps {
       isStreaming: boolean
       handleSend: () => void
       stopRequest: () => void
-      showModelOptions: boolean
-      setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
       handleSetModel: () => void
       handleGenerateWorkspace: () => void
       handleRecord: () => void
