@@ -7,7 +7,6 @@ interface PromptActiveButtonsProps {
   handleRecordingStoppage: () => void
   isStreaming: boolean
   isRecording: boolean
-  handleSend: () => void
   themeTracker: any
   handleCancel: () => void
 }

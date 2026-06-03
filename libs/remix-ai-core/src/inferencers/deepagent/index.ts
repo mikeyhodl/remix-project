@@ -40,8 +40,6 @@ export {
   MAX_TOOL_EXECUTIONS,
 
   // Model configuration
-  // (DEFAULT_MODEL_PROVIDER / DEFAULT_MODEL_ID removed \u2014 model selection
-  // is fully API-driven via assistantState.getDefaultModel().)
   SUPPORTED_PROVIDERS,
 
   // Session configuration
