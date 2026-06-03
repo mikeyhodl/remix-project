@@ -23,14 +23,14 @@ export function HelpMenu({ onClose }: HelpMenuProps) {
               <small><FormattedMessage id="home.documentationDesc" defaultMessage="Reference, guides, and plugin API" /></small>
             </span>
           </a>
-          <a className="hm-row" href="https://remix-learn.ethereum.org" target="_blank" rel="noreferrer">
+          <a className="hm-row" href="https://remix.ethereum.org/?#activate=LearnEth" target="_blank" rel="noreferrer">
             <span className="hm-row-icon"><CapGlyph /></span>
             <span className="hm-row-text">
               <strong><FormattedMessage id="home.tutorials" defaultMessage="Tutorials" /></strong>
               <small><FormattedMessage id="home.tutorialsDesc" defaultMessage="LearnEth interactive tutorials" /></small>
             </span>
           </a>
-          <a className="hm-row" href="https://remix-project.org/learn" target="_blank" rel="noreferrer">
+          <a className="hm-row" href="https://remix.ethereum.org/?#activate=remixGuide" target="_blank" rel="noreferrer">
             <span className="hm-row-icon"><SparkGlyph /></span>
             <span className="hm-row-text">
               <strong><FormattedMessage id="home.startLearning" defaultMessage="Start learning" /></strong>
@@ -44,7 +44,7 @@ export function HelpMenu({ onClose }: HelpMenuProps) {
             <FormattedMessage id="home.community" defaultMessage="Community" />
           </h3>
           <div className="hm-social">
-            <a className="hm-social-btn" href="https://discord.gg/mh9hFCKkEq" title="Discord" target="_blank" rel="noreferrer">
+            <a className="hm-social-btn" href="https://discord.gg/MzhfCGstNA" title="Discord" target="_blank" rel="noreferrer">
               <DiscordGlyph /><span>Discord</span>
             </a>
             <a className="hm-social-btn" href="https://github.com/remix-project-org/remix-project" title="GitHub" target="_blank" rel="noreferrer">
@@ -56,14 +56,14 @@ export function HelpMenu({ onClose }: HelpMenuProps) {
             <a className="hm-social-btn" href="https://www.youtube.com/channel/UCjTUPyFEr2xDGN6Cg8nKDaA" title="YouTube" target="_blank" rel="noreferrer">
               <YouTubeGlyph /><span>YouTube</span>
             </a>
-            <a className="hm-social-btn" href="https://substack.com/@remix" title="Substack" target="_blank" rel="noreferrer">
+            <a className="hm-social-btn" href="https://substack.com/@ethereumremix" title="Substack" target="_blank" rel="noreferrer">
               <SubstackGlyph /><span>Substack</span>
             </a>
           </div>
         </section>
 
         <section className="hm-section">
-          <a className="hm-row hm-row-cta" href="https://remix-project.org/downloads" target="_blank" rel="noreferrer">
+          <a className="hm-row hm-row-cta" href="https://remix.live/desktop" target="_blank" rel="noreferrer">
             <span className="hm-row-icon hm-row-icon-cta"><DownloadGlyph /></span>
             <span className="hm-row-text">
               <strong><FormattedMessage id="home.downloadDesktop" defaultMessage="Download Remix Desktop" /></strong>
@@ -75,7 +75,7 @@ export function HelpMenu({ onClose }: HelpMenuProps) {
         <section className="hm-section hm-section-muted">
           <div className="hm-about-row">
             <span className="hm-about-version">Remix v{(packageJson as any).version}</span>
-            <a className="hm-about-link" href="https://remix-project.org" target="_blank" rel="noreferrer">
+            <a className="hm-about-link" href="https://remix.live" target="_blank" rel="noreferrer">
               <FormattedMessage id="home.website" defaultMessage="Website" />
             </a>
           </div>
