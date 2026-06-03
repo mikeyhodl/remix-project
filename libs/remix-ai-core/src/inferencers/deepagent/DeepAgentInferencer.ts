@@ -36,6 +36,8 @@ import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
 
+export const notSuitableForCodeGeneration = ['mistral-medium-latest', 'mistral-small-latest', 'ministral-3b', 'ministral-8b-latest']
+
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
   private config: IDeepAgentConfig
@@ -772,10 +774,19 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       if (this.config.enableSubagents && this.model) {
+        let fallbackModel = this.model
+        if (notSuitableForCodeGeneration.includes(this.modelSelection.modelId)) {
+          fallbackModel = createModelInstance({
+            provider: 'anthropic',
+            modelId: 'claude-sonnet-4-6',
+          }, DAPP_MAX_TOKENS, this.userApiKeys)
+          remixAILogger.log(`[DeepAgentInferencer] Using fallback model claude-sonnet-4-6 for subagents due to unsuitability of selected model ${this.modelSelection.modelId} for code generation`)
+        }
         agentConfig.subagents = await buildSubagentConfigs(
           this.tools,
           this.model,
-          this.filesystemBackend
+          this.filesystemBackend,
+          fallbackModel
         )
       }
 
