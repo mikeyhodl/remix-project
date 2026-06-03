@@ -16,7 +16,6 @@ import { ChatHistoryComponent } from './chat'
 import { ActivityType, ChatMessage, ConversationMetadata } from '../lib/types'
 import { useOnClickOutside } from './onClickOutsideHook'
 import { RemixAIAssistant } from 'apps/remix-ide/src/app/plugins/remix-ai-assistant'
-import { useAudioTranscription } from '../hooks/useAudioTranscription'
 import ChatHistoryHeading from './chatHistoryHeading'
 import { ChatHistorySidebar } from './chatHistorySidebar'
 import AiChatPromptAreaForHistory from './aiChatPromptAreaForHistory'
@@ -216,74 +215,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       remixAILogger.warn('[remix-ai-assistant] chat notice action failed', action, e)
     }
   }, [dismissChatNotice, props.plugin])
-
-  // // Audio transcription hook
-  // const {
-  //   isRecording,
-  //   isTranscribing,
-  //   error,
-  //   toggleRecording
-  // } = useAudioTranscription({
-  //   model: 'whisper-v3',
-  //   onTranscriptionComplete: (text) => {
-  //     // Check if transcription ends with "stop" (case-insensitive, with optional punctuation)
-  //     const trimmedText = text.trim()
-  //     const endsWithStop = /\bstop\b[\s.,!?;:]*$/i.test(trimmedText)
-
-  //     if (endsWithStop) {
-  //       // Remove "stop" and punctuation from the end and just append to input box (don't execute)
-  //       const promptText = trimmedText.replace(/\bstop\b[\s.,!?;:]*$/i, '').trim()
-  //       setInput(prev => prev ? `${prev} ${promptText}`.trim() : promptText)
-  //       // Focus the textarea so user can review/edit
-  //       if (textareaRef.current) {
-  //         textareaRef.current.focus()
-  //       }
-  //       trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
-  //     } else {
-  //       // Append transcription to the input box only
-  //       setInput(prev => prev ? `${prev} ${text}`.trim() : text)
-  //       if (trimmedText) {
-  //         trackMatomoEvent({ category: 'ai', action: 'SpeechToTextPrompt', name: 'SpeechToTextPrompt', isClick: true })
-  //       }
-  //       // Focus the textarea so user can review/edit before sending
-  //       if (textareaRef.current) {
-  //         textareaRef.current.focus()
-  //       }
-  //     }
-  //   },
-  //   onError: (error) => {
-  //     remixAILogger.error('Audio transcription error:', error)
-  //     setMessages(prev => [...prev, {
-  //       id: crypto.randomUUID(),
-  //       role: 'assistant',
-  //       content: `**Audio transcription failed.**\n\nError: ${error.message}`,
-  //       timestamp: Date.now(),
-  //       sentiment: 'none'
-  //     }])
-  //   }
-  // })
-
-  // // Show transcribing status
-  // useEffect(() => {
-  //   if (isTranscribing) {
-  //     setMessages(prev => [...prev, {
-  //       id: crypto.randomUUID(),
-  //       role: 'assistant',
-  //       content: '***Transcribing audio...***',
-  //       timestamp: Date.now(),
-  //       sentiment: 'none'
-  //     }])
-  //   } else {
-  //     // Remove transcribing message when done
-  //     setMessages(prev => {
-  //       const last = prev[prev.length - 1]
-  //       if (last?.content === '***Transcribing audio...***') {
-  //         return prev.slice(0, -1)
-  //       }
-  //       return prev
-  //     })
-  //   }
-  // }, [isTranscribing])
 
   useOnClickOutside([modelBtnRef], () => setShowModelSelector(false))
   useOnClickOutside([modelSelectorBtnRef], () => setShowOllamaModelSelector(false))
@@ -2289,13 +2220,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       </ul>
     )
   }
-
-  // const handleRecord = useCallback(async () => {
-  //   await toggleRecording()
-  //   if (!isRecording) {
-  //     trackMatomoEvent({ category: 'ai', action: 'StartAudioRecording', name: 'StartAudioRecording', isClick: true })
-  //   }
-  // }, [toggleRecording, isRecording])
 
   const handleLoadSkills = useCallback(() => {
     if (props.onOpenSkillsModal) {
