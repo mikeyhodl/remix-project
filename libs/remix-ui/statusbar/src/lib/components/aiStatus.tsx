@@ -56,7 +56,7 @@ export default function AIStatus(props: AIStatusProps) {
       >
         <span
           style={{ cursor: 'pointer' }}
-          className={"small mx-1 bg-info border-0 text-white " + (copilotActive === false ? "semi-bold" : "")}
+          className={"small mx-1 border-0 text-white " + (copilotActive === false ? "semi-bold" : "")}
           onClick={async () => {
             await props.plugin.call('settings' as any, 'updateCopilotChoice', !copilotActive)
           }}
