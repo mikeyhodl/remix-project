@@ -357,7 +357,7 @@ export const EditorUI = (props: EditorUIProps) => {
       ],
       colors: {
         // see https://code.visualstudio.com/api/references/theme-color for more settings
-        'editor.background': lightColor,
+        'editor.background': secondaryColor,
         'editorSuggestWidget.background': lightColor,
         'editorSuggestWidget.selectedBackground': secondaryColor,
         'editorSuggestWidget.selectedForeground': textColor,
@@ -365,7 +365,7 @@ export const EditorUI = (props: EditorUIProps) => {
         'editorSuggestWidget.focusHighlightForeground': infoColor,
         'editor.lineHighlightBorder': textbackground,
         'editor.lineHighlightBackground': textbackground === darkColor ? lightColor : secondaryColor,
-        'editorGutter.background': lightColor,
+        'editorGutter.background': secondaryColor,
         //'editor.selectionHighlightBackground': secondaryColor,
         'minimap.background': lightColor,
         'menu.foreground': textColor,
