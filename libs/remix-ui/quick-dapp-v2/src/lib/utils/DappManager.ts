@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PluginClient } from '@remixproject/plugin';
-import { DappConfig } from '../types';
-import { DappPathHelper, DappOperations } from '@remix-ui/helper';
+import { DappConfig } from '../types/dapp';
 
 const DAPP_WORKSPACE_PREFIX = 'dapp-';
 const CONFIG_FILENAME = 'dapp.config.json';
@@ -181,40 +180,24 @@ export class DappManager {
 
         try {
           const hasConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, CONFIG_FILENAME);
-          const hasInlineConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
+          if (!hasConfig) continue;
 
-          if (!hasConfig && !hasInlineConfig) continue;
-          let content: string | null = null;
-          let pathHelper: DappPathHelper;
-
-          if (hasConfig) {
-            try {
-              content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, CONFIG_FILENAME);
-              pathHelper = new DappPathHelper('workspace');
-            } catch (err) {
-              if (hasInlineConfig) {
-                content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
-                pathHelper = new DappPathHelper('inline');
-              } else {
-                continue;
-              }
-            }
-          } else {
-            content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, `frontend/${CONFIG_FILENAME}`);
-            pathHelper = new DappPathHelper('inline');
+          let content;
+          try {
+            content = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, CONFIG_FILENAME);
+          } catch (err) {
+            continue;
           }
 
           if (content) {
             const config = JSON.parse(content);
             config.workspaceName = workspaceName;
-            config.slug = config.slug || workspaceName;
-            config.inlineMode = pathHelper.targetMode === 'inline';
+            config.slug = workspaceName;
 
-            // Try to load preview image
             try {
-              const hasPreview = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, pathHelper.previewPath);
+              const hasPreview = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, 'preview.png');
               if (hasPreview) {
-                const previewContent = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, pathHelper.previewPath);
+                const previewContent = await (this.plugin as any).call('filePanel', 'readFileFromWorkspace', workspaceName, 'preview.png');
                 if (previewContent) {
                   config.thumbnailPath = previewContent;
                 }
@@ -222,6 +205,7 @@ export class DappManager {
             } catch (e) {}
 
             configs.push(this.sanitizeConfig(config));
+
           }
         } catch (e) {
           console.warn(`[DappManager] Failed to read config for workspace ${workspaceName}`, e);
@@ -549,7 +533,13 @@ export class DappManager {
     const content = JSON.stringify(sanitized, null, 2);
     await (this.plugin as any).call('fileManager', 'writeFile', CONFIG_FILENAME, content, { silent: true });
 
-    // DON'T switch back - prevents infinite workspace switching loops
+    if (currentWorkspace.name !== workspaceName) {
+      await this.switchToWorkspace(currentWorkspace.name);
+    }
+
+    if (currentWorkspace.name !== workspaceName) {
+      await this.focusPlugin();
+    }
   }
 
   async saveGeneratedFiles(slug: string, pages: Record<string, string>) {
@@ -592,7 +582,10 @@ export class DappManager {
       }
     }
 
-    // DON'T switch back - prevents infinite workspace switching loops
+    if (currentWorkspace.name !== workspaceName) {
+      await this.switchToWorkspace(currentWorkspace.name);
+      await this.focusPlugin();
+    }
   }
 
   async deleteDapp(workspaceName: string): Promise<void> {
@@ -608,28 +601,10 @@ export class DappManager {
       console.warn('[DappManager] deleteDapp config read failed (proceeding):', e);
     }
 
-    const isInline = dappConfig?.inlineMode === true;
-
-    if (isInline) {
-      try {
-        const currentWs = await this.getCurrentWorkspace();
-        if (currentWs.name !== workspaceName) await this.switchToWorkspace(workspaceName);
-        await this.plugin.call('fileManager', 'remove', 'frontend');
-
-        // Delete the config file
-        await this.plugin.call('fileManager', 'remove', CONFIG_FILENAME);
-
-        console.log(`[DappManager] Deleted inline dapp frontend folder from workspace: ${workspaceName}`);
-      } catch (e) {
-        console.error('[DappManager] deleteDapp (inline) remove frontend failed:', e);
-      }
-    } else {
-      // For workspace dapps, delete the entire workspace
-      try {
-        await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
-      } catch (e) {
-        console.error('[DappManager] deleteDapp deleteWorkspace failed:', e);
-      }
+    try {
+      await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
+    } catch (e) {
+      console.error('[DappManager] deleteDapp deleteWorkspace failed:', e);
     }
 
     const sourceWs = dappConfig?.sourceWorkspace?.name || 'default_workspace';
@@ -697,15 +672,10 @@ export class DappManager {
 
   async deleteAllDapps(): Promise<void> {
     const dapps = await this.getDapps();
-    const inlineDapps = dapps.filter(dapp => dapp.inlineMode === true);
-    const workspaceDapps = dapps.filter(dapp => !dapp.inlineMode);
-    const workspacesToDelete = workspaceDapps.map(dapp => dapp.workspaceName);
+    const workspacesToDelete = dapps.map(dapp => dapp.workspaceName);
 
-    // Find a safe workspace to switch to
     const allWorkspaces = await this.getWorkspaces();
-    const nonDappWorkspace = allWorkspaces.find(ws =>
-      !ws.name.startsWith(DAPP_WORKSPACE_PREFIX) && !workspacesToDelete.includes(ws.name)
-    );
+    const nonDappWorkspace = allWorkspaces.find(ws => !ws.name.startsWith(DAPP_WORKSPACE_PREFIX));
 
     if (nonDappWorkspace) {
       await this.switchToWorkspace(nonDappWorkspace.name);
@@ -718,40 +688,9 @@ export class DappManager {
       }
     }
 
-    for (const dapp of inlineDapps) {
-      try {
-        const wsName = dapp.workspaceName;
-        await this.switchToWorkspace(wsName);
-        await this.plugin.call('fileManager', 'remove', 'frontend');
-        await this.plugin.call('fileManager', 'remove', CONFIG_FILENAME);
-
-        // Clean up mapping files
-        if (dapp.sourceWorkspace?.name && dapp.contract?.address) {
-          const mappingPath = `.deploys/dapp-mappings/${dapp.contract.address}_${wsName}.json`;
-          try {
-            await this.plugin.call('fileManager', 'remove', mappingPath);
-          } catch (e) {}
-        }
-
-        console.log(`[DappManager] Deleted inline dapp from workspace: ${wsName}`);
-      } catch (e) {
-        console.error('[DappManager] Failed to delete inline dapp:', dapp.workspaceName, e);
-      }
-    }
-
-    // Switch back to safe workspace before deleting workspace dapps
-    if (nonDappWorkspace) {
-      await this.switchToWorkspace(nonDappWorkspace.name);
-    } else {
-      try {
-        await this.switchToWorkspace('default_workspace');
-      } catch (e) {}
-    }
-
     for (const workspaceName of workspacesToDelete) {
       try {
         await this.plugin.call('filePanel', 'deleteWorkspace', workspaceName);
-        console.log(`[DappManager] Deleted workspace dapp: ${workspaceName}`);
       } catch (e) {
         console.error('[DappManager] Failed to delete workspace:', workspaceName, e);
       }
@@ -761,74 +700,70 @@ export class DappManager {
   }
 
   async getDappConfig(workspaceName: string): Promise<DappConfig | null> {
+    const currentWorkspace = await this.getCurrentWorkspace();
+
     try {
-      // Try inline mode first (check if frontend/dapp.config.json exists)
-      const hasInlineConfig = await (this.plugin as any).call('filePanel', 'existsInWorkspace', workspaceName, 'frontend/dapp.config.json');
-      const mode = hasInlineConfig ? 'inline' : 'workspace';
+      if (currentWorkspace.name !== workspaceName) {
+        await this.switchToWorkspace(workspaceName);
+      }
 
-      const dappOps = new (DappOperations as any)(mode, workspaceName, this.plugin as any);
-      await dappOps.switchToWorkspace();
-      const config = await dappOps.readConfig();
+      const content = await this.plugin.call('fileManager', 'readFile', CONFIG_FILENAME);
 
-      if (config) {
+      if (content) {
+        const config = JSON.parse(content);
         config.workspaceName = workspaceName;
-        if (!config.slug) {
-          config.slug = dappOps.getSlug();
-        }
-        config.inlineMode = mode === 'inline';
+        config.slug = workspaceName;
 
-        // Try to load preview image
         try {
-          const previewContent = await dappOps.readFile('preview.png');
+          const previewContent = await this.plugin.call('fileManager', 'readFile', 'preview.png');
           if (previewContent) {
             config.thumbnailPath = previewContent;
           }
-        } catch (e) {
-          console.warn('[DappManager] Failed to load preview for', workspaceName, e);
-        }
+        } catch (e) {}
 
-        // DON'T switch back - let the user stay in the dapp workspace
-        // This prevents infinite workspace switching loops
+        if (currentWorkspace.name !== workspaceName) {
+          await this.switchToWorkspace(currentWorkspace.name);
+          await this.focusPlugin();
+        }
 
         return this.sanitizeConfig(config);
       }
 
-      // No config found - don't switch back either
+      if (currentWorkspace.name !== workspaceName) {
+        await this.switchToWorkspace(currentWorkspace.name);
+        await this.focusPlugin();
+      }
     } catch (e) {
       console.warn(`[DappManager] Failed to read config for ${workspaceName}`, e);
-      // Don't switch back on error either
+
+      if (currentWorkspace.name !== workspaceName) {
+        try {
+          await this.switchToWorkspace(currentWorkspace.name);
+          await this.focusPlugin();
+        } catch (switchErr) {}
+      }
     }
     return null;
   }
 
   async updateDappConfig(workspaceName: string, updates: Partial<DappConfig>): Promise<DappConfig | null> {
-    try {
-      const dappOps = DappOperations.from(workspaceName, this.plugin as any);
+    const currentWorkspace = await this.getCurrentWorkspace();
 
-      // For workspace mode, check if workspace exists before trying to switch
-      if (!dappOps.isInline()) {
-        try {
-          const wsExists = await (this.plugin as any).call('filePanel', 'workspaceExists', dappOps.getWorkspaceName());
-          if (!wsExists) {
-            console.warn(`[DappManager] Workspace ${dappOps.getWorkspaceName()} doesn't exist yet, skipping config update`);
-            return null;
-          }
-        } catch (e) {
-          console.warn('[DappManager] Failed to check workspace existence:', e);
-        }
+    try {
+      if (currentWorkspace.name !== workspaceName) {
+        await this.switchToWorkspace(workspaceName);
       }
 
-      await dappOps.switchToWorkspace();
+      const content = await this.plugin.call('fileManager', 'readFile', CONFIG_FILENAME);
 
-      const currentConfig = await dappOps.readConfig();
+      if (!content) throw new Error('Config file not found');
 
-      if (!currentConfig) throw new Error('Config file not found');
+      const currentConfig: DappConfig = JSON.parse(content);
 
       const newConfig: DappConfig = {
         ...currentConfig,
         ...updates,
-        workspaceName: dappOps.getWorkspaceName(),
-        inlineMode: dappOps.isInline(),
+        workspaceName,
         config: {
           ...currentConfig.config,
           ...(updates.config || {})
@@ -842,16 +777,28 @@ export class DappManager {
 
       const sanitizedConfig = this.sanitizeConfig(newConfig);
 
-      await dappOps.writeConfig(sanitizedConfig);
+      await (this.plugin as any).call('fileManager', 'writeFile', CONFIG_FILENAME, JSON.stringify(sanitizedConfig, null, 2), { silent: true });
 
-      // DON'T switch back - let the user stay in the dapp workspace
-      // This prevents infinite workspace switching loops
+      if (currentWorkspace.name !== workspaceName) {
+        await this.switchToWorkspace(currentWorkspace.name);
+        await this.focusPlugin();
+      }
+
+      if (currentWorkspace.name === workspaceName) {
+        await this.focusPlugin();
+      }
 
       return sanitizedConfig;
 
     } catch (e) {
       console.error('[DappManager] Failed to update config:', e);
-      // Don't switch back on error either
+
+      if (currentWorkspace.name !== workspaceName) {
+        try {
+          await this.switchToWorkspace(currentWorkspace.name);
+          await this.focusPlugin();
+        } catch (switchErr) {}
+      }
       return null;
     }
   }
@@ -859,130 +806,5 @@ export class DappManager {
   async openDappWorkspace(workspaceName: string): Promise<void> {
     await this.switchToWorkspace(workspaceName);
     await this.focusPlugin();
-  }
-
-  async createDappInline(name: string, contractData: any, isBaseMiniApp: boolean = false): Promise<DappConfig> {
-    const currentWs = await this.getCurrentWorkspace();
-
-    // Block creating from within a dapp workspace
-    if (currentWs.name.startsWith(DAPP_WORKSPACE_PREFIX)) {
-      throw new Error(
-        'Cannot create a DApp from within a DApp workspace. ' +
-        'Please switch to the original contract workspace first.'
-      );
-    }
-
-    // Create /frontend directory in current workspace
-    try {
-      await this.plugin.call('fileManager', 'mkdir', 'frontend');
-    } catch (_) { /* folder may already exist */ }
-
-    let existingConfig: DappConfig | null = null;
-    try {
-      const content = await this.plugin.call('fileManager', 'readFile', `frontend/${CONFIG_FILENAME}`);
-      if (content) {
-        existingConfig = JSON.parse(content);
-      }
-    } catch (e) {}
-
-    const timestamp = Date.now();
-    let config: DappConfig;
-
-    if (existingConfig) {
-      config = {
-        ...existingConfig,
-        name,
-        contract: {
-          address: contractData.address,
-          name: contractData.name,
-          abi: contractData.abi,
-          chainId: contractData.chainId,
-          networkName: contractData.networkName || 'Unknown Network'
-        },
-        sourceWorkspace: {
-          name: currentWs.name,
-          filePath: contractData.sourceFilePath || ''
-        },
-        status: 'creating',
-        processingStartedAt: timestamp,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        config: {
-          ...existingConfig.config,
-          isBaseMiniApp
-        },
-        inlineMode: true
-      } as any;
-    } else {
-      const id = uuidv4();
-      const slug = `inline-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 6)}`;
-
-      config = {
-        _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
-        id,
-        slug,
-        name,
-        workspaceName: currentWs.name,
-        contract: {
-          address: contractData.address,
-          name: contractData.name,
-          abi: contractData.abi,
-          chainId: contractData.chainId,
-          networkName: contractData.networkName || 'Unknown Network'
-        },
-        sourceWorkspace: {
-          name: currentWs.name,
-          filePath: contractData.sourceFilePath || ''
-        },
-        status: 'creating',
-        processingStartedAt: timestamp,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        config: {
-          title: name,
-          details: 'Generated by AI',
-          isBaseMiniApp
-        },
-        inlineMode: true
-      } as any;
-    }
-
-    await (this.plugin as any).call(
-      'fileManager', 'writeFile',
-      `frontend/${CONFIG_FILENAME}`,
-      JSON.stringify(config, null, 2),
-      { silent: true }
-    );
-
-    return config;
-  }
-
-  async saveGeneratedFilesInline(pages: Record<string, string>): Promise<void> {
-    if (!pages || Object.keys(pages).length === 0) {
-      console.warn('[DappManager] saveGeneratedFilesInline: no pages to save');
-      return;
-    }
-
-    const currentWs = await this.getCurrentWorkspace();
-    const dappOps = new DappOperations('inline', currentWs.name, this.plugin as any);
-
-    // Ensure base directory exists
-    await dappOps.ensureBaseDir();
-
-    for (const [rawFilename, content] of Object.entries(pages)) {
-      const safeParts = rawFilename.replace(/\\/g, '/')
-        .split('/')
-        .filter(part => part !== '..' && part !== '.' && part !== '');
-
-      if (safeParts.length === 0) continue;
-
-      const relativePath = safeParts.join('/');
-
-      try {
-        await dappOps.writeFile(relativePath, content);
-      } catch (e) {
-        console.error(`[DappManager] saveGeneratedFilesInline: failed to write ${relativePath}:`, e);
-      }
-    }
   }
 }

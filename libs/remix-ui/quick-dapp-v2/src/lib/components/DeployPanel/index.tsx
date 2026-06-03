@@ -10,7 +10,6 @@ import { generateWalletSelectionScript } from '../../utils/wallet-selection-scri
 import { validateEnsName } from '../../utils/ens-utils';
 // remixClient removed - using plugin from context instead
 import { trackMatomoEvent } from '@remix-api';
-import { DappOperations } from '@remix-ui/helper';
 
 import BaseAppWizard from './BaseAppWizard';
 import EnsRegistrationModal from './EnsRegistrationModal';
@@ -133,30 +132,16 @@ function DeployPanel(): JSX.Element {
     try {
       builder = new InBrowserVite();
       await builder.initialize();
-      // For workspace mode: use workspaceName, for inline mode: use slug
-      const identifier = activeDapp.inlineMode ? activeDapp.slug : activeDapp.workspaceName;
-      const dappOps = DappOperations.from(identifier, plugin);
-      const dappRootPath = dappOps.getSourceRoot();
-
+      const dappRootPath = '/';
       const filesMap = new Map<string, string>();
       await readDappFiles(plugin, dappRootPath, filesMap, 0);
 
       if (filesMap.size === 0) throw new Error("No DApp files found");
-      const entryPoint = dappOps.getEntryPoint('src/main.jsx');
 
-      const jsResult = await builder.build(filesMap, entryPoint);
+      const jsResult = await builder.build(filesMap, '/src/main.jsx');
       if (!jsResult.success) throw new Error(`Build failed: ${jsResult.error}`);
-      const indexHtmlPaths = dappOps.getPathVariations('index.html');
 
-      let indexHtmlContent = '';
-      for (const path of indexHtmlPaths) {
-        if (filesMap.has(path)) {
-          indexHtmlContent = filesMap.get(path) || '';
-          break;
-        }
-      }
-
-      if (!indexHtmlContent) throw new Error("index.html not found");
+      const indexHtmlContent = filesMap.get('/index.html') || '';
 
       let logoDataUrl = '';
       if (logo && typeof logo === 'string' && logo.startsWith('data:image')) {
@@ -230,22 +215,11 @@ function DeployPanel(): JSX.Element {
       if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n    ${ogTags}\n</head>`);
       else modifiedHtml = `<html><head>${injectionScript}\n${ogTags}</head>${modifiedHtml}</html>`;
 
-      // Build regex patterns that work for both workspace and inline modes
-      const isInlineMode = dappOps.isInline();
-      const scriptRegex = isInlineMode
-        ? /<script type="module"[^>]*src="(?:\/|\.\/)?(?:frontend\/)?src\/main\.jsx"[^>]*><\/script>/
-        : /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/;
-
-      const cssRegex = isInlineMode
-        ? /<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?(?:frontend\/)?src\/index\.css"[^>]*>/
-        : /<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/;
-
-      console.log("[IPFS Deploy] indexHtml length:", indexHtmlContent.length, "scriptRegexTest:", scriptRegex.test(indexHtmlContent), "isInlineMode:", isInlineMode);
-      if (!scriptRegex.test(indexHtmlContent)) { console.log("[IPFS Deploy] Script tags:", indexHtmlContent.match(/<script[^>]*>/g)); console.log("[IPFS Deploy] HTML head:", indexHtmlContent.substring(0, 500)); }
-
+      console.log("[IPFS Deploy] indexHtml length:", indexHtmlContent.length, "scriptRegexTest:", /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent));
+      if (!/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent)) { console.log("[IPFS Deploy] Script tags:", indexHtmlContent.match(/<script[^>]*>/g)); console.log("[IPFS Deploy] HTML head:", indexHtmlContent.substring(0, 500)); }
       const inlineScript = `<script type="module">\n${jsResult.js}\n</script>`;
-      modifiedHtml = modifiedHtml.replace(scriptRegex, inlineScript);
-      modifiedHtml = modifiedHtml.replace(cssRegex, '');
+      modifiedHtml = modifiedHtml.replace(/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, inlineScript);
+      modifiedHtml = modifiedHtml.replace(/<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/, '');
 
       // Step 3: Final IPFS deploy with HTML + screenshot
       const formData = new FormData();

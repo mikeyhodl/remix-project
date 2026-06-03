@@ -413,7 +413,7 @@ contractName: ${contract.name}
 contractAddress: ${contract.address}
 chainId: ${chainId}
 
-Before generating, please ask me first about my design preferences and my desired location for my frontend (inline or workspace).`
+Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
 
       console.log('[QuickDapp] prompt assembled, length:', prompt.length);
 
