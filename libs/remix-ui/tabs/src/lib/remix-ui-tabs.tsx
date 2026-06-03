@@ -693,7 +693,7 @@ export const TabsUI = (props: TabsUIProps) => {
         `contractAddress: ${inst.address}`,
         `chainId: ${chainId}`,
         ``,
-        `Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
+        `Use defaults for design: React framework, modern dark mode UI, single-page DApp with Ethers.js. But first, ask me where I want my frontend located: inline in /frontend folder of current workspace, or in a new separate workspace.`
       )
     } else if (matchingInstances.length > 1) {
       // Multiple matching contracts — let AI ask the user to choose

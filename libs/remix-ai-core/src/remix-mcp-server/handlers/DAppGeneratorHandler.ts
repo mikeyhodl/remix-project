@@ -226,40 +226,38 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
         // Check if frontend folder exists and has files
         try {
-          const folderPath = dappOps.getSourceRoot().substring(1) // Remove leading slash
-          const frontendExists = await plugin.call('fileManager', 'exists', folderPath)
-          if (frontendExists) {
-            const files = await plugin.call('fileManager', 'readdir', folderPath)
-            const fileCount = files ? Object.keys(files).length : 0
+          const folderPath = dappOps.getSourceRoot().substring(1) // Remove leading slash (e.g., 'frontend')
+          const files = await plugin.call('fileManager', 'readdir', folderPath)
+          const fileCount = files ? Object.keys(files).length : 0
 
-            if (fileCount > 0 && !args.confirmOverwrite) {
-              return this.createErrorResult(
-                `⚠️ The /frontend folder in workspace "${currentWs.name}" already exists and contains ${fileCount} file(s).\n\n` +
-                `**These files will be overwritten if you proceed.**\n\n` +
-                `Would you like to:\n` +
-                `1. **Continue and overwrite** the existing /frontend folder?\n` +
-                `2. **Switch to workspace mode** (creates a new separate workspace for the DApp)?\n` +
-                `3. **Cancel** this operation?\n\n` +
-                `To proceed with overwriting, please confirm and I'll call generate_dapp again with confirmOverwrite=true.`
-              )
-            }
+          if (fileCount > 0 && !args.confirmOverwrite) {
+            remixAILogger.log(`[QuickDapp] /frontend folder exists with ${fileCount} files, requesting user confirmation`)
+            return this.createErrorResult(
+              `⚠️ **OVERWRITE WARNING - USER CONFIRMATION REQUIRED**\n\n` +
+              `The /frontend folder in workspace "${currentWs.name}" already exists and contains ${fileCount} file(s).\n\n` +
+              `**These files will be PERMANENTLY DELETED and replaced with the new DApp.**\n\n` +
+              `ASK THE USER which option they prefer:\n\n` +
+              `**Option 1: Overwrite existing files**\n` +
+              `- Call generate_dapp again with the SAME parameters PLUS confirmOverwrite=true\n\n` +
+              `**Option 2: Create in new workspace (RECOMMENDED - safer)**\n` +
+              `- Call generate_dapp again with the SAME parameters BUT change frontendMode="workspace"\n` +
+              `- This creates a separate workspace and keeps existing /frontend files intact\n\n` +
+              `**Option 3: Cancel**\n` +
+              `- Do not proceed with DApp generation\n\n` +
+              `⚠️ DO NOT PROCEED without user confirmation. Ask the user which option they want.`
+            )
+          }
+          if (fileCount > 0) {
             remixAILogger.log('[QuickDapp] User confirmed overwrite of', fileCount, 'files in /frontend')
           }
         } catch (checkErr: any) {
+          // If readdir fails, the folder likely doesn't exist - this is OK, we can proceed
           const errorMsg = checkErr?.message || String(checkErr)
-          remixAILogger.warn('[QuickDapp] Could not check /frontend folder:', errorMsg)
-          return this.createErrorResult(
-            `⚠️ Unable to verify if /frontend folder exists in workspace "${currentWs.name}".\n\n` +
-            `Error: ${errorMsg}\n\n` +
-            `This might happen if:\n` +
-            `- There are permission issues\n` +
-            `- The workspace is not properly loaded\n\n` +
-            `Would you like to:\n` +
-            `1. **Try again** (I'll retry the check)\n` +
-            `2. **Switch to workspace mode** (safer option - creates a new workspace)\n` +
-            `3. **Proceed anyway** (risky - might overwrite existing files)\n\n` +
-            `What would you like to do?`
-          )
+          if (errorMsg.includes('not exist') || errorMsg.includes('ENOENT') || errorMsg.includes('no such file')) {
+            remixAILogger.log('[QuickDapp] /frontend folder does not exist, proceeding with creation')
+          } else {
+            remixAILogger.warn('[QuickDapp] Could not check /frontend folder:', errorMsg)
+          }
         }
       } else {
         // Workspace mode: create new workspace
@@ -290,10 +288,10 @@ export class GenerateDAppHandler extends BaseToolHandler {
         remixAILogger.warn('[QuickDapp] Dashboard focus failed (non-critical):', e?.message)
       }
 
-      // Create config file for inline mode
       if (targetMode === 'inline') {
         try {
-          remixAILogger.log(`[QuickDapp] Creating DApp config at ${dappOps.getConfigPath()}`)
+          const configPath = 'dapp.config.json'
+          remixAILogger.log(`[QuickDapp] Creating DApp config at ${configPath}`)
           let networkName = 'Unknown Network'
           try {
             const network = await plugin.call('udappEnv', 'getNetwork')
@@ -305,10 +303,11 @@ export class GenerateDAppHandler extends BaseToolHandler {
           const timestamp = Date.now()
 
           const dappConfig = {
-            id: dappOps.getId(),
-            name: args.contractName,
+            _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
             slug: dappOps.getSlug(),
+            name: args.contractName,
             workspaceName: dappOps.getWorkspaceName(),
+            mode: 'inline',
             contract: {
               name: args.contractName,
               address: args.contractAddress,
@@ -324,19 +323,18 @@ export class GenerateDAppHandler extends BaseToolHandler {
             status: 'creating',
             createdAt: timestamp,
             updatedAt: timestamp,
-            processingStartedAt: timestamp,
-            inlineMode: dappOps.isInline()
+            processingStartedAt: timestamp
           }
           await dappOps.ensureBaseDir()
-          await dappOps.writeConfig(dappConfig)
-          remixAILogger.log(`[QuickDapp] DApp config created at ${dappOps.getConfigPath()}`)
+          await plugin.call('fileManager', 'writeFile', configPath, JSON.stringify(dappConfig, null, 2))
+          remixAILogger.log(`[QuickDapp] DApp config created at ${configPath}`)
         } catch (configErr) {
           remixAILogger.warn('[QuickDapp] Config creation failed (non-critical):', configErr)
         }
       }
 
       // Notify React UI that a new DApp is being created (sets processing spinner on card)
-      plugin.emit('generationProgress', { status: 'preparing', contractAddress: args.contractAddress, slug: dappOps.getSlug() })
+      plugin.emit('generationProgress', { status: 'preparing', contractAddress: args.contractAddress, workspaceName: dappOps.getWorkspaceName(), slug: dappOps.getSlug() })
 
       // Return concise context to the agent for file generation.
       // Do NOT include the full system prompt or file dumps — they cause tool result overflow.
@@ -367,7 +365,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
       return this.createSuccessResult({
         success: true,
-        slug: dappOps.getSlug(),
+        workspaceName: dappOps.getWorkspaceName(),
         contractAddress: args.contractAddress,
         contractName: args.contractName,
         isInlineMode,
@@ -421,7 +419,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
     } catch (error: any) {
       remixAILogger.error('[GenerateDApp] Generation failed:', error)
       plugin.emit('dappGenerationError', {
-        slug: dappOps?.getSlug() || undefined,
+        workspaceName: dappOps?.getWorkspaceName(),
         error: error.message
       })
       return this.createErrorResult(
@@ -613,6 +611,16 @@ export class UpdateDAppHandler extends BaseToolHandler {
         return this.createErrorResult(`Failed to switch to workspace ${targetWorkspace}: ${e.message}`)
       }
 
+      let configSlug: string | undefined
+      try {
+        const config = await dappOps.readConfig()
+        configSlug = config.slug
+        remixAILogger.log(`[QuickDapp][UPDATE] Read slug from config: ${configSlug}`)
+      } catch (e: any) {
+        remixAILogger.warn('[QuickDapp] Could not read config for slug:', e?.message)
+      }
+      const slugToUse = configSlug || dappOps.getSlug()
+
       // Get workspace file list (names only — subagent reads content in its own context)
       let fileNames: string[] = []
       try {
@@ -632,8 +640,8 @@ export class UpdateDAppHandler extends BaseToolHandler {
       const contractResolved = await this.resolveContractInfo(dappOps, args)
 
       // Emit UI events
-      plugin.emit('dappUpdateStart', { slug: dappOps.getSlug() })
-      plugin.emit('generationProgress', { status: 'preparing', contractAddress: contractResolved.address, slug: dappOps.getSlug() })
+      plugin.emit('dappUpdateStart', { workspaceName: dappOps.getWorkspaceName(), slug: slugToUse })
+      plugin.emit('generationProgress', { status: 'preparing', contractAddress: contractResolved.address, workspaceName: dappOps.getWorkspaceName(), slug: slugToUse })
 
       // Build a concise file list (names only — no content in the main agent's context).
       // The subagent will read file contents in its own isolated context via read_file,
@@ -649,7 +657,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
       return this.createSuccessResult({
         success: true,
-        slug: dappOps.getSlug(),
+        workspaceName: dappOps.getWorkspaceName(),
         contractAddress: contractResolved.address,
         workspaceReady: true,
         message: `DApp workspace "${targetWorkspace}" is ready for update.\n\n` +
@@ -692,7 +700,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
     } catch (error: any) {
       remixAILogger.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
       plugin.emit('dappGenerationError', {
-        slug: dappOps?.getSlug() || args.workspaceName,
+        workspaceName: dappOps?.getWorkspaceName() || args.workspaceName,
         error: error.message
       })
       return this.createErrorResult(`DApp update failed: ${error.message}`)
@@ -715,7 +723,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
     properties: {
       workspaceName: {
         type: 'string',
-        description: 'The DApp workspace name (slug) returned by generate_dapp'
+        description: 'The DApp workspace name returned by generate_dapp'
       },
       contractAddress: {
         type: 'string',
@@ -742,9 +750,10 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
   async execute(args: any, plugin: Plugin): Promise<IMCPToolResult> {
     const { workspaceName, contractAddress, isUpdate } = args
     let dappOps: DappOperations | undefined
+    let configSlug: string | undefined
 
     try {
-      remixAILogger.log(`[QuickDapp] FinalizeDAppGeneration: slug=${workspaceName}, isUpdate=${!!isUpdate}`)
+      remixAILogger.log(`[QuickDapp] FinalizeDAppGeneration: workspaceName=${workspaceName}, isUpdate=${!!isUpdate}`)
 
       dappOps = DappOperations.from(workspaceName, plugin)
       const isInlineMode = dappOps.isInline()
@@ -755,6 +764,9 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       // Update config status — defensively restore sourceWorkspace if agent overwrote it
       try {
         const config = await dappOps.readConfig()
+        configSlug = config.slug
+        remixAILogger.log(`[QuickDapp][FINALIZE] Read slug from config: ${configSlug}`)
+
         config.status = 'created'
         config.processingStartedAt = null
         config.updatedAt = Date.now()
@@ -795,11 +807,14 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       } catch (configErr) {
         remixAILogger.warn('[QuickDapp] Config update failed (non-critical):', configErr)
       }
+      const slugToUse = configSlug || dappOps.getSlug()
+      remixAILogger.log(`[QuickDapp][FINALIZE] Using slug for event: ${slugToUse}`)
 
       // Emit dappGenerated event — triggers UI refresh
       plugin.emit('dappGenerated', {
         address: contractAddress || '',
-        slug: dappOps.getSlug(),
+        workspaceName: dappOps.getWorkspaceName(),
+        slug: slugToUse,
         isUpdate: !!isUpdate,
         isInlineMode
       })
@@ -811,7 +826,7 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       // Auto-open the DApp detail page
       try {
         await plugin.call('manager', 'activatePlugin', 'quick-dapp-v2')
-        await plugin.call('quick-dapp-v2' as any, 'openDapp', dappOps.getSlug())
+        await plugin.call('quick-dapp-v2' as any, 'openDapp', dappOps.getWorkspaceName())
         await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
         remixAILogger.log('[QuickDapp] Auto-open complete')
       } catch (e: any) {
@@ -820,13 +835,13 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
 
       return this.createSuccessResult({
         success: true,
-        slug: dappOps.getSlug(),
-        message: `✅ DApp "${dappOps.getSlug()}" finalized. Config updated, dashboard refreshed, and DApp preview opened.`
+        workspaceName: dappOps.getWorkspaceName(),
+        message: `✅ DApp "${dappOps.getWorkspaceName()}" finalized. Config updated, dashboard refreshed, and DApp preview opened.`
       })
     } catch (error: any) {
       remixAILogger.error('[QuickDapp] finalize_dapp_generation failed:', error)
       plugin.emit('dappGenerationError', {
-        slug: dappOps?.getSlug() || workspaceName,
+        workspaceName: dappOps?.getWorkspaceName() || workspaceName,
         error: error.message
       })
       return this.createErrorResult(`Failed to finalize DApp: ${error.message}`)
@@ -874,15 +889,13 @@ export class ListDAppsHandler extends BaseToolHandler {
       }
 
       const dapps: any[] = []
-
-      // 1. Scan for workspace mode DApps (dapp-* workspaces)
-      const dappWorkspaces = allWorkspaces
+      const allWorkspaceNames = allWorkspaces
         .map((ws: any) => typeof ws === 'string' ? ws : ws.name)
-        .filter((name: string) => name && name.startsWith('dapp-'))
+        .filter((name: string) => !!name)
 
-      remixAILogger.log('[QuickDapp] Found', dappWorkspaces.length, 'dapp-* workspaces')
+      remixAILogger.log('[QuickDapp] Scanning', allWorkspaceNames.length, 'workspaces for DApps')
 
-      for (const wsName of dappWorkspaces) {
+      for (const wsName of allWorkspaceNames) {
         try {
           const hasConfig = await plugin.call('filePanel' as any, 'existsInWorkspace', wsName, 'dapp.config.json')
           if (!hasConfig) continue
@@ -891,8 +904,8 @@ export class ListDAppsHandler extends BaseToolHandler {
           if (!content) continue
 
           const config = JSON.parse(content)
+          const isInlineMode = config.mode === 'inline'
           dapps.push({
-            slug: config.slug || wsName,
             workspaceName: wsName,
             name: config.name || 'Untitled',
             contractAddress: config.contract?.address || 'unknown',
@@ -901,45 +914,13 @@ export class ListDAppsHandler extends BaseToolHandler {
             networkName: config.contract?.networkName || '',
             status: config.status || 'unknown',
             createdAt: config.createdAt || 0,
-            isInlineMode: false
+            isInlineMode
           })
-        } catch (e) {
-          remixAILogger.warn('[QuickDapp] Failed to read config for', wsName)
-        }
-      }
-
-      // 2. Scan for inline mode DApps (workspaces with /frontend/dapp.config.json)
-      const nonDappWorkspaces = allWorkspaces
-        .map((ws: any) => typeof ws === 'string' ? ws : ws.name)
-        .filter((name: string) => name && !name.startsWith('dapp-'))
-
-      for (const wsName of nonDappWorkspaces) {
-        try {
-          const hasInlineConfig = await plugin.call('filePanel' as any, 'existsInWorkspace', wsName, 'frontend/dapp.config.json')
-          if (!hasInlineConfig) continue
-
-          const content = await plugin.call('filePanel' as any, 'readFileFromWorkspace', wsName, 'frontend/dapp.config.json')
-          if (!content) continue
-
-          const config = JSON.parse(content)
-          // Only include if it's marked as inline mode
-          if (config.inlineMode === true || config.slug?.startsWith('inline-')) {
-            dapps.push({
-              slug: config.slug || `inline-${wsName}`,
-              workspaceName: wsName,
-              name: config.name || 'Untitled',
-              contractAddress: config.contract?.address || 'unknown',
-              contractName: config.contract?.name || 'unknown',
-              chainId: config.contract?.chainId || 'unknown',
-              networkName: config.contract?.networkName || '',
-              status: config.status || 'unknown',
-              createdAt: config.createdAt || 0,
-              isInlineMode: true
-            })
+          if (isInlineMode) {
             remixAILogger.log('[QuickDapp] Found inline DApp in workspace:', wsName)
           }
         } catch (e) {
-          // Silently skip — most workspaces won't have inline DApps
+          // Silently skip workspaces without valid config
         }
       }
 

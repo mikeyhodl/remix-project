@@ -413,7 +413,7 @@ contractName: ${contract.name}
 contractAddress: ${contract.address}
 chainId: ${chainId}
 
-Use defaults: React framework, modern dark mode UI, single-page DApp with Ethers.js. Generate the DApp directly without asking additional questions.`
+Use defaults for design: React framework, modern dark mode UI, single-page DApp with Ethers.js. But first, ask me where I want my frontend located: inline in /frontend folder of current workspace, or in a new separate workspace.`
 
       console.log('[QuickDapp] prompt assembled, length:', prompt.length);
 
