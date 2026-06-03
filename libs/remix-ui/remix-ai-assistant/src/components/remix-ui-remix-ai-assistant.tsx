@@ -1440,7 +1440,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     uiToolCallbackRef.current = null
     streamingAssistantIdRef.current = null
     streamingSubagentBubbleRef.current = null
-
+    //@ts-ignore
     setMessages(prev => {
       const cleanedMessages = prev
         .filter(m => {
