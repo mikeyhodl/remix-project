@@ -38,8 +38,6 @@ interface AiChatPromptAreaProps {
     stopRequest: () => void
     handleSetModel: () => void
     handleGenerateWorkspace: () => void
-    handleRecord: () => void
-    isRecording: boolean
     dispatchActivity: (type: string, payload?: any) => void
     modelBtnRef: React.RefObject<HTMLButtonElement>
     modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
@@ -166,8 +164,6 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         handleSetModel={props.handleSetModel}
         handleModelSelection={props.handleModelSelection}
         handleGenerateWorkspace={props.handleGenerateWorkspace}
-        handleRecord={props.handleRecord}
-        isRecording={props.isRecording}
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}
