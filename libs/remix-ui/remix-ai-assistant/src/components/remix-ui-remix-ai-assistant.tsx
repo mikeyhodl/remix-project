@@ -1438,6 +1438,18 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
 
     uiToolCallbackRef.current = null
+    if (streamingAssistantIdRef.current) {
+      const streamedId = streamingAssistantIdRef.current
+      const idx = messages.findIndex(m => m.id === streamedId)
+      const streamedContent = (idx >= 0 ? messages[idx].content || '' : '').trim()
+      const userMsg = idx > 0 ? messages[idx - 1] : null
+      if (userMsg && userMsg.role === 'user' && streamedContent) {
+        Promise.resolve(ChatHistory.pushHistory(userMsg.content, streamedContent))
+          .then(() => props.plugin.loadConversations())
+          .catch((err) => remixAILogger.warn('[RemixAI Assistant] failed to persist stopped stream:', err))
+      }
+    }
+
     streamingAssistantIdRef.current = null
     streamingSubagentBubbleRef.current = null
     //@ts-ignore
