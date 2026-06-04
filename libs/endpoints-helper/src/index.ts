@@ -158,7 +158,7 @@ const defaultUrls: EndpointUrls = {
 };
 
 // --- Resolution ---
-const prefix = 'https://tokens.staging.remix.live/';
+const prefix = ''// 'https://tokens.staging.remix.live/';
 
 const resolvedUrls: EndpointUrls = prefix
   ? buildUrls(prefix)

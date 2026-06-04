@@ -187,7 +187,7 @@ export const Preload = (props: PreloadProps) => {
       errorPreload('Error detecting mobile device:', e)
     }
 
-    initEndpoints(STAGING_URL).then(() => import('../../app'))
+    initEndpoints().then(() => import('../../app'))
       .then((AppComponent) => {
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {
