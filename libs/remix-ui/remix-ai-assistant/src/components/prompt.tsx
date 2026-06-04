@@ -144,15 +144,21 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     
     // Handle Enter key
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
-      if (showAutocomplete) {
-        // If autocomplete is showing, select the highlighted command
+      // Check if input has content after the slash command format (e.g., "/command: content")
+      const hasCommandContent = input.includes(':') && input.split(':')[1]?.trim().length > 0
+      
+      if (showAutocomplete && !hasCommandContent) {
+        // If autocomplete is showing and no command content yet, select the highlighted command
         e.preventDefault()
         const buttons = document.querySelectorAll('[data-id^="autocomplete-item-"]')
         if (buttons[selectedCommandIndex]) {
           (buttons[selectedCommandIndex] as HTMLButtonElement).click()
         }
       } else {
-        // Otherwise, send the message (including commands that start with /)
+        // Send the message if:
+        // 1. Autocomplete is not showing, OR
+        // 2. User has already typed command content after the colon
+        e.preventDefault()
         handleSend()
       }
     }
@@ -168,7 +174,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   const placeholderText = needsSignIn
     ? 'Sign in to chat with RemixAI…'
     : aiRouteReady
-      ? 'Press "/" for more options or ask me anything about your code, generate new contracts, edit contracts...'
+      ? 'Type "/" for more options or ask me anything about your code, generate new contracts, edit contracts, deploy...'
       : 'Initialising agents…'
 
   return (
