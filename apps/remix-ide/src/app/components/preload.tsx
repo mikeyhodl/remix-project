@@ -138,8 +138,6 @@ export const Preload = (props: PreloadProps) => {
     window.location.hash.includes('e2e_testblock_storage=true') && window.location.host === '127.0.0.1:8080' && window.location.protocol === 'http:'
   )
 
-  const STAGING_URL = 'https://tokens.staging.remix.live'
-
   function loadAppComponent() {
     try {
       const noMobileRedirectSource = checkAndPersistNoMobileRedirect()
