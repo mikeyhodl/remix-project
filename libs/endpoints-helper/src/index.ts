@@ -223,7 +223,7 @@ export function updateEndpoints(config: RemixConfig): void {
   }
 
   // SSO must always point to auth.api.remix.live (separate auth domain)
-  //endpointUrls.sso = 'https://auth.api.remix.live/sso';
+  endpointUrls.sso = 'https://auth.api.remix.live/sso';
  
 }
 
