@@ -128,7 +128,7 @@ const defaultUrls: EndpointUrls = {
   ghfolderpull: 'https://ghfolderpull.api.remix.live',
   embedly: 'https://embedly.api.remix.live',
   rag: 'https://rag.api.remix.live',
-  vyper2: 'https://vyper2.api.remix.live',
+  vyper2: 'https://api.remix.live/vyper2',
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   sso: 'https://auth.api.remix.live/sso',
