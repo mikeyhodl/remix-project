@@ -86,7 +86,7 @@ orbs:
 
 commands:
   nx-build-with-fallback:
-    description: "Run Nx build with Cloud fallback"
+    description: "Run local build (Nx Cloud disabled)"
     parameters:
       target:
         type: string
@@ -105,7 +105,7 @@ commands:
         description: "Custom fallback command (if empty, uses yarn build with skip-cache)"
     steps:
       - run:
-          name: Nx build << parameters.target >> (Cloud with fallback)
+          name: Local build << parameters.target >> (Nx Cloud disabled)
           command: |
             CONFIG_FLAG="<< parameters.config >>"
             MEMORY="<< parameters.memory >>"
@@ -113,6 +113,7 @@ commands:
             FALLBACK="<< parameters.fallback_command >>"
 
             # NX Cloud temporarily disabled - always use local build
+            export NX_NO_CLOUD=true
             # if [ -n "${NX_CLOUD_ACCESS_TOKEN:-}" ]; then
             #   echo "Attempting Nx Cloud build for $TARGET..."
             #   if NX_VERBOSE_LOGGING=1 node --max-old-space-size=$MEMORY ./node_modules/.bin/nx build $TARGET $CONFIG_FLAG --cloud --verbose; then
