@@ -27,7 +27,7 @@ require('dotenv').config()
 // helper must point at the same host or browser checkout succeeds and
 // Node release fails with an opaque `fetch failed`.
 // TODO: drop the staging default once the app stops hard-coding it.
-const API_URL = process.env.REMIX_API_URL || 'https://tokens.staging.remix.live'
+const API_URL = process.env.REMIX_API_URL || 'https://api.remix.live'
 const API_KEY = process.env.E2E_POOL_API_KEY || process.env.E2E_POOL_KEY || ''
 const POOL_BASE = `${API_URL}/sso/test/pool`
 

@@ -128,7 +128,7 @@ const defaultUrls: EndpointUrls = {
   ghfolderpull: 'https://ghfolderpull.api.remix.live',
   embedly: 'https://embedly.api.remix.live',
   rag: 'https://rag.api.remix.live',
-  vyper2: 'https://vyper2.api.remix.live',
+  vyper2: 'https://api.remix.live/vyper2',
   solidityScanWebSocket: 'wss://solidityscan.api.remix.live',
   gitHubLoginProxy: 'https://github-login-proxy.api.remix.live',
   sso: 'https://auth.api.remix.live/sso',
@@ -158,7 +158,7 @@ const defaultUrls: EndpointUrls = {
 };
 
 // --- Resolution ---
-const prefix = 'https://tokens.staging.remix.live/';
+const prefix = ''
 
 const resolvedUrls: EndpointUrls = prefix
   ? buildUrls(prefix)
@@ -223,7 +223,7 @@ export function updateEndpoints(config: RemixConfig): void {
   }
 
   // SSO must always point to auth.api.remix.live (separate auth domain)
-  //endpointUrls.sso = 'https://auth.api.remix.live/sso';
+  endpointUrls.sso = 'https://auth.api.remix.live/sso';
  
 }
 
