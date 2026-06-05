@@ -16,7 +16,7 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
   ghfolderpull: 'ghfolderpull',
 };
 
-const prefix = process.env.NX_ENDPOINTS_URL;
+const prefix = null;
 
 const resolvedUrls: EndpointUrls = prefix
   ? Object.fromEntries(
