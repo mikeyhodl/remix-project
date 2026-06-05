@@ -18,8 +18,6 @@ const endpointPathMap: Record<keyof EndpointUrls, string> = {
 
 const prefix = null;
 
-console.error('@remix-url-resolver DEFAULT: ', JSON.stringify(defaultUrls))
-
 const resolvedUrls: EndpointUrls = prefix
   ? Object.fromEntries(
     Object.entries(defaultUrls).map(([key, _]) => [
@@ -29,5 +27,4 @@ const resolvedUrls: EndpointUrls = prefix
   ) as EndpointUrls
   : defaultUrls;
 
-  console.error('@remix-url-resolver RESOLVED: ', JSON.stringify(resolvedUrls))
 export const endpointUrls = resolvedUrls;
