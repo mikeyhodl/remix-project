@@ -7,8 +7,8 @@ type EndpointUrls = {
 };
 
 const defaultUrls: EndpointUrls = {
-  ipfsGateway: 'https://jqgt.api.remix.live',
-  ghfolderpull: 'https://ghfolderpull.api.remix.live',
+  ipfsGateway: 'https://api.remix.live/endpoints/jqgt',
+  ghfolderpull: 'https://api.remix.live/endpoints/ghfolderpull',
 };
 
 const endpointPathMap: Record<keyof EndpointUrls, string> = {
