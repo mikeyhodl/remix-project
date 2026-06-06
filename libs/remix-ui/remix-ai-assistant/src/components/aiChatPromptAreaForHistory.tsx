@@ -25,17 +25,19 @@ interface AiChatPromptAreaForHistoryProps {
       autoModeAvailable: boolean
       handleModelSelection: (modelName: string) => void
       onLockedModelClick?: (modelId: string, modelName: string) => void
+      /** Permission-derived state of the per-model "Upgrade plan" pill. */
+      upgradePillState?: 'hidden' | 'coming_soon' | 'available'
+      /** Permission-derived state of the per-model "Buy credits" pill. */
+      buyCreditsPillState?: 'hidden' | 'coming_soon' | 'available'
+      /** Called when the user clicks the "Buy credits" pill on a locked model. */
+      onBuyCreditsClick?: (modelId: string, modelName: string) => void
       input: string
       setInput: React.Dispatch<React.SetStateAction<string>>
       isStreaming: boolean
       handleSend: () => void
       stopRequest: () => void
-      showModelOptions: boolean
-      setShowModelOptions: React.Dispatch<React.SetStateAction<boolean>>
       handleSetModel: () => void
       handleGenerateWorkspace: () => void
-      handleRecord: () => void
-      isRecording: boolean
       dispatchActivity: (type: string, payload?: any) => void | any
       modelBtnRef: React.RefObject<HTMLButtonElement>
       modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
@@ -83,6 +85,10 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
     props.onLockedModelClick?.(item.stateValue, item.label)
   }
 
+  const handleBuyCreditsClick = (item: groupListType) => {
+    props.onBuyCreditsClick?.(item.stateValue, item.label)
+  }
+
   return (
     <section
       id="remix-ai-prompt-area"
@@ -102,6 +108,9 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
             choice={props.autoModeEnabled ? 'auto' : props.selectedModelId}
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
+            upgradePillState={props.upgradePillState}
+            buyCreditsPillState={props.buyCreditsPillState}
+            onBuyCreditsClick={props.onBuyCreditsClick ? handleBuyCreditsClick : undefined}
           />
           {false && props.mcpEnabled && (
             <div className="border-top mt-2 pt-2">
@@ -153,8 +162,6 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         handleSetModel={props.handleSetModel}
         handleModelSelection={props.handleModelSelection}
         handleGenerateWorkspace={props.handleGenerateWorkspace}
-        handleRecord={props.handleRecord}
-        isRecording={props.isRecording}
         dispatchActivity={props.dispatchActivity}
         modelBtnRef={props.modelBtnRef}
         textareaRef={props.textareaRef}

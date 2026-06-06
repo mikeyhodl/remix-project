@@ -2,32 +2,6 @@
 
 }
 
-.recording-wave {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 24px;
-}
-
-.recording-wave__bar {
-  display: inline-block;
-  width: 4px;
-  height: 100%;
-  border-radius: 2px;
-  animation: recording-wave-bounce 0.8s ease-in-out infinite;
-}
-
-.recording-wave__bar:nth-child(1) { animation-delay: 0s; }
-.recording-wave__bar:nth-child(2) { animation-delay: 0.1s; }
-.recording-wave__bar:nth-child(3) { animation-delay: 0.2s; }
-.recording-wave__bar:nth-child(4) { animation-delay: 0.1s; }
-.recording-wave__bar:nth-child(5) { animation-delay: 0s; }
-
-@keyframes recording-wave-bounce {
-  0%, 100% { transform: scaleY(0.3); }
-  50% { transform: scaleY(1); }
-}
-
 .ai-assistant-top-height {
   min-height: 84vh;
 }
@@ -644,6 +618,15 @@ mark,
 
 [data-theme="dark"] #remix-ai-chat-history .chat-bubble {
   background: #2a2c3f !important;
+}
+
+#remix-ai-chat-history .bubble-user,
+#remix-ai-chat-history .bubble-user .aiMarkup,
+#remix-ai-chat-history .bubble-user .ai-paragraph {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Better scrollbar for code blocks */
@@ -1372,24 +1355,6 @@ body.dark .conversation-menu-item-danger:active i {
 
 .text-remix-ai-light {
   color: #1ea2aa !important;
-}
-
-.prompt-stop-button {
-  position: absolute;
-  right: 8px;
-  top: 35%;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bs-danger);
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .btn-remix-dark {

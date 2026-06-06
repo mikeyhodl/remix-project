@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './helpers/e2e-pool'
 
 test.use({ viewport: { width: 1440, height: 900 } })
 

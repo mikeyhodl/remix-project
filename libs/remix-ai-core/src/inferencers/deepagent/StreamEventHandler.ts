@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 import EventEmitter from 'events'
 import { InactivityTimeoutManager } from './InactivityTimeoutManager'
 import { INACTIVITY_TIMEOUT_MS } from './constants'
@@ -41,7 +42,7 @@ export class StreamEventHandler {
     this.event = eventEmitter
     this.getThreadId = threadIdGetter
     this.inactivityTimeout = new InactivityTimeoutManager(INACTIVITY_TIMEOUT_MS, () => {
-      console.warn('[DeepAgent] No activity for 10 seconds, handling timeout...')
+      remixAILogger.warn('[DeepAgent] No activity for 10 seconds, handling timeout...')
       this.event.emit('onInactivityTimeout', {
         message: 'No response received for 10 seconds',
         timestamp: Date.now(),
@@ -80,10 +81,12 @@ export class StreamEventHandler {
     const metadata = event.metadata || {}
     const checkpoint_ns = metadata.langgraph_checkpoint_ns || ''
     const agent_name = metadata.lc_agent_name || ''
-    const is_subagent = checkpoint_ns.includes('tools:')
+    // Subagent detection requires BOTH: tools namespace AND a populated agent name
+    // This prevents false positives when main agent events pass through tool-related nodes
+    const is_subagent = checkpoint_ns.includes('tools:') && agent_name.trim().length > 0
 
     if (is_subagent) {
-      console.log(`[StreamEventHandler] Stream event from subagent detected: ${eventType} (agent: ${agent_name})`, event)
+      remixAILogger.log(`[StreamEventHandler] Stream event from subagent detected: ${eventType} (agent: ${agent_name})`, event)
     }
 
     switch (eventType) {
@@ -115,7 +118,7 @@ export class StreamEventHandler {
     const tags = event.tags || []
 
     if (is_subagent && agent_name) {
-      console.log(`[StreamEventHandler] Subagent execution started: ${agent_name} (run_id: ${event.run_id})`, event)
+      remixAILogger.log(`[StreamEventHandler] Subagent execution started: ${agent_name} (run_id: ${event.run_id})`, event)
       this.activeSubagents.set(event.run_id, { name: agent_name, startTime: Date.now() })
 
       this.event.emit('onSubagentStart', {
@@ -128,7 +131,7 @@ export class StreamEventHandler {
     }
 
     if (runName.includes('plan') || tags.includes('planning')) {
-      console.log(`[StreamEventHandler] Planning phase started (run_id: ${event.run_id})`)
+      remixAILogger.log(`[StreamEventHandler] Planning phase started (run_id: ${event.run_id})`)
       this.event.emit('onTaskStart', {
         id: event.run_id,
         name: event.name || 'Planning',
@@ -147,7 +150,7 @@ export class StreamEventHandler {
   private handleChainEnd(event: any, _is_subagent: boolean): { content: string; finalMessage?: string } {
     const subagent = this.activeSubagents.get(event.run_id)
     if (subagent) {
-      console.log(`[StreamEventHandler] Subagent completed: ${subagent.name} (run_id: ${event.run_id})`)
+      remixAILogger.log(`[StreamEventHandler] Subagent completed: ${subagent.name} (run_id: ${event.run_id})`)
       const duration = Date.now() - subagent.startTime
 
       this.event.emit('onSubagentComplete', {
@@ -195,7 +198,7 @@ export class StreamEventHandler {
     const currentRunId = event.run_id
     if (this.previousRunId !== null && this.previousRunId !== currentRunId) {
       // Log token usage when run_id changes (new agent turn)
-      console.log(`[DeepAgent-Tokens] Run ID changed: ${this.previousRunId} → ${currentRunId}`)
+      remixAILogger.log(`[DeepAgent-Tokens] Run ID changed: ${this.previousRunId} → ${currentRunId}`)
       deltaContent = '\n \n---\n' + deltaContent
     }
     this.previousRunId = currentRunId
@@ -247,14 +250,14 @@ export class StreamEventHandler {
     this.tokenUsage.totalCacheCreationTokens += cacheCreationInputTokens
     this.tokenUsage.turnCount++
 
-    console.log(`[DeepAgent-Tokens]   Turn ${this.tokenUsage.turnCount} completed | run_id: ${event.run_id}`)
-    console.log(`[DeepAgent-Tokens]   Input (cache + no cache):  ${inputTokens} tokens `)
-    console.log(`[DeepAgent-Tokens]   Input (no cache):  ${inputTokens - cacheReadInputTokens} tokens`)
-    console.log(`[DeepAgent-Tokens]   Output: ${outputTokens} tokens`)
-    console.log(`[DeepAgent-Tokens]   Cache Read: ${cacheReadInputTokens} tokens`)
-    console.log(`[DeepAgent-Tokens]   Cache Creation: ${cacheCreationInputTokens} tokens`)
-    console.log(`[DeepAgent-Tokens]   Total:  ${totalTokens} tokens`)
-    console.log(`[DeepAgent-Tokens]   Cumulative: ${this.tokenUsage.totalInputTokens} in / ${this.tokenUsage.totalOutputTokens} out / ${this.tokenUsage.totalCacheReadTokens} cache-read / ${this.tokenUsage.totalCacheCreationTokens} cache-creation`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Turn ${this.tokenUsage.turnCount} completed | run_id: ${event.run_id}`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Input (cache + no cache):  ${inputTokens} tokens `)
+    remixAILogger.log(`[DeepAgent-Tokens]   Input (no cache):  ${inputTokens - cacheReadInputTokens} tokens`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Output: ${outputTokens} tokens`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Cache Read: ${cacheReadInputTokens} tokens`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Cache Creation: ${cacheCreationInputTokens} tokens`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Total:  ${totalTokens} tokens`)
+    remixAILogger.log(`[DeepAgent-Tokens]   Cumulative: ${this.tokenUsage.totalInputTokens} in / ${this.tokenUsage.totalOutputTokens} out / ${this.tokenUsage.totalCacheReadTokens} cache-read / ${this.tokenUsage.totalCacheCreationTokens} cache-creation`)
 
     // Emit token usage event for UI tracking
     this.event.emit('onTokenUsage', {
@@ -282,10 +285,10 @@ export class StreamEventHandler {
     const toolName = event.name
     const toolInput = JSON.parse(event.data?.input.input || '{}')
     const toolUIString = resolveToolUIString(toolName, toolInput)
-    console.log('[StreamEventHandler] Tool call started:', toolName, toolInput, '| UI:', toolUIString)
+    remixAILogger.log('[StreamEventHandler] Tool call started:', toolName, toolInput, '| UI:', toolUIString)
     this.event.emit('onToolCall', { toolName, toolInput, toolUIString, status: 'start', threadId: this.getThreadId() })
 
-    console.log('[StreamEventHandler] Checking for todo updates in tool input...', toolInput.todos)
+    remixAILogger.log('[StreamEventHandler] Checking for todo updates in tool input...', toolInput.todos)
     if (toolName === 'write_todos' && toolInput?.todos) {
       const todos = toolInput.todos
       // Find the current todo being executed (first in_progress, or first pending if none in progress)
@@ -302,7 +305,7 @@ export class StreamEventHandler {
       const currentTodoContent = currentTodoIndex >= 0 ? (todos[currentTodoIndex]?.content || todos[currentTodoIndex]?.task) : undefined
       const currentTodoUIString = currentTodoIndex >= 0 ? (todos[currentTodoIndex]?.activeForm || currentTodoContent) : undefined
 
-      console.log('[StreamEventHandler] Todo list updated:', todos, 'Current index:', currentTodoIndex, 'Current todo:', currentTodoContent)
+      remixAILogger.log('[StreamEventHandler] Todo list updated:', todos, 'Current index:', currentTodoIndex, 'Current todo:', currentTodoContent)
       this.event.emit('onToolCall', { toolName: currentTodoContent, toolInput: { }, toolUIString: currentTodoUIString || currentTodoContent, status: 'start', threadId: this.getThreadId() }) // just for UI
 
       this.event.emit('onTodoUpdate', {
@@ -318,7 +321,7 @@ export class StreamEventHandler {
 
   private handleToolEnd(event: any): string {
     const toolName = event.name
-    console.log('[StreamEventHandler] Tool call ended:', toolName)
+    remixAILogger.log('[StreamEventHandler] Tool call ended:', toolName)
     this.event.emit('onToolCall', { toolName, toolInput: {}, toolUIString: '', status: 'end', threadId: this.getThreadId() })
     return ''
   }
@@ -329,16 +332,16 @@ export class StreamEventHandler {
 
   logTokenSummary(): void {
     if (this.tokenUsage.turnCount > 0) {
-      console.log(`[DeepAgent-Tokens] ═══════════════════════════════════════`)
-      console.log(`[DeepAgent-Tokens]   Request Complete - Token Summary`)
-      console.log(`[DeepAgent-Tokens]   Total Turns:   ${this.tokenUsage.turnCount}`)
-      console.log(`[DeepAgent-Tokens]   Total Input (cache + no cache):   ${this.tokenUsage.totalInputTokens} tokens`)
-      console.log(`[DeepAgent-Tokens]   Total Input (no cache):   ${this.tokenUsage.totalInputTokens - this.tokenUsage.totalCacheReadTokens} tokens`)
-      console.log(`[DeepAgent-Tokens]   Total Output:  ${this.tokenUsage.totalOutputTokens} tokens`)
-      console.log(`[DeepAgent-Tokens]   Cache Read:    ${this.tokenUsage.totalCacheReadTokens} tokens`)
-      console.log(`[DeepAgent-Tokens]   Cache Creation: ${this.tokenUsage.totalCacheCreationTokens} tokens`)
-      console.log(`[DeepAgent-Tokens]   Grand Total:   ${this.tokenUsage.totalInputTokens + this.tokenUsage.totalOutputTokens} tokens`)
-      console.log(`[DeepAgent-Tokens] ═══════════════════════════════════════`)
+      remixAILogger.log(`[DeepAgent-Tokens] ═══════════════════════════════════════`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Request Complete - Token Summary`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Total Turns:   ${this.tokenUsage.turnCount}`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Total Input (cache + no cache):   ${this.tokenUsage.totalInputTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Total Input (no cache):   ${this.tokenUsage.totalInputTokens - this.tokenUsage.totalCacheReadTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Total Output:  ${this.tokenUsage.totalOutputTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Cache Read:    ${this.tokenUsage.totalCacheReadTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Cache Creation: ${this.tokenUsage.totalCacheCreationTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens]   Grand Total:   ${this.tokenUsage.totalInputTokens + this.tokenUsage.totalOutputTokens} tokens`)
+      remixAILogger.log(`[DeepAgent-Tokens] ═══════════════════════════════════════`)
     }
   }
 }

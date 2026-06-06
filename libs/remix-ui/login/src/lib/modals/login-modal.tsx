@@ -20,6 +20,34 @@ interface ProviderConfig {
   enabled: boolean
 }
 
+const LOGIN_DEBUG_KEYS = ['remix-login-debug', 'remix-auth-debug']
+type LoginLogMethod = 'log' | 'warn' | 'error'
+
+function isLoginDebugEnabled(): boolean {
+  try {
+    return LOGIN_DEBUG_KEYS.some(key => localStorage.getItem(key) === 'true')
+  } catch {
+    return false
+  }
+}
+
+function writeLoginLog(method: LoginLogMethod, args: any[]): void {
+  if (!isLoginDebugEnabled()) return
+  try {
+    const consoleRef = globalThis.console
+    const target = consoleRef?.[method]
+    if (typeof target === 'function') target.apply(consoleRef, args)
+  } catch {
+    // Login diagnostics must never affect auth flows.
+  }
+}
+
+const loginModalLogger = {
+  log: (...args: any[]) => writeLoginLog('log', args),
+  warn: (...args: any[]) => writeLoginLog('warn', args),
+  error: (...args: any[]) => writeLoginLog('error', args)
+}
+
 /** Mask email for display: user@example.com → us***@example.com */
 const maskEmail = (email: string): string => {
   const atIdx = email.indexOf('@')
@@ -111,7 +139,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           const result: AccessPolicyResponse = await plugin.call('auth', 'getAccessPolicy')
           if (result) {
             setAccessPolicy(result)
-            console.log('[LoginModal] Access policy:', result.policy, result.message)
+            loginModalLogger.log('[LoginModal] Access policy:', result.policy, result.message)
           }
         } else {
           // Fallback: fetch directly from endpoint
@@ -122,11 +150,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           if (res.ok) {
             const data: AccessPolicyResponse = await res.json()
             setAccessPolicy(data)
-            console.log('[LoginModal] Access policy (direct):', data.policy, data.message)
+            loginModalLogger.log('[LoginModal] Access policy (direct):', data.policy, data.message)
           }
         }
       } catch (err) {
-        console.warn('[LoginModal] Failed to fetch access policy, defaulting to open:', err)
+        loginModalLogger.warn('[LoginModal] Failed to fetch access policy, defaulting to open:', err)
       } finally {
         setAccessPolicyLoading(false)
       }
@@ -167,13 +195,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           await plugin.call('auth', 'setPendingInviteToken', token)
           await plugin.call('auth', 'setPendingInviteValidation', token, data)
         } catch (e) {
-          console.warn('[LoginModal] Failed to store pending invite:', e)
+          loginModalLogger.warn('[LoginModal] Failed to store pending invite:', e)
         }
       }
 
       return data
     } catch (err) {
-      console.error('[LoginModal] Failed to validate invite token:', err)
+      loginModalLogger.error('[LoginModal] Failed to validate invite token:', err)
       const errorResult: InviteValidateResponse = {
         valid: false,
         error: 'Failed to validate token',
@@ -201,7 +229,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
     try {
       await plugin.call('invitationManager', 'showInvite', token)
     } catch (err) {
-      console.error('[LoginModal] Failed to show invite:', err)
+      loginModalLogger.error('[LoginModal] Failed to show invite:', err)
     }
   }
 
@@ -217,9 +245,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
             const poolResult = await plugin.call('auth', 'isPoolAvailable')
             setTestAccountsAvailable(poolResult.available === true)
             if (poolResult.reason) setPoolStatusText(poolResult.reason)
-            console.log('[LoginModal] Test account pool:', poolResult)
+            loginModalLogger.log('[LoginModal] Test account pool:', poolResult)
           } catch (testErr) {
-            console.log('[LoginModal] Pool check failed (this is normal for production):', testErr)
+            loginModalLogger.log('[LoginModal] Pool check failed (this is normal for production):', testErr)
           }
         }
 
@@ -231,7 +259,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
         if (!response.ok) throw new Error(`Failed to fetch providers: ${response.status}`)
 
         const data = await response.json()
-        console.log('[LoginModal] Supported providers from backend:', data)
+        loginModalLogger.log('[LoginModal] Supported providers from backend:', data)
 
         const allProviders: ProviderConfig[] = [
           { id: 'google', label: 'Google', icon: <i className="fab fa-google"></i>, description: 'Sign in with your Google account', enabled: data.providers?.includes('google') ?? false },
@@ -247,7 +275,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
         setProviders(allProviders.filter(p => p.enabled))
         setLoadingProviders(false)
       } catch (err) {
-        console.error('[LoginModal] Failed to fetch providers:', err)
+        loginModalLogger.error('[LoginModal] Failed to fetch providers:', err)
         setProviders([
           { id: 'google', label: 'Google', icon: <i className="fab fa-google"></i>, description: 'Sign in with your Google account', enabled: true },
           { id: 'github', label: 'GitHub', icon: <i className="fab fa-github"></i>, description: 'Sign in with your GitHub account', enabled: true },
@@ -281,7 +309,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
       onClose()
     } catch (err) {
       trackEvent('loginFailed', provider)
-      console.error('[LoginModal] Login failed:', err)
+      loginModalLogger.error('[LoginModal] Login failed:', err)
     }
   }
 
@@ -458,11 +486,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, plugin }) => {
           try {
             await plugin.call('auth', 'notifyEmailOtpLogin', data.user, data.token)
           } catch (e) {
-            console.warn('[LoginModal] Failed to notify auth plugin of email OTP login:', e)
+            loginModalLogger.warn('[LoginModal] Failed to notify auth plugin of email OTP login:', e)
           }
         }
 
-        console.log('[LoginModal] Email OTP login successful')
+        loginModalLogger.log('[LoginModal] Email OTP login successful')
         // Close the modal after successful login
         onClose()
       } else {

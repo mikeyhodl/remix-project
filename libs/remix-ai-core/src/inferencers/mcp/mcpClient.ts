@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import EventEmitter from "events";
 import {
@@ -22,7 +23,7 @@ function trackMatomoEvent(category: string, action: string, name?: string) {
       }
     }
   } catch (error) {
-    console.debug('Matomo tracking failed:', error);
+    remixAILogger.debug('Matomo tracking failed:', error);
   }
 }
 
@@ -65,7 +66,7 @@ export class MCPClient {
     } catch (e) {
       // Auth plugin not active or token fetch failed — fall through
       // anonymous. The MCP server will reject with 401 if it requires auth.
-      console.debug('[MCPClient] auth token fetch failed:', e);
+      remixAILogger.debug('[MCPClient] auth token fetch failed:', e);
     }
     return {};
   }
@@ -174,7 +175,7 @@ export class MCPClient {
               this.handleSSEMessage(response);
             }
           } catch (error) {
-            console.error(`[MCP] Error parsing SSE message:`, error);
+            remixAILogger.error(`[MCP] Error parsing SSE message:`, error);
           }
         };
 
@@ -244,7 +245,7 @@ export class MCPClient {
               this.handleWebSocketMessage(response);
             }
           } catch (error) {
-            console.error(`[MCP] Error parsing WebSocket message:`, error);
+            remixAILogger.error(`[MCP] Error parsing WebSocket message:`, error);
           }
         };
 

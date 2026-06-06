@@ -47,6 +47,7 @@ function EditHtmlTemplate(): JSX.Element {
   const [isBuilderReady, setIsBuilderReady] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [runtimeErrors, setRuntimeErrors] = useState<string[]>([]);
 
   const isAiUpdating = activeDapp ? (appState.dappProcessing[activeDapp.slug] || false) : false;
 
@@ -258,6 +259,7 @@ function EditHtmlTemplate(): JSX.Element {
 
     setIsBuilding(true);
     setIframeError('');
+    setRuntimeErrors([]);
     setShowIframe(true);
 
     try {
@@ -330,9 +332,15 @@ function EditHtmlTemplate(): JSX.Element {
     const debugScript = `<script>
 window.onerror = function(msg, url, line, col, error) {
   try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}
+  try { parent.postMessage({ source: 'quickdapp-preview', type: 'runtime-error', message: String(msg), file: url || '', line: line, col: col, stack: error && error.stack || '' }, '*'); } catch(e) {}
 };
 window.addEventListener('unhandledrejection', function(e) {
   try { parent.console.error('[DApp-iframe] Unhandled rejection:', e.reason); } catch(e2) {}
+  try {
+    var err = e.reason instanceof Error ? e.reason : null;
+    var msg = err ? err.message : String(e.reason);
+    parent.postMessage({ source: 'quickdapp-preview', type: 'runtime-error', message: msg, stack: err && err.stack || '' }, '*');
+  } catch(e2) {}
 });
 </script>`;
     const ext = `<script>
@@ -587,6 +595,25 @@ window.addEventListener('unhandledrejection', function(e) {
     };
   }, [plugin, activeDapp?.workspaceName, isBuilderReady, isAiUpdating]);
 
+  // Listen for runtime errors from the DApp preview iframe
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.source !== 'quickdapp-preview' || event.data.type !== 'runtime-error') return;
+      setRuntimeErrors(prev => {
+        const base: string = event.data.message || 'Unknown error';
+        const file = event.data.file && !event.data.file.includes('about:') ? event.data.file : '';
+        const loc = event.data.line ? ` (${file ? file + ':' : 'line '}${event.data.line}${event.data.col ? ':' + event.data.col : ''})` : '';
+        // Extract first useful frame from stack (e.g. "at App (about:srcdoc:42:15)")
+        const stackFrame = event.data.stack ? (event.data.stack.split('\n').find((l: string) => l.trim().startsWith('at ') && !l.includes('esm.sh')) || '').trim() : '';
+        const msg = base + loc + (stackFrame ? '\n' + stackFrame : '');
+        if (prev.includes(msg) || prev.length >= 5) return prev;
+        return [...prev, msg];
+      });
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
   // Detect when blockchain VM is ready via contextChanged event (debounced).
   // Uses plugin.on (passive event) instead of plugin.call (blocked by engine queue).
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -776,7 +803,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <div className="d-flex flex-column h-100">
       <div className="py-2 px-3 border-bottom d-flex align-items-center flex-shrink-0">
         <button
-          className="btn btn-sm btn-secondary me-3"
+          className="btn btn-sm btn-secondary me-3 text-nowrap"
           onClick={handleBack}
           disabled={isCapturing}
           data-id="back-to-dashboard-btn"
@@ -938,6 +965,17 @@ window.addEventListener('unhandledrejection', function(e) {
                         sandbox="allow-popups allow-scripts allow-same-origin allow-forms allow-top-navigation"
                         data-id="dapp-preview-iframe"
                       />
+                      {runtimeErrors.length > 0 && !isAiUpdating && (
+                        <div className="position-absolute top-0 start-0 w-100 p-2" style={{ zIndex: 10 }}>
+                          <div className="alert alert-danger d-flex align-items-center py-1 px-2 mb-0 small shadow-sm">
+                            <i className="fas fa-exclamation-circle me-2 flex-shrink-0"></i>
+                            <span className="text-break flex-grow-1">
+                              <strong>Runtime Error:</strong> {runtimeErrors[runtimeErrors.length - 1]}
+                            </span>
+                            <button className="btn-close ms-2 flex-shrink-0" style={{ fontSize: '0.6rem' }} onClick={() => setRuntimeErrors([])}></button>
+                          </div>
+                        </div>
+                      )}
                       {iframeError && (
                         <div className="d-flex align-items-center justify-content-center h-100 text-center p-4">
                           <div>

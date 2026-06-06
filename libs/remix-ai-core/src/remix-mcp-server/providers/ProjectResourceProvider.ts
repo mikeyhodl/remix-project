@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../helpers/logger'
 /**
  * Project Resource Provider - Provides access to project files and metadata
  */
@@ -67,7 +68,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
       );
 
     } catch (error) {
-      console.warn('Failed to get project resources:', error);
+      remixAILogger.warn('Failed to get project resources:', error);
     }
 
     return resources;
@@ -154,7 +155,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
         }
       }
     } catch (error) {
-      console.warn(`Failed to process path ${path}:`, error);
+      remixAILogger.warn(`Failed to process path ${path}:`, error);
     }
   }
 
@@ -354,7 +355,7 @@ export class ProjectResourceProvider extends BaseResourceProvider {
         })));
       }
     } catch (error) {
-      console.warn(`Failed to scan imports in ${path}:`, error);
+      remixAILogger.warn(`Failed to scan imports in ${path}:`, error);
     }
   }
 

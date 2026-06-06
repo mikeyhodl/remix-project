@@ -56,6 +56,7 @@ import {
   type UiVisibility
 } from './plan-manager-machine'
 import { LoginModal, startSignInFlow, OtpDigitInput, OtpDigitInputHandle } from '@remix-ui/login'
+import { planManagerLogger } from './plan-manager-logger'
 
 import './plan-manager.css'
 
@@ -94,7 +95,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Dev-only UI controls are hidden by default. Flip this to `true`
     // locally when you want scenario switchers + machine debug traces.
     this.debugUI = false
-    this.store = new PlanManagerStore({ debug: this.debugUI, stateCards: true })
+    this.store = new PlanManagerStore({ debug: this.debugUI, stateCards: this.debugUI })
 
     // Surface checkout results as a plugin event so external listeners
     // (e.g. analytics) can react without subscribing to the store.
@@ -162,7 +163,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'AUTH_CHANGED', isAuthenticated: false })
       }
     } catch (err) {
-      console.warn('[PlanManager] auth bridge failed', err)
+      planManagerLogger.warn('[PlanManager] auth bridge failed', err)
     }
   }
 
@@ -468,7 +469,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.store.send({ type: 'CHECKOUT_COMPLETED' })
       setTimeout(() => { void this.loadAccountData() }, 250)
     } catch (err: any) {
-      console.error('[PlanManager] Plan change failed', err)
+      planManagerLogger.error('[PlanManager] Plan change failed', err)
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during plan change.' })
     }
   }
@@ -539,7 +540,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       // The data refresh promotes the result from 'processing' → 'success'.
       setTimeout(() => { void this.loadAccountData() }, 250)
     } catch (err: any) {
-      console.error('[PlanManager] Cancel subscription failed', err)
+      planManagerLogger.error('[PlanManager] Cancel subscription failed', err)
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during cancellation.' })
     }
   }
@@ -651,12 +652,12 @@ export class PlanManagerPlugin extends ViewPlugin {
       const config = await this.call('auth', 'getPaddleConfig').catch(() => null) as
         { clientToken: string | null; environment: 'sandbox' | 'production' } | null
       if (!config?.clientToken) {
-        console.log('[PlanManager] No Paddle client token from auth — checkout will fall back to hosted URL.')
+        planManagerLogger.log('[PlanManager] No Paddle client token from auth — checkout will fall back to hosted URL.')
         return
       }
       this.paddle = await initPaddle(config.clientToken, config.environment)
     } catch (err) {
-      console.warn('[PlanManager] Paddle init failed', err)
+      planManagerLogger.warn('[PlanManager] Paddle init failed', err)
     }
   }
 
@@ -711,13 +712,13 @@ export class PlanManagerPlugin extends ViewPlugin {
         // until the webhook lands.
         window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
         this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
-        console.log('[plan-manager:poll] triggered from hosted-url fallback', { intent, transactionId })
+        planManagerLogger.log('[plan-manager:poll] triggered from hosted-url fallback', { intent, transactionId })
         void this.pollPaymentConfirmation(intent, transactionId)
       } else {
         this.store.send({ type: 'CHECKOUT_ERROR', message: 'Backend returned no checkout reference.' })
       }
     } catch (err: any) {
-      console.error('[PlanManager] Checkout failed', err)
+      planManagerLogger.error('[PlanManager] Checkout failed', err)
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected checkout error.' })
     }
     // Touch unused param to satisfy strict mode — `intent`/`itemLabel` are
@@ -733,7 +734,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     case 'checkout.completed': {
       const pendingIntent = this.store.getSnapshot().pendingCheckout?.intent ?? 'subscription'
       this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
-      console.log('[plan-manager:poll] triggered from paddle checkout.completed', { intent: pendingIntent, transactionId })
+      planManagerLogger.log('[plan-manager:poll] triggered from paddle checkout.completed', { intent: pendingIntent, transactionId })
       // Poll our backend (never Paddle) until the webhook has been processed,
       // then promote 'processing' → 'success'.
       void this.pollPaymentConfirmation(pendingIntent, transactionId)
@@ -896,11 +897,11 @@ export class PlanManagerPlugin extends ViewPlugin {
     const pollId = Math.random().toString(36).slice(2, 8)
     const tag = (m: string) => `${LOG} ${pollId} ${m}`
 
-    console.log(tag('start'), { intent, transactionId })
+    planManagerLogger.log(tag('start'), { intent, transactionId })
 
     const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
     if (!billingApi) {
-      console.warn(tag('abort: no billing api'))
+      planManagerLogger.warn(tag('abort: no billing api'))
       return
     }
 
@@ -913,7 +914,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // *require* the transactionId since they never appear there.
     const useTransactionPoll = intent === 'topup'
     if (useTransactionPoll && !transactionId) {
-      console.warn(tag('topup poll without transactionId — single refresh fallback'))
+      planManagerLogger.warn(tag('topup poll without transactionId — single refresh fallback'))
       await this.completePurchaseRefresh()
       return
     }
@@ -927,7 +928,7 @@ export class PlanManagerPlugin extends ViewPlugin {
           const resp = await billingApi.getTransactionStatus(transactionId)
           const data: any = resp?.data
           const status = data?.status
-          console.log(tag(`tick ${tick} transaction`), {
+          planManagerLogger.log(tag(`tick ${tick} transaction`), {
             elapsedMs: elapsed,
             httpOk: resp?.ok,
             httpStatus: resp?.status,
@@ -935,7 +936,7 @@ export class PlanManagerPlugin extends ViewPlugin {
           })
           if (status && status !== 'pending') {
             if (status === 'completed') {
-              console.log(tag('completed → refreshing account + permissions'))
+              planManagerLogger.log(tag('completed → refreshing account + permissions'))
               await this.completePurchaseRefresh()
             } else {
               const msg =
@@ -944,7 +945,7 @@ export class PlanManagerPlugin extends ViewPlugin {
                     : status === 'refunded' ? 'Payment was refunded.'
                       : status === 'disputed' ? 'Payment is under dispute.'
                         : `Payment ${status}.`
-              console.warn(tag(`terminal failure: ${status}`))
+              planManagerLogger.warn(tag(`terminal failure: ${status}`))
               this.store.send({ type: 'CHECKOUT_ERROR', message: msg, transactionId })
             }
             return
@@ -952,7 +953,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         } else {
           const resp = await billingApi.getSubscription()
           const hasActive = !!resp?.data?.hasActiveSubscription
-          console.log(tag(`tick ${tick} subscription`), {
+          planManagerLogger.log(tag(`tick ${tick} subscription`), {
             elapsedMs: elapsed,
             httpOk: resp?.ok,
             httpStatus: resp?.status,
@@ -960,24 +961,24 @@ export class PlanManagerPlugin extends ViewPlugin {
             planSlug: resp?.data?.subscription?.planSlug ?? null
           })
           if (resp?.ok && hasActive) {
-            console.log(tag('active subscription confirmed → refreshing account + permissions'))
+            planManagerLogger.log(tag('active subscription confirmed → refreshing account + permissions'))
             await this.completePurchaseRefresh()
             return
           }
         }
       } catch (err) {
-        console.warn(tag(`tick ${tick} threw — keep polling`), err)
+        planManagerLogger.warn(tag(`tick ${tick} threw — keep polling`), err)
       }
 
       if (elapsed >= SOFT_CAP_MS) {
-        console.warn(tag(`soft cap reached at ${elapsed}ms — UI stays in 'processing'`))
+        planManagerLogger.warn(tag(`soft cap reached at ${elapsed}ms — UI stays in 'processing'`))
         return
       }
       const next = intervalAt(elapsed)
-      console.debug(tag(`waiting ${next}ms before next tick`))
+      planManagerLogger.debug(tag(`waiting ${next}ms before next tick`))
       await new Promise(r => setTimeout(r, next))
     }
-    console.error(tag('hard cap reached without confirmation'))
+    planManagerLogger.error(tag('hard cap reached without confirmation'))
   }
 
   /**
@@ -988,19 +989,19 @@ export class PlanManagerPlugin extends ViewPlugin {
    */
   private async completePurchaseRefresh(): Promise<void> {
     const LOG = '[plan-manager:refresh]'
-    console.log(LOG, 'start')
+    planManagerLogger.log(LOG, 'start')
     await Promise.all([
-      this.loadAccountData().catch(err => console.warn(LOG, 'loadAccountData failed', err)),
-      this.call('auth', 'refreshPermissions').catch(err => console.warn(LOG, 'refreshPermissions failed', err)),
-      this.call('auth', 'refreshCredits').catch(err => console.warn(LOG, 'refreshCredits failed', err)),
-      this.call('auth', 'refreshAccessPolicy').catch(err => console.warn(LOG, 'refreshAccessPolicy failed', err))
+      this.loadAccountData().catch(err => planManagerLogger.warn(LOG, 'loadAccountData failed', err)),
+      this.call('auth', 'refreshPermissions').catch(err => planManagerLogger.warn(LOG, 'refreshPermissions failed', err)),
+      this.call('auth', 'refreshCredits').catch(err => planManagerLogger.warn(LOG, 'refreshCredits failed', err)),
+      this.call('auth', 'refreshAccessPolicy').catch(err => planManagerLogger.warn(LOG, 'refreshAccessPolicy failed', err))
     ])
     // Promote 'processing' → 'success' in the panel. DATA_LOADED alone won't
     // do it because the data state is usually 'ready' (not 'refreshing') by
     // the time we get here; PURCHASE_CONFIRMED is handled at machine root.
     this.store.send({ type: 'PURCHASE_CONFIRMED' })
     this.emit('purchaseConfirmed')
-    console.log(LOG, 'done')
+    planManagerLogger.log(LOG, 'done')
   }
 
   private async loadAccountData(): Promise<void> {

@@ -1,8 +1,8 @@
 'use strict'
 
 import { NightwatchBrowser } from 'nightwatch'
-import init from '../helpers/init'
 import examples from '../examples/example-contracts'
+import { initWithE2EPool, loginWithE2EPool, releaseE2EPool } from '../helpers/e2ePool'
 
 const sources = [
   { 'SimpleStorage.sol': { content: examples.ballot.content } }
@@ -11,10 +11,17 @@ const sources = [
 const tests = {
   '@disabled': true,
   before: function (browser: NightwatchBrowser, done: VoidFunction) {
-    init(browser, done, 'http://127.0.0.1:8080/#experimental=true', true, undefined, true, true)
+    initWithE2EPool(browser, done, 'AIToolSelector', undefined, true, undefined, true, true)
+  },
+  after: async function (browser: NightwatchBrowser, done: VoidFunction) {
+    await releaseE2EPool(browser, done, 'AIToolSelector')
   },
   '@sources': function () {
     return sources
+  },
+
+  'Should login via the test pool through the real UI flow': function (browser: NightwatchBrowser) {
+    loginWithE2EPool(browser)
   },
 
   'Setup workspace for tool selector tests #group1': function (browser: NightwatchBrowser) {
@@ -307,6 +314,7 @@ const checkBrowserIsChrome = function (browser: NightwatchBrowser) {
   return browser.browserName.indexOf('chrome') > -1
 }
 
+/*
 if (!checkBrowserIsChrome(browser)) {
   module.exports = {}
 } else {
@@ -314,3 +322,6 @@ if (!checkBrowserIsChrome(browser)) {
     ...(branch ? (runTestsConditions ? tests : {}) : tests)
   }
 }
+*/
+
+module.exports = {}

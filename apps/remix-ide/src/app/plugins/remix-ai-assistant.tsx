@@ -5,7 +5,7 @@ import { PluginViewWrapper } from '@remix-ui/helper'
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle, ConversationMetadata } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
 import { trackMatomoEvent } from '@remix-api'
-import { ChatHistory, ChatHistoryStorageManager, IndexedDBChatHistoryBackend } from '@remix/remix-ai-core'
+import { ChatHistory, ChatHistoryStorageManager, IndexedDBChatHistoryBackend, remixAILogger } from '@remix/remix-ai-core'
 import { appActionTypes, AppAction } from '@remix-ui/app'
 
 const profile = {
@@ -79,7 +79,7 @@ export class RemixAIAssistant extends ViewPlugin {
     try {
       await this.initializeStorage()
     } catch (error) {
-      console.error('Failed to initialize chat history storage:', error)
+      remixAILogger.error('Failed to initialize chat history storage:', error)
     }
   }
 
@@ -100,18 +100,12 @@ export class RemixAIAssistant extends ViewPlugin {
       // Initialize ChatHistory with storage
       await ChatHistory.init(this.storageManager)
 
-      // Load conversations
+      // Load conversations (populates the sidebar with prior history)
       await this.loadConversations()
 
-      // Check for existing conversation or create new one
-      if (this.conversations.length > 0) {
-        // Load the most recent conversation
-        const recent = this.conversations[0]
-        await this.loadConversation(recent.id)
-      } else {
-        // Create first conversation
-        await this.newConversation()
-      }
+      // On page reload we ALWAYS start a fresh conversation rather than
+      // restoring the most recent one. Restoring caused two regressions:
+      await this.newConversation()
 
       // Run auto-archive check
       await this.autoArchiveCheck()
@@ -158,7 +152,7 @@ export class RemixAIAssistant extends ViewPlugin {
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'load_conversation', isClick: false })
       this.renderComponent()
     } catch (error) {
-      console.error('Failed to load conversations:', error)
+      remixAILogger.error('Failed to load conversations:', error)
     }
   }
 
@@ -173,7 +167,7 @@ export class RemixAIAssistant extends ViewPlugin {
         c => c.title === 'New Conversation' && c.messageCount === 0
       )
       if (emptyExisting) {
-        console.log('[DeepAgent-Thread] newConversation → reusing empty conversation:', emptyExisting.id)
+        remixAILogger.log('[DeepAgent-Thread] newConversation → reusing empty conversation:', emptyExisting.id)
         this.currentConversationId = emptyExisting.id
         this.history = []
         ChatHistory.setCurrentConversation(emptyExisting.id)
@@ -189,7 +183,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
       const workspace = 'default'
       this.currentConversationId = await ChatHistory.startNewConversation(workspace)
-      console.log('[DeepAgent-Thread] newConversation → created new conversation:', this.currentConversationId)
+      remixAILogger.log('[DeepAgent-Thread] newConversation → created new conversation:', this.currentConversationId)
       this.history = []
       await this.loadConversations()
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: true })
@@ -200,7 +194,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
       this.renderComponent()
     } catch (error) {
-      console.error('Failed to create new conversation:', error)
+      remixAILogger.error('Failed to create new conversation:', error)
     }
   }
 
@@ -210,7 +204,7 @@ export class RemixAIAssistant extends ViewPlugin {
     try {
       // Load messages from storage
       const messages = await this.storageManager.getMessages(id)
-      console.log('[DeepAgent-Thread] loadConversation:', id, '| messages loaded:', messages.length)
+      remixAILogger.log('[DeepAgent-Thread] loadConversation:', id, '| messages loaded:', messages.length)
       this.history = messages
       this.currentConversationId = id
 
@@ -223,7 +217,7 @@ export class RemixAIAssistant extends ViewPlugin {
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'load_conversation', isClick: true })
       this.renderComponent()
     } catch (error) {
-      console.error('Failed to load conversation:', error)
+      remixAILogger.error('Failed to load conversation:', error)
     }
   }
 
@@ -250,7 +244,7 @@ export class RemixAIAssistant extends ViewPlugin {
         }
       }
     } catch (error) {
-      console.error('Failed to archive conversation:', error)
+      remixAILogger.error('Failed to archive conversation:', error)
     }
   }
 
@@ -269,7 +263,7 @@ export class RemixAIAssistant extends ViewPlugin {
         trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: false })
       }
     } catch (error) {
-      console.error('Failed to delete conversation:', error)
+      remixAILogger.error('Failed to delete conversation:', error)
     }
   }
 
@@ -289,7 +283,7 @@ export class RemixAIAssistant extends ViewPlugin {
       await this.newConversation()
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'create_new_conversation', isClick: false })
     } catch (error) {
-      console.error('Failed to delete all conversations:', error)
+      remixAILogger.error('Failed to delete all conversations:', error)
     }
   }
 
@@ -318,7 +312,7 @@ export class RemixAIAssistant extends ViewPlugin {
         title,
         preview,
         updatedAt: Date.now()
-      }).catch(err => console.error('Failed to persist conversation title:', err))
+      }).catch(err => remixAILogger.error('Failed to persist conversation title:', err))
     }
   }
 
@@ -354,7 +348,7 @@ export class RemixAIAssistant extends ViewPlugin {
         await this.loadConversations()
       }
     } catch (error) {
-      console.error('Failed to auto-archive conversations:', error)
+      remixAILogger.error('Failed to auto-archive conversations:', error)
     }
   }
 
@@ -381,7 +375,7 @@ export class RemixAIAssistant extends ViewPlugin {
         await this.call('notification', 'alert', 'No file is open')
         return null
       }
-      console.error(error)
+      remixAILogger.error(error)
       return null
     }
   }
@@ -423,7 +417,7 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   chatPipe = (message: string) => {
-    console.log('[QuickDapp] chatPipe received, length:', message?.length)
+    remixAILogger.log('[QuickDapp] chatPipe received, length:', message?.length)
     // Show right side panel if it's hidden
     this.call('rightSidePanel', 'isPanelHidden').then((isPanelHidden) => {
       if (isPanelHidden) {
@@ -458,7 +452,7 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   onReady() {
-    console.log('RemixAiAssistant onReady')
+    remixAILogger.log('RemixAiAssistant onReady')
   }
 
   render() {

@@ -38,7 +38,6 @@
   text-align: center;
   padding: 32px 24px;
   gap: 10px;
-  background: var(--pm-bg);
   color: var(--pm-text);
   font-family: var(--pm-body);
 }

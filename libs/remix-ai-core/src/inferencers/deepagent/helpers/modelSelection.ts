@@ -1,3 +1,4 @@
+import { remixAILogger } from '../../../helpers/logger'
 import { IAutoModelConfig, ModelSelection } from '../../../types/deepagent'
 import { analyzePromptForAutoSelection } from './promptAnalysis'
 
@@ -37,7 +38,7 @@ export function selectOptimalModel(
     fullPrompt.toLowerCase().includes(keyword)
   )
 
-  console.log('[DeepAgentInferencer] Auto selection analysis:', {
+  remixAILogger.log('[DeepAgentInferencer] Auto selection analysis:', {
     complexity,
     hasSecurityKeywords,
     promptLength: fullPrompt.length
@@ -47,7 +48,7 @@ export function selectOptimalModel(
   // structurally Anthropic-shaped (see DeepAgentInferencer.answer safety net).
   const sonnetModelId = allowedModels.find(model => model.includes('sonnet'))
   if (sonnetModelId) {
-    console.log(`[DeepAgentInferencer] Auto: chose Anthropic Sonnet (${complexity}, security=${hasSecurityKeywords})`)
+    remixAILogger.log(`[DeepAgentInferencer] Auto: chose Anthropic Sonnet (${complexity}, security=${hasSecurityKeywords})`)
     return { provider: 'anthropic', modelId: sonnetModelId }
   }
 
@@ -57,6 +58,6 @@ export function selectOptimalModel(
   if (!currentModelSelection) {
     throw new Error('[selectOptimalModel] Auto Mode on, no Sonnet allowed, and no currentModelSelection \u2014 nothing to run')
   }
-  console.log('[DeepAgentInferencer] Auto: no Sonnet allowed, keeping caller selection', currentModelSelection)
+  remixAILogger.log('[DeepAgentInferencer] Auto: no Sonnet allowed, keeping caller selection', currentModelSelection)
   return currentModelSelection
 }

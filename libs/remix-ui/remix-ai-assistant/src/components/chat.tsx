@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import copy from 'copy-to-clipboard'
 import { ChatMessage, assistantAvatar, assitantAvatarLight } from '../lib/types'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, SetStateAction, Dispatch } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
 import {
   sampleConversationStarters,
@@ -81,6 +81,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   onDappReviewViewDiff,
   handleLoadSkills
 }) => {
+  const [btnColor, setBtnColor] = useState('')
   return (
     <div
       ref={historyRef}
@@ -92,6 +93,19 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
         messages.map(msg => {
           const bubbleClass =
             msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'
+          const isCorrupted = msg.role === 'assistant' && (msg.content === null || msg.content === undefined)
+          const displayContent = isCorrupted ? '*Unable to load response.*' : (msg.content ?? '')
+          const hasContent = typeof displayContent === 'string' && displayContent.trim().length > 0
+          const hasAssistantActivity = !!(
+            msg.isExecutingTools ||
+            msg.activeSubagent ||
+            msg.isSubagentStreaming ||
+            (msg.currentTask && msg.taskStatus === 'running') ||
+            (msg.todos && msg.todos.length > 0) ||
+            msg.dappUpdateReview?.status === 'pending'
+          )
+
+          if (msg.role === 'assistant' && !hasContent && !hasAssistantActivity) return null
 
           return (
             <div key={msg.id} className={`chat-row d-flex mb-2 ${msg.role === 'user' ? 'justify-content-end' : ''}`} style={{ minWidth: '90%' }}>
@@ -108,8 +122,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
               <div data-id="ai-response-chat-bubble-section" className={`overflow-y-scroll ${msg.role === 'assistant' ? 'me-3' : ''}`} style={{
                 width: '90%'
               }}>
-                {/* Only render bubble if there's content OR not currently executing tools */}
-                {(msg.content || !msg.isExecutingTools) && (
+                {(msg.role === 'user' || hasContent) && (
                   <div
                     className={`chat-bubble p-2 rounded ${bubbleClass}`}
                     data-id="ai-user-chat-bubble"
@@ -120,15 +133,15 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                       </small>
                     )}
 
-                    <div className={`aiMarkup lh-base text-wrap ${msg.isIntermediateContent ? 'text-muted' : ''} ${msg.isSubagentStreaming ? 'subagent-content' : ''}`}
-                      style={msg.isSubagentStreaming ? {
+                    <div className={`aiMarkup lh-base text-wrap ${msg.isIntermediateContent ? 'text-muted' : ''} ${msg.streamingSubagentName ? 'subagent-content' : ''}`}
+                      style={msg.streamingSubagentName ? {
                         borderLeft: '3px solid rgba(23, 162, 184, 0.5)',
                         paddingLeft: '8px',
                         marginLeft: '4px'
                       } : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        RemixMarkdownViewer(theme, msg.content ?? '')
+                        RemixMarkdownViewer(theme, msg.content, btnColor, setBtnColor)
                       ) : (
                         <div className="ai-paragraph pb-0">
                           {msg.content}
@@ -163,17 +176,17 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                   </div>
                 )}
 
-                {/* Subagent Activity Indicator - shows when subagent is active */}
-                {msg.role === 'assistant' && (msg.activeSubagent || msg.isSubagentStreaming) && (
+                {/* Subagent Activity Indicator - shows when subagent is active or completed */}
+                {msg.role === 'assistant' && (msg.activeSubagent || msg.isSubagentStreaming || msg.streamingSubagentName) && (
                   <div className="subagent-indicator small mb-2 p-2 rounded" style={{
                     backgroundColor: theme?.toLowerCase() === 'dark' ? 'rgba(23, 162, 184, 0.15)' : 'rgba(23, 162, 184, 0.1)',
                     border: '1px solid rgba(23, 162, 184, 0.3)'
                   }}>
                     <div className="d-flex align-items-center">
-                      <i className={`fa fa-robot me-2 text-info ${msg.isSubagentStreaming ? 'fa-beat' : 'fa-spin'}`}></i>
+                      <i className={`fa fa-robot me-2 text-info ${msg.isSubagentStreaming ? 'fa-beat' : ''}`}></i>
                       <span className="text-info">
                         <strong>{msg.streamingSubagentName || msg.activeSubagent || 'Subagent'}</strong>
-                        {msg.isSubagentStreaming ? ' is responding...' : `: ${msg.subagentTask || 'Processing...'}`}
+                        {msg.isSubagentStreaming ? ' is responding...' : ''}
                       </span>
                     </div>
                   </div>
@@ -210,6 +223,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                               {todo.status === 'in_progress' && <i className="fa fa-spinner fa-spin text-primary"></i>}
                               {todo.status === 'pending' && <i className="fa fa-circle text-muted" style={{ opacity: 0.4 }}></i>}
                               {todo.status === 'failed' && <i className="fa fa-times-circle text-danger"></i>}
+                              {todo.status === 'stopped' && <i className="fa fa-stop-circle text-warning"></i>}
                             </span>
                             <span className={`todo-task ${todo.status === 'completed' ? 'text-success' : ''} ${isCurrentTodo && todo.status !== 'completed' ? 'text-primary' : ''}`}>
                               {todo.content || todo.task}
@@ -237,14 +251,14 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                 )}
 
                 {/* Feedback buttons */}
-                {msg.role === 'assistant' && (
+                {msg.role === 'assistant' && hasContent && (
                   <div className="feedback text-end mt-2 me-1">
                     <CustomTooltip tooltipText="Copy message" placement="top">
                       <span
                         role="button"
                         aria-label="copy message"
                         className="message-copy-btn me-3"
-                        onClick={() => copy(msg.content)}
+                        onClick={() => copy(displayContent)}
                         onMouseDown={(e) => e.preventDefault()}
                       >
                         <i className="far fa-copy"></i>
@@ -297,7 +311,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
   )
 }
 
-function RemixMarkdownViewer(theme: string, markDownContent: string): React.ReactNode {
+function RemixMarkdownViewer(theme: string, markDownContent: string, btnColor: string, setBtnColor: Dispatch<SetStateAction<string>>): React.ReactNode {
   return <ReactMarkdown
     remarkPlugins={[[remarkGfm, {}]]}
     remarkRehypeOptions={{}}
@@ -323,8 +337,12 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
                 <span className="ai-code-language">{language}</span>
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-info border border-info"
-                  onClick={() => copy(text)}
+                  className={`btn btn-sm ${btnColor.length > 0 ? 'btn-outline-success border border-success' : 'btn-outline-info border border-info'}`}
+                  onClick={() => {
+                    setBtnColor('successfulCopy')
+                    copy(text)
+                    setTimeout(() => setBtnColor(''), 2000)
+                  }}
                 >
                   <i className="fa-regular fa-copy"></i>
                 </button>
@@ -423,4 +441,3 @@ function RemixMarkdownViewer(theme: string, markDownContent: string): React.Reac
     {normalizeMarkdown(markDownContent)}
   </ReactMarkdown>
 }
-

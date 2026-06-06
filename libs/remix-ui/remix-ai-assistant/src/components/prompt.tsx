@@ -1,14 +1,11 @@
 import { ActivityType } from "../lib/types"
 import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState } from 'react'
-import GroupListMenu from "./contextOptMenu"
 import { AiAssistantType, AiContextType, groupListType } from '../types/componentTypes'
 import { AIEvent, MatomoEvent, trackMatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
-import { ModelAccess } from '../hooks/useModelAccess'
 import { PromptDefault } from "./promptDefault";
-import { PromptActiveButtons } from "./promptActiveButtons";
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -24,9 +21,7 @@ export interface PromptAreaProps {
   setShowOllamaModelSelector: React.Dispatch<React.SetStateAction<boolean>>
   showOllamaModelSelector: boolean
   handleGenerateWorkspace: () => void
-  handleRecord: () => void
   selectedModel: AIModel | null
-  isRecording: boolean
   dispatchActivity: (type: ActivityType, payload?: any) => void
   modelBtnRef: React.RefObject<HTMLButtonElement>
   modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
@@ -58,9 +53,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleSend,
   selectedModel,
   handleSetModel,
-  handleGenerateWorkspace,
-  handleRecord,
-  isRecording,
   modelBtnRef,
   textareaRef,
   themeTracker,
@@ -69,10 +61,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   stopRequest,
   setShowOllamaModelSelector,
   showOllamaModelSelector,
-  selectedOllamaModel,
   modelSelectorBtnRef,
   autoModeEnabled,
-  handleLoadSkills,
   usingOwnApiKey,
   aiRoute = 'chat',
   aiRouteReady = true,
@@ -155,7 +145,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               {/* <div className="d-flex flex-row align-items-center"> */}
               <button
                 onClick={handleSetModel}
-                className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border-0 rounded"
+                className="btn btn-text btn-sm small font-weight-light text-dark align-self-end border-0 rounded"
                 data-assist-btn="assistant-selector-btn"
                 data-id="ai-model-selector-btn"
                 ref={modelBtnRef}
@@ -168,7 +158,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                     <CustomTooltip tooltipText="Using your own API key">
                       <span
                         className="badge bg-success ms-2"
-                        style={{ fontSize: '0.6rem', padding: '2px 4px' }}
+                        style={{ fontSize: '0.6rem', padding: '2px 4px', color: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '' :'#000' }}
                         data-id="own-api-key-badge"
                       >
                         <i className="fas fa-key me-1" style={{ fontSize: '0.5rem' }}></i>
@@ -197,7 +187,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                               ? 'bg-secondary'
                               : 'bg-warning'
                       }`}
-                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden' }}
+                      style={{ fontSize: '0.6rem', padding: '2px 4px', visibility: selectedModel ? 'visible' : 'hidden', color: themeTracker && themeTracker?.name.toLowerCase() === 'light' ? '' :'#000' }}
                       data-id="ai-route-status"
                       data-route={aiRoute}
                     >
@@ -227,10 +217,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   </div>
                 </button>
               )}
-              {/* </div> */}
-              { !isRecording ? <PromptDefault
-                handleRecording={handleRecord}
-                isRecording={isRecording}
+              <PromptDefault
                 // Only render the cancel/stop affordance for an actual
                 // in-flight inference. When the route is merely "not
                 // ready yet" (e.g. anonymous user, agents still booting)
@@ -244,14 +231,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 handleCancel={stopRequest}
                 showSignIn={needsSignIn}
                 onSignIn={onSignIn}
-              /> : <PromptActiveButtons
-                handleRecordingStoppage={handleRecord}
-                isStreaming={isStreaming}
-                handleSend={handleSend}
-                isRecording={isRecording}
-                themeTracker={themeTracker}
-                handleCancel={stopRequest}
-              /> }
+              />
             </div>
           </div>
         </div>

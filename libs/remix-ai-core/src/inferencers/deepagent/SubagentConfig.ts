@@ -48,7 +48,8 @@ export interface SubagentConfigItem {
 export async function buildSubagentConfigs(
   tools: DynamicStructuredTool[],
   model: BaseChatModel,
-  filesystemBackend: any
+  filesystemBackend: any,
+  fallbackModel: BaseChatModel,
 ): Promise<(SubAgent | CompiledSubAgent)[]> {
   // Check permissions
   const plugin = filesystemBackend.plugin
@@ -94,14 +95,14 @@ export async function buildSubagentConfigs(
   const agents: (SubAgent | CompiledSubAgent)[] = [
     // Always available
     {
-      name: 'Solidity Compiler',
+      name: 'Solidity_Compiler',
       systemPrompt: CONTRACT_COMPILER_PROMPT,
       model,
       tools: solidityCompilerTools,
       description: CONTRACT_COMPILER_PROMPT
     },
     {
-      name: 'Contract Runner',
+      name: 'Contract_Runner',
       systemPrompt: CONTRACT_RUNNER_PROMPT,
       model,
       tools: deployerTools,
@@ -109,14 +110,14 @@ export async function buildSubagentConfigs(
     },
 
     {
-      name: 'Debug Specialist',
+      name: 'Debug_Specialist',
       systemPrompt: DEBUG_SPECIALIST_SUBAGENT_PROMPT,
       model: modelAny,
       tools: debugTools,
       description: 'Specializes in debugging and troubleshooting smart contract issues.'
     },
     {
-      name: 'Conversion Utilities Specialist',
+      name: 'Conversion_Utilities_Specialist',
       systemPrompt: CONVERSION_UTILITIES_SUBAGENT_PROMPT,
       model: modelAny,
       tools: conversionTools,
@@ -127,11 +128,11 @@ export async function buildSubagentConfigs(
   // dapp:quickdapp permission required
   if (hasQuickdappPermission) {
     agents.push({
-      name: 'QuickDapp Specialist',
+      name: 'QuickDapp_Specialist',
       systemPrompt: QUICKDAPP_SPECIALIST_SUBAGENT_PROMPT,
-      model: modelAny,
+      model: fallbackModel,
       tools: quickDappTools,
-      description: 'Specializes in generating and updating React-based DApp frontends using write_file tools.'
+      description: 'Used whenever you are tasked with generating and updating DApp frontends. Start by finding out the deployed contract, use generate_dapp to create a first version of the DApp, then update it iteratively using update_dapp. Use write_file to implement the DApp and finalize_dapp_generation when the DApp is ready to be used.'
     })
   }
 
@@ -139,7 +140,7 @@ export async function buildSubagentConfigs(
   if (hasAuditorPermission) {
     agents.push(
       {
-        name: 'Gas Optimizer',
+        name: 'Gas_Optimizer',
         systemPrompt: GAS_OPTIMIZER_SUBAGENT_PROMPT,
         model,
         tools: basicFileTools,
@@ -147,7 +148,7 @@ export async function buildSubagentConfigs(
         skills: ['/skills/solidity-gas-optimization']
       },
       {
-        name: 'Contract Classifier',
+        name: 'Contract_Classifier',
         systemPrompt: CONTRACT_CLASSIFIER_PROMPT,
         model,
         tools: classifierTools,
@@ -156,7 +157,7 @@ export async function buildSubagentConfigs(
       {
         systemPrompt: COMPREHENSIVE_AUDITOR_SUBAGENT_PROMPT,
         tools: securityTools,
-        name: 'Comprehensive Auditor',
+        name: 'Comprehensive_Auditor',
         description: 'Specializes in comprehensive auditing and analysis of smart contracts.',
       }
     )
@@ -165,7 +166,7 @@ export async function buildSubagentConfigs(
   if (hasWebSearchPermission) {
     agents.push(
       {
-        name: 'Web Search Specialist',
+        name: 'Web_Search_Specialist',
         systemPrompt: WEB_SEARCH_SUBAGENT_PROMPT,
         model,
         tools: webSearchTools,
@@ -176,7 +177,7 @@ export async function buildSubagentConfigs(
 
   if (hasCirclePermission) {
     agents.push({
-      name: 'Circle Specialist',
+      name: 'Circle_Specialist',
       systemPrompt: CIRCLE_SUBAGENT_PROMPT,
       model,
       tools: circleTools,
@@ -187,7 +188,7 @@ export async function buildSubagentConfigs(
   if (hasEtherscanPermission) {
     agents.push(
       {
-        name: 'Etherscan Specialist',
+        name: 'Etherscan_Specialist',
         systemPrompt: ETHERSCAN_SUBAGENT_PROMPT,
         model,
         tools: etherscanTools,
@@ -199,7 +200,7 @@ export async function buildSubagentConfigs(
   if (hasTheGraphPermission) {
     agents.push(
       {
-        name: 'TheGraph Specialist',
+        name: 'TheGraph_Specialist',
         systemPrompt: THEGRAPH_SUBAGENT_PROMPT,
         model,
         tools: theGraphTools,
@@ -211,7 +212,7 @@ export async function buildSubagentConfigs(
   if (hasAlchemyPermission) {
     agents.push(
       {
-        name: 'Alchemy Specialist',
+        name: 'Alchemy_Specialist',
         systemPrompt: ALCHEMY_SUBAGENT_PROMPT,
         model,
         tools: alchemyTools,
@@ -222,7 +223,7 @@ export async function buildSubagentConfigs(
   if (hasOZpermission) {
     agents.push(
       {
-        name: 'Advanced Solidity Developer',
+        name: 'Advanced_Solidity_Developer',
         systemPrompt: SOLIDITY_CODE_GENERATION_PROMPT,
         model,
         tools: solidityTools,

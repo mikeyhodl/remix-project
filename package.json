@@ -76,7 +76,7 @@
     "downloadsolc_assets_e2e": "node ./apps/remix-ide/ci/download_e2e_assets.js",
     "make-mock-compiler": "node apps/remix-ide/ci/makeMockCompiler.js",
     "minify": "uglifyjs --in-source-map inline --source-map-inline -c warnings=false",
-    "build:production": "NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --skip-nx-cache --verbose",
+    "build:production": "NX_NO_CLOUD=true NX_DAEMON=false NX_PARALLEL=2 MINIFIER_PARALLEL=2 NODE_ENV=production node --max-old-space-size=8192 ./node_modules/.bin/nx build remix-ide --configuration=production --skip-nx-cache --verbose",
     "serve:production": "npx http-server ./dist/apps/remix-ide",
     "install_webdriver": "bash ./apps/remix-ide-e2e/install-webdriver.sh",
     "update_metamask": "bash ./apps/remix-ide-e2e/update_metamask.sh",
@@ -109,9 +109,6 @@
     "@connectrpc/connect": "^2.1.1",
     "@connectrpc/connect-node": "^2.1.1",
     "@connectrpc/connect-web": "^2.1.1",
-    "@dnd-kit/core": "^6.1.0",
-    "@dnd-kit/sortable": "^8.0.0",
-    "@drafish/surge-client": "^1.1.5",
     "@edgeandnode/amp": "^0.0.51",
     "@effect/platform": "^0.93.6",
     "@effect/platform-node": "^0.103.0",
@@ -449,8 +446,7 @@
     "watchify": "^3.9.0",
     "webpack": "^5.75.0",
     "webpack-bundle-analyzer": "^4.7.0",
-    "webpack-cli": "^4.10.0",
-    "webpack-manifest-plugin": "^5.0.0"
+    "webpack-cli": "^4.10.0"
   },
   "resolutions": {
     "@langchain/core": "^1.1.42",
