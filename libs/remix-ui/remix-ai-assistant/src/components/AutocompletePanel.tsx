@@ -26,13 +26,13 @@ const AVAILABLE_COMMANDS: Command[] = [
   // { name: 'ollama', description: 'Configure Ollama integration', category: 'Settings' },
   
   // Compilation & Analysis
-  { name: 'compile', description: 'Compile current contract', category: 'Build' },
+  { name: 'compile', description: 'Compile contract', category: 'Build' },
   // { name: 'slither', description: 'Run Slither security analysis', category: 'Analysis' },
   // { name: 'mythril', description: 'Run Mythril security scan', category: 'Analysis' },
   
   // Deployment & Verification
   { name: 'deploy', description: 'Deploy contract to network', category: 'Deploy' },
-  { name: 'etherscan', description: 'Fetch contract from Etherscan', category: 'Import' },
+  { name: 'etherscan', description: 'Fetch contract from Etherscan and call the Etherscan service', category: 'Import' },
   // { name: 'verify', description: 'Verify contract on block explorer', category: 'Deploy' },
   
   // Testing & Debugging
@@ -152,26 +152,50 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
   return (
     <div
       ref={panelRef}
-      className="position-absolute rounded shadow-lg overflow-auto"
+      className="position-absolute rounded-3 shadow-lg overflow-hidden"
       style={{
         bottom: '100%',
         left: 0,
         right: 0,
-        marginBottom: '8px',
-        maxHeight: '300px',
+        marginBottom: '12px',
+        maxHeight: '350px',
         backgroundColor,
         border: `1px solid ${borderColor}`,
-        zIndex: 1000
+        zIndex: 1000,
+        boxShadow: isDarkTheme 
+          ? '0 10px 25px rgba(0, 0, 0, 0.5), 0 5px 10px rgba(0, 0, 0, 0.3)'
+          : '0 10px 25px rgba(0, 0, 0, 0.1), 0 5px 10px rgba(0, 0, 0, 0.05)'
       }}
       data-id="autocomplete-panel"
     >
+    <div className="px-3 py-2 border-bottom d-flex align-items-center" style={{ 
+      backgroundColor: isDarkTheme ? '#252535' : '#f8f9fa',
+      borderColor,
+      color: secondaryTextColor,
+      fontSize: '0.85rem'
+    }}>
+      <span style={{ opacity: 0.9 }}>💡 Choose an action and complete with your prompt</span>
+    </div>
+    <div className="overflow-auto" style={{ maxHeight: '300px' }}>
       {Object.entries(groupedCommands).map(([category, commands]) => {
         return (
           <div key={category}>
             <div
-              className="px-3 py-1 small font-weight-bold"
-              style={{ color: categoryColor, fontSize: '0.75rem' }}
+              className="px-3 py-2 small font-weight-bold text-uppercase"
+              style={{ 
+                color: categoryColor, 
+                fontSize: '0.7rem',
+                letterSpacing: '0.05em',
+                backgroundColor: isDarkTheme ? '#1f1f2f' : '#fafbfc',
+                borderBottom: `1px solid ${borderColor}`
+              }}
             >
+              {category === 'Build' && '🔨 '}
+              {category === 'Deploy' && '🚀 '}
+              {category === 'Import' && '📥 '}
+              {category === 'Data' && '📁 '}
+              {category === 'DeFi' && '💰 '}
+              {category === 'Frontend' && '🎨 '}
               {category}
             </div>
             {commands.map((cmd) => {
@@ -187,7 +211,8 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                     backgroundColor: isSelected ? selectedColor : 'transparent',
                     color: textColor,
                     cursor: 'pointer',
-                    transition: 'background-color 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    borderLeft: isSelected ? `3px solid ${isDarkTheme ? '#4f93ff' : '#007bff'}` : '3px solid transparent'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = isSelected ? selectedColor : hoverColor
@@ -201,14 +226,17 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
               >
                 <div className="d-flex flex-column">
                   <div className="d-flex align-items-center">
-                    <span className="font-weight-medium">{cmd.name}</span>
+                    <span className="font-weight-medium" style={{ fontSize: '0.9rem' }}>
+                      /{cmd.name}
+                    </span>
                     {cmd.shortcut && (
                       <span 
-                        className="ms-2 px-1 rounded small"
+                        className="ms-2 px-2 py-1 rounded-pill small"
                         style={{ 
-                          backgroundColor: isDarkTheme ? '#1d1d2d' : '#f9fafb',
-                          color: secondaryTextColor,
-                          fontSize: '0.75rem'
+                          backgroundColor: isDarkTheme ? '#1d1d2d' : '#e9ecef',
+                          color: isDarkTheme ? '#4f93ff' : '#007bff',
+                          fontSize: '0.7rem',
+                          fontWeight: 500
                         }}
                       >
                         {cmd.shortcut}
@@ -217,17 +245,28 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                   </div>
                   <span 
                     className="small" 
-                    style={{ color: secondaryTextColor, fontSize: '0.8rem' }}
+                    style={{ 
+                      color: secondaryTextColor, 
+                      fontSize: '0.78rem',
+                      marginTop: '2px',
+                      opacity: 0.85
+                    }}
                   >
                     {cmd.description}
                   </span>
                 </div>
                 {isSelected && (
                   <span 
-                    className="small ms-2" 
-                    style={{ color: secondaryTextColor, fontSize: '0.75rem' }}
+                    className="badge rounded-pill ms-2" 
+                    style={{ 
+                      backgroundColor: isDarkTheme ? '#4f93ff' : '#007bff',
+                      color: '#ffffff',
+                      fontSize: '0.65rem',
+                      padding: '3px 8px',
+                      fontWeight: 'normal'
+                    }}
                   >
-                    Enter
+                    ↵ Enter
                   </span>
                 )}
               </button>
@@ -236,6 +275,7 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
           </div>
         )
       })}
+    </div>
     </div>
   )
 }
