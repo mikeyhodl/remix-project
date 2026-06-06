@@ -93,15 +93,14 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
   }, [input, isStreaming])
 
-
   // Handle command selection
   const handleCommandSelect = useCallback((command: Command) => {
     const formattedCommand = '/' + command.name
-    
+
     // If user has already typed something after the initial "/", preserve it
     const spaceIndex = input.indexOf(' ')
     const existingArgs = spaceIndex > -1 ? input.substring(spaceIndex).trim() : ''
-    
+
     setInput(existingArgs ? formattedCommand + existingArgs + ': ': formattedCommand + ': ')
     setShowAutocomplete(false)
     // Focus back on textarea
@@ -116,7 +115,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       setInput(prev => prev + '\n')
       return
     }
-    
+
     // Handle autocomplete navigation if panel is visible
     if (showAutocomplete && e.key !== 'Enter') {
       if (e.key === 'ArrowDown') {
@@ -141,12 +140,12 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         return
       }
     }
-    
+
     // Handle Enter key
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
       // Check if input has content after the slash command format (e.g., "/command: content")
       const hasCommandContent = input.includes(':') && input.split(':')[1]?.trim().length > 0
-      
+
       if (showAutocomplete && !hasCommandContent) {
         // If autocomplete is showing and no command content yet, select the highlighted command
         e.preventDefault()

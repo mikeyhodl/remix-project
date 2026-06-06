@@ -24,28 +24,28 @@ const AVAILABLE_COMMANDS: Command[] = [
   // { name: 'workspace', description: 'Generate a new workspace', shortcut: '/w', category: 'Generate' },
   // { name: 'setAssistant', description: 'Set AI assistant provider', category: 'Settings' },
   // { name: 'ollama', description: 'Configure Ollama integration', category: 'Settings' },
-  
+
   // Compilation & Analysis
   { name: 'compile', description: 'Compile contract', category: 'Build' },
   // { name: 'slither', description: 'Run Slither security analysis', category: 'Analysis' },
   // { name: 'mythril', description: 'Run Mythril security scan', category: 'Analysis' },
-  
+
   // Deployment & Verification
   { name: 'deploy', description: 'Deploy contract to network', category: 'Deploy' },
   { name: 'etherscan', description: 'Fetch contract from Etherscan and call the Etherscan service', category: 'Import' },
   // { name: 'verify', description: 'Verify contract on block explorer', category: 'Deploy' },
-  
+
   // Testing & Debugging
   // { name: 'test', description: 'Run contract tests', category: 'Test' },
   // { name: 'debug', description: 'Debug transaction', category: 'Debug' },
-  
+
   // DeFi & Integrations
   { name: 'thegraph', description: 'Fetch data from The Graph', category: 'Data' },
   { name: 'alchemy', description: 'Fetch data from Alchemy', category: 'Data' },
   { name: 'circle', description: 'Circle integration', category: 'DeFi' },
   // { name: 'uniswap', description: 'Uniswap integration', category: 'DeFi' },
   // { name: 'aave', description: 'Aave integration', category: 'DeFi' },
-  
+
   // Documentation & Help
   // { name: 'help', description: 'Show available commands', category: 'Help' },
   // { name: 'docs', description: 'Open documentation', category: 'Help' },
@@ -74,15 +74,15 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
     }
 
     const search = searchTerm.toLowerCase().slice(1) // Remove the '/' prefix
-    
+
     // If search is empty (just '/'), show all commands
-    const filtered = search.length === 0 
-      ? AVAILABLE_COMMANDS 
-      : AVAILABLE_COMMANDS.filter(cmd => 
-          cmd.name.toLowerCase().includes(search.toLowerCase()) ||
+    const filtered = search.length === 0
+      ? AVAILABLE_COMMANDS
+      : AVAILABLE_COMMANDS.filter(cmd =>
+        cmd.name.toLowerCase().includes(search.toLowerCase()) ||
           cmd.shortcut?.toLowerCase().includes(search.toLowerCase()) ||
           cmd.description.toLowerCase().includes(search.toLowerCase())
-        )
+      )
 
     // Sort by relevance only if there's a search term
     if (search.length > 0) {
@@ -162,120 +162,120 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
         backgroundColor,
         border: `1px solid ${borderColor}`,
         zIndex: 1000,
-        boxShadow: isDarkTheme 
+        boxShadow: isDarkTheme
           ? '0 10px 25px rgba(0, 0, 0, 0.5), 0 5px 10px rgba(0, 0, 0, 0.3)'
           : '0 10px 25px rgba(0, 0, 0, 0.1), 0 5px 10px rgba(0, 0, 0, 0.05)'
       }}
       data-id="autocomplete-panel"
     >
-    <div className="px-3 py-2 border-bottom d-flex align-items-center" style={{ 
-      backgroundColor: isDarkTheme ? '#252535' : '#f8f9fa',
-      borderColor,
-      color: secondaryTextColor,
-      fontSize: '0.85rem'
-    }}>
-      <span style={{ opacity: 0.9 }}>💡 Choose an action and complete with your prompt</span>
-    </div>
-    <div className="overflow-auto" style={{ maxHeight: '300px' }}>
-      {Object.entries(groupedCommands).map(([category, commands]) => {
-        return (
-          <div key={category}>
-            <div
-              className="px-3 py-2 small font-weight-bold text-uppercase"
-              style={{ 
-                color: categoryColor, 
-                fontSize: '0.7rem',
-                letterSpacing: '0.05em',
-                backgroundColor: isDarkTheme ? '#1f1f2f' : '#fafbfc',
-                borderBottom: `1px solid ${borderColor}`
-              }}
-            >
-              {category === 'Build' && '🔨 '}
-              {category === 'Deploy' && '🚀 '}
-              {category === 'Import' && '📥 '}
-              {category === 'Data' && '📁 '}
-              {category === 'DeFi' && '💰 '}
-              {category === 'Frontend' && '🎨 '}
-              {category}
-            </div>
-            {commands.map((cmd) => {
-              const index = flatCommands.indexOf(cmd)
-              const isSelected = index === selectedIndex
-              
-              return (
-                <button
-                  key={cmd.name}
-                  ref={(el) => itemRefs.current[index] = el}
-                  className="d-flex align-items-center justify-content-between w-100 px-3 py-2 border-0 text-left"
-                  style={{
-                    backgroundColor: isSelected ? selectedColor : 'transparent',
-                    color: textColor,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    borderLeft: isSelected ? `3px solid ${isDarkTheme ? '#4f93ff' : '#007bff'}` : '3px solid transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = isSelected ? selectedColor : hoverColor
-                    onSelectedIndexChange(index)
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isSelected ? selectedColor : 'transparent'
-                  }}
-                  onClick={() => onSelect(cmd)}
-                  data-id={`autocomplete-item-${cmd.name}`}
+      <div className="px-3 py-2 border-bottom d-flex align-items-center" style={{
+        backgroundColor: isDarkTheme ? '#252535' : '#f8f9fa',
+        borderColor,
+        color: secondaryTextColor,
+        fontSize: '0.85rem'
+      }}>
+        <span style={{ opacity: 0.9 }}>💡 Choose an action and complete with your prompt</span>
+      </div>
+      <div className="overflow-auto" style={{ maxHeight: '300px' }}>
+        {Object.entries(groupedCommands).map(([category, commands]) => {
+          return (
+            <div key={category}>
+              <div
+                className="px-3 py-2 small font-weight-bold text-uppercase"
+                style={{
+                  color: categoryColor,
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.05em',
+                  backgroundColor: isDarkTheme ? '#1f1f2f' : '#fafbfc',
+                  borderBottom: `1px solid ${borderColor}`
+                }}
               >
-                <div className="d-flex flex-column">
-                  <div className="d-flex align-items-center">
-                    <span className="font-weight-medium" style={{ fontSize: '0.9rem' }}>
+                {category === 'Build' && '🔨 '}
+                {category === 'Deploy' && '🚀 '}
+                {category === 'Import' && '📥 '}
+                {category === 'Data' && '📁 '}
+                {category === 'DeFi' && '💰 '}
+                {category === 'Frontend' && '🎨 '}
+                {category}
+              </div>
+              {commands.map((cmd) => {
+                const index = flatCommands.indexOf(cmd)
+                const isSelected = index === selectedIndex
+
+                return (
+                  <button
+                    key={cmd.name}
+                    ref={(el) => itemRefs.current[index] = el}
+                    className="d-flex align-items-center justify-content-between w-100 px-3 py-2 border-0 text-left"
+                    style={{
+                      backgroundColor: isSelected ? selectedColor : 'transparent',
+                      color: textColor,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      borderLeft: isSelected ? `3px solid ${isDarkTheme ? '#4f93ff' : '#007bff'}` : '3px solid transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isSelected ? selectedColor : hoverColor
+                      onSelectedIndexChange(index)
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isSelected ? selectedColor : 'transparent'
+                    }}
+                    onClick={() => onSelect(cmd)}
+                    data-id={`autocomplete-item-${cmd.name}`}
+                  >
+                    <div className="d-flex flex-column">
+                      <div className="d-flex align-items-center">
+                        <span className="font-weight-medium" style={{ fontSize: '0.9rem' }}>
                       /{cmd.name}
-                    </span>
-                    {cmd.shortcut && (
-                      <span 
-                        className="ms-2 px-2 py-1 rounded-pill small"
-                        style={{ 
-                          backgroundColor: isDarkTheme ? '#1d1d2d' : '#e9ecef',
-                          color: isDarkTheme ? '#4f93ff' : '#007bff',
-                          fontSize: '0.7rem',
-                          fontWeight: 500
+                        </span>
+                        {cmd.shortcut && (
+                          <span
+                            className="ms-2 px-2 py-1 rounded-pill small"
+                            style={{
+                              backgroundColor: isDarkTheme ? '#1d1d2d' : '#e9ecef',
+                              color: isDarkTheme ? '#4f93ff' : '#007bff',
+                              fontSize: '0.7rem',
+                              fontWeight: 500
+                            }}
+                          >
+                            {cmd.shortcut}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="small"
+                        style={{
+                          color: secondaryTextColor,
+                          fontSize: '0.78rem',
+                          marginTop: '2px',
+                          opacity: 0.85
                         }}
                       >
-                        {cmd.shortcut}
+                        {cmd.description}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <span
+                        className="badge rounded-pill ms-2"
+                        style={{
+                          backgroundColor: isDarkTheme ? '#4f93ff' : '#007bff',
+                          color: '#ffffff',
+                          fontSize: '0.65rem',
+                          padding: '3px 8px',
+                          fontWeight: 'normal'
+                        }}
+                      >
+                    ↵ Enter
                       </span>
                     )}
-                  </div>
-                  <span 
-                    className="small" 
-                    style={{ 
-                      color: secondaryTextColor, 
-                      fontSize: '0.78rem',
-                      marginTop: '2px',
-                      opacity: 0.85
-                    }}
-                  >
-                    {cmd.description}
-                  </span>
-                </div>
-                {isSelected && (
-                  <span 
-                    className="badge rounded-pill ms-2" 
-                    style={{ 
-                      backgroundColor: isDarkTheme ? '#4f93ff' : '#007bff',
-                      color: '#ffffff',
-                      fontSize: '0.65rem',
-                      padding: '3px 8px',
-                      fontWeight: 'normal'
-                    }}
-                  >
-                    ↵ Enter
-                  </span>
-                )}
-              </button>
-              )
-            })}
-          </div>
-        )
-      })}
-    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
