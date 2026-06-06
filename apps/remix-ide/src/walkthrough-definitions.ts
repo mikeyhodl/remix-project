@@ -243,8 +243,8 @@ export const builtinWalkthroughs: WalkthroughDefinition[] = [
       },
       {
         targetSelector: '[plugin="quick-dapp-v2"]',
-        title: 'Quick Dapp',
-        content: '<b>Quick Dapp</b> lets you generate a fully functional front-end for any deployed contract in one click. Perfect for demos, prototyping, or sharing an interactive UI with your team — no front-end code required!',
+        title: 'QuickDApp',
+        content: '<b>QuickDApp</b> lets you generate a fully functional front-end for any deployed contract in one click. Perfect for demos, prototyping, or sharing an interactive UI with your team — no front-end code required!',
         placement: 'right',
         preAction: {
           plugin: 'menuicons',

@@ -12,7 +12,7 @@ var { UnitTestRunner, assertLibCode } = require('@remix-project/remix-tests')
 
 const profile = {
   name: 'solidityUnitTesting',
-  displayName: 'Solidity unit testing',
+  displayName: 'Solidity Unit Testing',
   methods: ['testFromPath', 'testFromSource', 'setTestFolderPath', 'getTestlibs', 'createTestLibs'],
   events: [],
   icon: 'assets/img/unitTesting.webp',

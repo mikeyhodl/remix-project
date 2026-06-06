@@ -1,5 +1,5 @@
 {
-  "solidityUnitTesting.displayName": "Solidity unit testing",
+  "solidityUnitTesting.displayName": "Solidity Unit Testing",
   "solidityUnitTesting.testDirectory": "Test directory",
   "solidityUnitTesting.testYourSmartContract": "Test your smart contract in Solidity.",
   "solidityUnitTesting.selectDirectory": "Select directory to load and generate test files.",

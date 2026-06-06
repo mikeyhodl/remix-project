@@ -12,7 +12,7 @@ import type { CompilerArtefacts } from '@remix-project/core-plugin'
 
 const profile = {
   name: 'udapp',
-  displayName: 'Deploy & run transactions',
+  displayName: 'Deploy & Run Transactions',
   icon: 'assets/img/deployAndRun.webp',
   description: 'Execute, save and replay transactions',
   kind: 'udapp',
