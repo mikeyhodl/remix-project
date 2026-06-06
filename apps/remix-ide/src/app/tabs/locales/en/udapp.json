@@ -1,5 +1,5 @@
 {
-  "udapp.displayName": "Deploy & Run Transactions",
+  "udapp.displayName": "Deploy & run transactions",
 
   "udapp._comment_gasPrice.tsx": "libs/remix-ui/run-tab/src/lib/components/gasPrice.tsx",
   "udapp.gasLimit": "Gas limit",
