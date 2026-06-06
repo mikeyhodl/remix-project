@@ -27,7 +27,7 @@ const { TruffleHandle } = require('../files/truffle-handle.js')
 
 const profile = {
   name: 'filePanel',
-  displayName: 'File Explorer',
+  displayName: 'File explorer',
   methods: [
     'createNewFile',
     'uploadFile',
@@ -53,7 +53,7 @@ const profile = {
   ],
   events: ['setWorkspace', 'workspaceRenamed', 'workspaceDeleted', 'workspaceCreated'],
   icon: 'assets/img/fileManager.webp',
-  description: 'Remix IDE File Explorer',
+  description: 'Remix IDE file explorer',
   kind: 'fileexplorer',
   location: 'sidePanel',
   documentation: 'https://remix-ide.readthedocs.io/en/latest/file_explorer.html',

@@ -8,7 +8,7 @@ import { RemixUiCompileDetails } from '@remix-ui/solidity-compile-details'
 const profile = {
   name: 'compilationDetails',
   displayName: 'Solidity Compile Details',
-  description: 'Displays details from Solidity Compiler',
+  description: 'Displays details from solidity compiler',
   location: 'mainPanel',
   methods: ['showDetails'],
   events: []

@@ -10,7 +10,7 @@ const profile = {
   name: 'quick-dapp-v2',
   displayName: 'QuickDApp',
   icon: 'assets/img/quickdappv2.webp',
-  description: 'Edit & deploy a dApp',
+  description: 'Edit & deploy a Dapp',
   kind: 'quick-dapp-v2',
   location: 'mainPanel',
   documentation: '',
