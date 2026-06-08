@@ -149,7 +149,10 @@ export class PlanManagerPlugin extends ViewPlugin {
         token: s.token ?? null,
         userId: s.user?.id ?? null
       })
-      if (s.isAuthenticated) void this.loadAccountData()
+      if (s.isAuthenticated) {
+        void this.initPaddleSingleton()
+        void this.loadAccountData()
+      }
     }
     try {
       this.on('auth', 'authStateChanged', onAuthChange as any)
@@ -698,6 +701,9 @@ export class PlanManagerPlugin extends ViewPlugin {
         // Trigger a fast data refresh so the UI reflects the new plan.
         setTimeout(() => { void this.loadAccountData() }, 250)
         return
+      }
+      if (!this.paddle && !getPaddle()) {
+        await this.initPaddleSingleton()
       }
       const paddleInstance = this.paddle ?? getPaddle()
       if (paddleInstance && transactionId) {
