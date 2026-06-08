@@ -277,13 +277,11 @@ export class DeepAgentManager {
   }
 
   private async doReinitialize(): Promise<void> {
-    console.log('[DeepAgentManager] doReinitialize() called')
     const plugin = this.deps.plugin
     const hasSelectedModel = !!(plugin.selectedModel && plugin.selectedModelId)
 
     if (plugin.remixMCPServer && hasSelectedModel) {
       try {
-        console.log('[DeepAgentManager] Reinitializing DeepAgentInferencer with current settings...')
         remixAILogger.log('[RemixAI Plugin] Reinitializing DeepAgent after MCP server reset...')
 
         // Clean up old instance first
