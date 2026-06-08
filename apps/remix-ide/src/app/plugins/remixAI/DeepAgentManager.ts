@@ -88,6 +88,8 @@ export class DeepAgentManager {
         remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
       }
       const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
+      // Don't use remote fallback for Ollama - user explicitly chose local models
+      const fallbackInferencer = plugin.selectedModel.provider === 'ollama' ? null : plugin.remoteInferencer
       plugin.deepAgentInferencer = new DeepAgentInferencer(
         plugin as any, // Cast to Plugin type
         plugin.remixMCPServer.tools,
@@ -97,7 +99,7 @@ export class DeepAgentManager {
           enablePlanning: true,
           userApiKeys
         },
-        plugin.remoteInferencer,
+        fallbackInferencer,
         plugin.mcpInferencer,
         { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama', modelId: resolvedModelId }
       )
@@ -308,6 +310,8 @@ export class DeepAgentManager {
           remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
         }
         const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
+        // Don't use remote fallback for Ollama - user explicitly chose local models
+        const fallbackInferencer = plugin.selectedModel.provider === 'ollama' ? null : plugin.remoteInferencer
         plugin.deepAgentInferencer = new DeepAgentInferencer(
           plugin as any, // Cast to Plugin type
           plugin.remixMCPServer.tools,
@@ -317,7 +321,7 @@ export class DeepAgentManager {
             enablePlanning: true,
             userApiKeys
           },
-          plugin.remoteInferencer,
+          fallbackInferencer,
           plugin.mcpInferencer,
           { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama', modelId: resolvedModelId }
         )

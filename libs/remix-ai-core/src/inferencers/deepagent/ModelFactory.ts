@@ -313,7 +313,8 @@ export async function createModelInstance(
       model: chosenModel,
       temperature: 0.7,
       numPredict: maxTokens,
-      streaming: true
+      streaming: true,
+      think: true
     }), `ollama/${chosenModel}`)
   }
 

@@ -70,6 +70,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages || [])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isThinking, setIsThinking] = useState(false)
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [assistantChoice, setAssistantChoice] = useState<'openai' | 'mistralai' | 'anthropic' | 'ollama'>(
     'mistralai'
@@ -526,6 +527,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         return
       }
 
+      setIsThinking(false)
       setMessages(prev =>
         prev.map(m =>
           m.id === streamingAssistantIdRef.current
@@ -582,6 +584,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         })
       }
       setIsStreaming(false)
+      setIsThinking(false)
       streamingAssistantIdRef.current = null
       streamingSubagentBubbleRef.current = null
     }
@@ -681,6 +684,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           )
         )
       }
+    }
+
+    // Handle thinking events from Ollama (DeepAgent path)
+    const handleThinking = (data: { isThinking: boolean; threadId?: string }) => {
+      console.log('Received thinking event:', data)
+      if (isStoppedRef.current) return
+      setIsThinking(data.isThinking)
     }
 
     // Handle task start events
@@ -822,6 +832,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     props.plugin.on('remixAI', 'onStreamResult', handleStreamChunk)
     props.plugin.on('remixAI', 'onStreamComplete', handleStreamComplete)
+    props.plugin.on('remixAI', 'onThinking', handleThinking)
     props.plugin.on('remixAI', 'onToolCall', handleToolCall)
     props.plugin.on('remixAI', 'onSubagentStart', handleSubagentStart)
     props.plugin.on('remixAI', 'onSubagentComplete', handleSubagentComplete)
@@ -984,6 +995,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     return () => {
       props.plugin.off('remixAI', 'onStreamResult')
       props.plugin.off('remixAI', 'onStreamComplete')
+      props.plugin.off('remixAI', 'onThinking')
       props.plugin.off('remixAI', 'onToolCall')
       props.plugin.off('remixAI', 'onSubagentStart')
       props.plugin.off('remixAI', 'onSubagentComplete')
@@ -1462,6 +1474,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     streamingAssistantIdRef.current = null
     streamingSubagentBubbleRef.current = null
+    setIsThinking(false)
     //@ts-ignore
     setMessages(prev => {
       const cleanedMessages = prev
@@ -1562,6 +1575,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           clearToolTimeoutRef.current = null
         }
 
+        setIsThinking(false)
         setMessages(prev =>
           prev.map(m => (m.id === msgId ? {
             ...m,
@@ -1806,12 +1820,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           break;
         case 'ollama':
         {
-          // Create a reasoning callback that updates the assistant message
-          const reasoningCallback = (status: string) => {
+          const thinkingCallback = (thinking: boolean) => {
             if (abortControllerRef.current?.signal.aborted) return
-            setMessages(prev =>
-              prev.map(m => (m.id === assistantId ? { ...m, content: `${status}` } : m))
-            )
+            setIsThinking(thinking)
           }
 
           await HandleOllamaResponse(
@@ -1822,10 +1833,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
+              setIsThinking(false)
               Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             },
-            reasoningCallback
+            undefined,
+            thinkingCallback
           )
           break;
         }
@@ -2425,6 +2438,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                 <ChatHistoryComponent
                   messages={messages}
                   isStreaming={isStreaming}
+                  isThinking={isThinking}
                   sendPrompt={sendPrompt}
                   recordFeedback={recordFeedback}
                   historyRef={historyRef}
@@ -2544,6 +2558,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
                   <ChatHistoryComponent
                     messages={messages}
                     isStreaming={isStreaming}
+                    isThinking={isThinking}
                     sendPrompt={sendPrompt}
                     recordFeedback={recordFeedback}
                     historyRef={historyRef}
