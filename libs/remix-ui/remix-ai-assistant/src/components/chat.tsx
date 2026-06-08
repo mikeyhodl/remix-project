@@ -92,7 +92,6 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
       {messages.length === 0 ? (
         <AiChatIntro sendPrompt={sendPrompt} theme={theme} plugin={plugin} handleGenerateWorkspace={handleGenerateWorkspace} handleLoadSkills={handleLoadSkills} allowedMcps={allowedMcps} />
       ) : (
-        console.log('message:', messages),
         messages.map(msg => {
           const bubbleClass =
             msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'

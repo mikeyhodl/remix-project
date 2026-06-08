@@ -578,6 +578,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       remixAILogger.log('[DeepAgentInferencer] Full response length:', fullResponse.length)
       return fullResponse
     } catch (error: any) {
+      console.error('[DeepAgentInferencer] Error in runAgent:', error)
       if (error?.name === 'AbortError' || localAbortController.signal.aborted) {
         remixAILogger.log('[DeepAgentInferencer] Request cancelled by user')
         return fullResponse
