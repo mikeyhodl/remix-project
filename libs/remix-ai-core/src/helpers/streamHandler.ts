@@ -518,7 +518,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
   }
 }
 
-export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string) => void, reasoning_cb?: (result: string) => void) => {
+export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string) => void, reasoning_cb?: (result: string) => void, thinking_cb?: (isThinking: boolean) => void) => {
   // Handle both IAIStreamResponse format and plain response for backward compatibility
   const streamResponse = aiResponse?.streamResponse || aiResponse
   const tool_callback = aiResponse?.callback
@@ -588,12 +588,12 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
               }
             }
             cb("\n\n");
-            HandleOllamaResponse(response, cb, done_cb, reasoning_cb)
+            HandleOllamaResponse(response, cb, done_cb, reasoning_cb, thinking_cb)
             return;
           }
 
           if (parsed.message?.thinking) {
-            reasoning_cb?.('***Thinking ...***')
+            thinking_cb?.(true)
             inThinking = true
             continue
           }
@@ -603,7 +603,7 @@ export const HandleOllamaResponse = async (aiResponse: IAIStreamResponse | any, 
             content = parsed.response;
           } else if (parsed.message?.content) {
             if (inThinking) {
-              reasoning_cb?.("")
+              thinking_cb?.(false)
               inThinking = false
             }
             // For /api/chat endpoint
