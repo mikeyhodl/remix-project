@@ -1,14 +1,11 @@
 import { ActivityType } from "../lib/types"
 import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState } from 'react'
-import GroupListMenu from "./contextOptMenu"
 import { AiAssistantType, AiContextType, groupListType } from '../types/componentTypes'
 import { AIEvent, MatomoEvent, trackMatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
-import { ModelAccess } from '../hooks/useModelAccess'
 import { PromptDefault } from "./promptDefault";
-import { PromptActiveButtons } from "./promptActiveButtons";
 
 // PromptArea component
 export interface PromptAreaProps {
@@ -24,9 +21,7 @@ export interface PromptAreaProps {
   setShowOllamaModelSelector: React.Dispatch<React.SetStateAction<boolean>>
   showOllamaModelSelector: boolean
   handleGenerateWorkspace: () => void
-  handleRecord: () => void
   selectedModel: AIModel | null
-  isRecording: boolean
   dispatchActivity: (type: ActivityType, payload?: any) => void
   modelBtnRef: React.RefObject<HTMLButtonElement>
   modelSelectorBtnRef: React.RefObject<HTMLButtonElement>
@@ -58,9 +53,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleSend,
   selectedModel,
   handleSetModel,
-  handleGenerateWorkspace,
-  handleRecord,
-  isRecording,
   modelBtnRef,
   textareaRef,
   themeTracker,
@@ -69,10 +61,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   stopRequest,
   setShowOllamaModelSelector,
   showOllamaModelSelector,
-  selectedOllamaModel,
   modelSelectorBtnRef,
   autoModeEnabled,
-  handleLoadSkills,
   usingOwnApiKey,
   aiRoute = 'chat',
   aiRouteReady = true,
@@ -227,10 +217,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   </div>
                 </button>
               )}
-              {/* </div> */}
-              { !isRecording ? <PromptDefault
-                handleRecording={handleRecord}
-                isRecording={isRecording}
+              <PromptDefault
                 // Only render the cancel/stop affordance for an actual
                 // in-flight inference. When the route is merely "not
                 // ready yet" (e.g. anonymous user, agents still booting)
@@ -244,13 +231,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 handleCancel={stopRequest}
                 showSignIn={needsSignIn}
                 onSignIn={onSignIn}
-              /> : <PromptActiveButtons
-                handleRecordingStoppage={handleRecord}
-                isStreaming={isStreaming}
-                isRecording={isRecording}
-                themeTracker={themeTracker}
-                handleCancel={stopRequest}
-              /> }
+              />
             </div>
           </div>
         </div>

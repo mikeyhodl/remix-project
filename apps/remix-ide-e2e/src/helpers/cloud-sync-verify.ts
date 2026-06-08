@@ -28,7 +28,7 @@ require('dotenv').config()
 // must point at the same host or verify-manifest returns 404
 // (workspace lives on staging, but we'd be querying prod).
 // TODO: drop the staging default once the app stops hard-coding it.
-const API_URL = process.env.REMIX_API_URL || 'https://tokens.staging.remix.live'
+const API_URL = process.env.REMIX_API_URL || 'https://api.remix.live'
 
 export interface SyncVerifyResult {
   ok: boolean
