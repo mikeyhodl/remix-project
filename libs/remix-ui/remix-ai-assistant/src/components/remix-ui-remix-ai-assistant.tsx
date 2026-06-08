@@ -152,7 +152,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // false (logout) so the next login re-applies the default.
   const autoDefaultAppliedRef = useRef(false)
   const [modelOpt, setModelOpt] = useState({ top: 0, left: 0 })
+  const [ollamaModelOpt, setOllamaModelOpt] = useState({ top: 0, left: 0 })
   const menuRef = useRef<any>()
+  const ollamaMenuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
   const [autoModeEnabled, setAutoModeEnabled] = useState(false)
@@ -2065,10 +2067,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     if (model.provider === 'ollama') {
       try {
-        // Set the Ollama provider first
         await props.plugin.call('remixAI', 'setModel', modelId)
         trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
-        // Fetch available Ollama models (dropdown opens on button click)
         const models = await listModels()
         setOllamaModels(models)
       } catch (err) {
@@ -2267,6 +2267,56 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       if (frame) cancelAnimationFrame(frame)
     }
   }, [showModelSelector, recalcModelOpt])
+
+  const recalcOllamaModelOpt = useCallback(() => {
+    const ollamaBtn: any = modelSelectorBtnRef.current
+    const menu = ollamaMenuRef.current
+    const container = aiChatRef.current
+    if (!ollamaBtn || !menu || !container) return
+
+    const btnRect = ollamaBtn.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    const menuWidth = menu.offsetWidth
+    const menuHeight = menu.offsetHeight
+    const GAP = 8
+
+    // Prefer above the button; if no room, drop below it
+    let top = btnRect.top - menuHeight - GAP
+    if (top < containerRect.top) top = btnRect.bottom + GAP
+
+    // Right-align with the button, then clamp to side panel
+    let left = btnRect.right - menuWidth
+    if (left < containerRect.left) left = containerRect.left
+    if (left + menuWidth > containerRect.right) left = containerRect.right - menuWidth
+
+    setOllamaModelOpt({ top, left })
+  }, [])
+
+  useEffect(() => {
+    if (showOllamaModelSelector) {
+      requestAnimationFrame(recalcOllamaModelOpt)
+    }
+  }, [showOllamaModelSelector, recalcOllamaModelOpt])
+
+  useEffect(() => {
+    if (!showOllamaModelSelector) return
+
+    let frame: number | null = null
+    const onResize = () => {
+      if (frame) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(recalcOllamaModelOpt)
+    }
+
+    window.addEventListener('resize', onResize)
+    const ro = new ResizeObserver(onResize)
+    if (aiChatRef.current) ro.observe(aiChatRef.current)
+
+    return () => {
+      window.removeEventListener('resize', onResize)
+      ro.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [showOllamaModelSelector, recalcOllamaModelOpt])
 
   const [aiChatIsMaximized, setAiChatIsMaximized] = useState(false);
 
@@ -2606,6 +2656,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               handleOllamaModelSelection={handleOllamaModelSelection}
               selectedOllamaModel={selectedOllamaModel}
               ollamaModels={ollamaModels}
+              ollamaModelOpt={ollamaModelOpt}
+              ollamaMenuRef={ollamaMenuRef}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
               usingOwnApiKey={usingOwnApiKey}
@@ -2655,6 +2707,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               handleOllamaModelSelection={handleOllamaModelSelection}
               selectedOllamaModel={selectedOllamaModel}
               ollamaModels={ollamaModels}
+              ollamaModelOpt={ollamaModelOpt}
+              ollamaMenuRef={ollamaMenuRef}
               messages={messages}
               handleLoadSkills={handleLoadSkills}
               usingOwnApiKey={usingOwnApiKey}

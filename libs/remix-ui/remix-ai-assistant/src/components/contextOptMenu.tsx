@@ -115,15 +115,20 @@ export default function GroupListMenu(props: GroupListMenuProps) {
             }}
           >
             <div className="d-flex flex-column small text-start">
-              <div className="d-flex align-items-center mb-1">
-                <span className="form-check-label fw-bold">{item.label}</span>
-                {upgradePill}
-                {buyCreditsPill}
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <div className="d-flex align-items-center">
+                  <span className="form-check-label fw-bold">{item.label}</span>
+                  {upgradePill}
+                  {buyCreditsPill}
+                </div>
+                {!item.bodyText && props.choice === item.stateValue && !item.isLocked && <span className={item.icon}></span>}
               </div>
-              <div className="d-flex justify-content-between">
-                <span className="form-check-label me-2 text-wrap">{item.bodyText}</span>
-                {props.choice === item.stateValue && !item.isLocked && <span className={item.icon}></span>}
-              </div>
+              {item.bodyText && (
+                <div className="d-flex justify-content-between">
+                  <span className="form-check-label me-2 text-wrap">{item.bodyText}</span>
+                  {props.choice === item.stateValue && !item.isLocked && <span className={item.icon}></span>}
+                </div>
+              )}
             </div>
           </button>
         )
