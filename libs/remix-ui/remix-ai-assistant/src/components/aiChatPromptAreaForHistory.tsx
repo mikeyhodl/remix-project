@@ -9,6 +9,8 @@ interface AiChatPromptAreaForHistoryProps {
       handleOllamaModelSelection: Dispatch<any>
       selectedOllamaModel: unknown
       ollamaModels: any
+      ollamaModelOpt?: { top: number, left: number }
+      ollamaMenuRef?: React.RefObject<HTMLDivElement>
       themeTracker: any
       showHistorySidebar: boolean
       isMaximized: boolean
@@ -136,17 +138,18 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       {props.showOllamaModelSelector && props.selectedModel.provider === 'ollama' && (
         <div
-          className="pt-2 mb-2 z-3 bg-light border border-text position-absolute"
-          style={{ borderRadius: '8px', minWidth: '280px', maxWidth: '90%' }}
+          className="pt-2 mb-2 z-3 bg-light border border-text position-fixed"
+          style={{ borderRadius: '8px', top: props.ollamaModelOpt?.top, left: props.ollamaModelOpt?.left, zIndex: 2000, minWidth: '280px', maxWidth: '400px' }}
+          ref={props.ollamaMenuRef}
         >
-          <div className="text-uppercase ml-2 mb-2 small">Ollama Model</div>
+          <div className="text-uppercase ms-2 mb-2 small">Ollama Model</div>
           <GroupListMenu
             setChoice={props.handleOllamaModelSelection}
             setShowOptions={props.setShowOllamaModelSelector}
             choice={props.selectedOllamaModel}
             groupList={props.ollamaModels.map((model: any) => ({
               label: model,
-              bodyText: `Use ${model} model`,
+              bodyText: '',
               icon: 'fa-solid fa-check',
               stateValue: model,
               dataId: `ollama-model-${model.replace(/[^a-zA-Z0-9]/g, '-')}`
