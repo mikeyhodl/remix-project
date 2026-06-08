@@ -19,10 +19,17 @@ function getConfiguredOllamaEndpoint(): string | null {
       trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_using_configured_endpoint', value: configuredEndpoint });
       return configuredEndpoint;
     }
-  } catch (error) {
-    trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_config_access_failed', value: error.message || 'unknown' });
+  } catch (error: unknown) {
+    trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_config_access_failed', value: (error as Error)?.message || 'unknown' });
   }
   return null;
+}
+
+function isCorsError(error: unknown): boolean {
+  const axiosError = error as { response?: { status?: number }; message?: string }
+  if (axiosError?.response?.status === 403) return true
+  if (axiosError?.message?.includes('Network Error')) return true
+  return false
 }
 
 export async function discoverOllamaHost(): Promise<string | null> {
@@ -43,14 +50,21 @@ export async function discoverOllamaHost(): Promise<string | null> {
         return configuredEndpoint;
       }
       return null;
-    } catch (error) {
-      trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_configured_endpoint_failed', value: `${configuredEndpoint}:${error.message || 'unknown'}` });
+    } catch (error: unknown) {
+      if (isCorsError(error)) {
+        remixAILogger.warn(
+          `[Ollama] CORS error connecting to ${configuredEndpoint}. ` +
+          `Start Ollama with CORS enabled: OLLAMA_ORIGINS=* ollama serve`
+        )
+      }
+      trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_configured_endpoint_failed', value: `${configuredEndpoint}:${(error as Error)?.message || 'unknown'}` });
       // Fall back to discovery if configured endpoint fails
       return null;
     }
   }
 
   // Fall back to port discovery if no configured endpoint
+  let corsErrorDetected = false
   for (const port of OLLAMA_PORTS) {
     const host = `${OLLAMA_BASE_HOST}:${port}`;
     trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_port_check:${port}` });
@@ -61,11 +75,23 @@ export async function discoverOllamaHost(): Promise<string | null> {
         trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_host_discovered_success:${host}` });
         return host;
       }
-    } catch (error) {
-      trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_port_connection_failed:${port}:${error.message || 'unknown'}` });
+    } catch (error: unknown) {
+      if (isCorsError(error)) {
+        corsErrorDetected = true
+      }
+      trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_port_connection_failed:${port}:${(error as Error)?.message || 'unknown'}` });
       continue; // next port
     }
   }
+
+  if (corsErrorDetected) {
+    remixAILogger.warn(
+      `[Ollama] CORS error detected. Ollama may be running but blocking browser requests.\n` +
+      `To fix, restart Ollama with CORS enabled:\n` +
+      `  OLLAMA_ORIGINS=* ollama serve\n`
+    )
+  }
+
   trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_host_discovery_failed:no_ports_available' });
   return null;
 }
@@ -128,8 +154,8 @@ export async function pullModel(modelName: string): Promise<void> {
     await axios.post(`${host}/api/pull`, { name: modelName });
     const duration = Date.now() - startTime;
     trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_pull_model_success:${modelName}|duration:${duration}ms` });
-  } catch (error) {
-    trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_pull_model_error:${modelName}|${error.message || 'unknown'}` });
+  } catch (error: unknown) {
+    trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_pull_model_error:${modelName}|${(error as Error)?.message || 'unknown'}` });
     remixAILogger.error('Error pulling model:', error);
     throw new Error(`Failed to pull model: ${modelName}`);
   }
@@ -145,28 +171,13 @@ export async function validateModel(modelName: string): Promise<boolean> {
 }
 
 export async function getBestAvailableModel(): Promise<string | null> {
-  const filemanager = Registry.getInstance().get('filemanager').api;
-  trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: 'ollama_get_best' });
   try {
     const models = await listModels();
     if (models.length === 0) return null;
-
-    // Prefer code-focused models for IDE
-    const codeModels = models.filter(m =>
-      m.includes('codestral') ||
-      m.includes('code') ||
-      m.includes('deepseek-coder') ||
-      m.includes('starcoder')
-    );
-
-    if (codeModels.length > 0) {
-      return codeModels[0];
-    }
-    // TODO get model stats and get best model
+    // Simply return the first available model
     return models[0];
-  } catch (error) {
-    trackMatomoEvent(filemanager, { category: 'ai', action: 'remixAI', name: `ollama_get_best_model_error:${error.message || 'unknown'}` });
-    remixAILogger.error('Error getting best available model:', error);
+  } catch (error: unknown) {
+    remixAILogger.error('Error getting available model:', error);
     return null;
   }
 }

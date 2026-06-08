@@ -1,6 +1,4 @@
 import { remixAILogger,
-  RemoteInferencer,
-  OllamaInferencer,
   MCPInferencer,
   GenerationParams,
   CompletionParams,
@@ -115,7 +113,7 @@ export class ModelManager {
     ;(plugin as any).publishRouteStatus?.()
   }
 
-  private async handleOllamaProvider(model: AIModel, modelId: string): Promise<void> {
+  private async handleOllamaProvider(_model: AIModel, _modelId: string): Promise<void> {
     const plugin = this.deps.plugin
     const isAvailable = await isOllamaAvailable()
 
@@ -130,23 +128,10 @@ export class ModelManager {
       throw new Error('[ModelManager.handleOllamaProvider] No Ollama models installed locally. Run `ollama pull codestral:latest` (or another model) and try again.')
     }
 
-    // Switch to Ollama inferencer
-    plugin.remoteInferencer = new OllamaInferencer(bestModel)
-    this.setupInferencerEvents(plugin.remoteInferencer)
-  }
+    (plugin as any).discoveredOllamaModel = bestModel
+    remixAILogger.log(`[ModelManager] Ollama provider selected, discovered model: ${bestModel}`)
 
-  // applyFallbackModel removed — there is no client-side fallback model.
-  // If selection fails, throw and let the caller decide (the UI surfaces
-  // a help message and the user picks a different model).
-
-  private setupInferencerEvents(inferencer: RemoteInferencer | OllamaInferencer): void {
-    const plugin = this.deps.plugin
-    inferencer.event.on('onInference', () => {
-      plugin.isInferencing = true
-    })
-    inferencer.event.on('onInferenceDone', () => {
-      plugin.isInferencing = false
-    })
+    plugin.emit('ollamaModelDiscovered', bestModel)
   }
 
   async setOllamaModel(ollamaModelName: string): Promise<void> {
@@ -164,20 +149,12 @@ export class ModelManager {
       return
     }
 
-    plugin.remoteInferencer = new OllamaInferencer(ollamaModelName)
-    this.setupInferencerEvents(plugin.remoteInferencer)
+    (plugin as any).discoveredOllamaModel = ollamaModelName
+    remixAILogger.log(`[ModelManager] Ollama model selected: ${ollamaModelName}`)
 
-    // Update MCP if enabled
-    if (plugin.mcpEnabled && plugin.mcpInferencer) {
-      plugin.mcpInferencer = new MCPInferencer(
-        plugin.mcpServers,
-        undefined,
-        undefined,
-        plugin.remixMCPServer,
-        plugin.remoteInferencer,
-        plugin.getMcpAuthToken
-      )
-      await plugin.mcpInferencer.connectAllServers()
+    if (plugin.deepAgentEnabled && plugin.deepAgentInferencer && plugin.remixMCPServer) {
+      remixAILogger.log(`[ModelManager] Reinitializing DeepAgent for Ollama model: ${ollamaModelName}`)
+      await (plugin as any).deepAgentManager.reinitialize()
     }
   }
 
