@@ -8,6 +8,12 @@ test('RemixAI action autocomplete panel should show available actions, selecting
 
   const url = `http://localhost:8080/?#e2e_feature_groups=e2e-free-tier&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
   await page.goto(url);
+
+  // --- 1. Sign in via topbar -----------------------------------------------
+  await page.getByRole('button', { name: 'Sign In BETA' }).click()
+  await page.getByRole('button', { name: /E2E Test Pool/i }).click()
+  await expect(page.getByRole('button', { name: /E2E Pool/i }).first()).toBeVisible({ timeout: 30000 })
+
   await page.getByRole('textbox', { name: 'Type "/" for more options or' }).click();
   await page.getByRole('textbox', { name: 'Type "/" for more options or' }).fill('/');
   await page.getByRole('button', { name: '/alchemy Fetch data from' }).click();
