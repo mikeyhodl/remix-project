@@ -10,7 +10,7 @@ test('test', async ({ page }) => {
 
   const url = `http://localhost:8080/?#e2e_feature_groups=e2e-free-with-quotas&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
   await page.goto(url);
-  await page.getByRole('button', { name: 'Sign In BETA' }).click();
+  await page.getByRole('button', { name: 'Sign In' }).click();
   await page.getByRole('button', { name: /E2E Test Pool/i }).click();
   await page.getByRole('button', { name: /E2E Pool/i }).first().click();
   await expect(page.getByText('[e2e]-free-with-quotas')).toBeVisible();

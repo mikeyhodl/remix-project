@@ -24,7 +24,7 @@ test('Unlimited Mistral Small works, Mistral Medium shows insufficient credits',
   await page.goto(url)
 
   // --- 1. Sign in via topbar ----------------------------------------------
-  await page.getByRole('button', { name: 'Sign In BETA' }).click()
+  await page.getByRole('button', { name: 'Sign In' }).click()
   await page.getByRole('button', { name: /E2E Test Pool/i }).click()
   await expect(page.getByRole('button', { name: /E2E Pool/i }).first()).toBeVisible({ timeout: 30000 })
 
