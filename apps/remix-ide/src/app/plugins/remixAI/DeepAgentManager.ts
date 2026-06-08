@@ -1,4 +1,4 @@
-import { remixAILogger, CONVERSATION_THREAD_PREFIX, DeepAgentInferencer } from '@remix/remix-ai-core'
+import { remixAILogger, CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, getBestAvailableModel } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin, ToolApprovalResponse } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
 import type { MCPServerManager } from './MCPServerManager'
@@ -43,6 +43,29 @@ export class DeepAgentManager {
     }
   }
 
+  /**
+   * For the Ollama provider, the DeepAgent picker only stores the generic
+   * 'ollama' id.
+   */
+  private async resolveOllamaModelId(provider: string, modelId: string): Promise<string> {
+    if (provider !== 'ollama') return modelId
+    if (modelId && modelId !== 'ollama') return modelId
+    const plugin = this.deps.plugin
+    // Prefer the user's explicit Ollama sub-selector pick (or a previously
+    // resolved one) over re-running auto-discovery on every reinit.
+    const cached = (plugin as any).discoveredOllamaModel
+    if (typeof cached === 'string' && cached.length > 0) {
+      plugin.emit('ollamaModelDiscovered', cached)
+      return cached
+    }
+    const best = await getBestAvailableModel()
+    if (!best) return modelId
+    ;(plugin as any).discoveredOllamaModel = best
+    plugin.emit('ollamaModelDiscovered', best)
+    remixAILogger.log(`[DeepAgentManager] Resolved Ollama model: ${best}`)
+    return best
+  }
+
   async enable(): Promise<void> {
     const plugin = this.deps.plugin
 
@@ -64,6 +87,7 @@ export class DeepAgentManager {
       if (userApiKeys?.useOwnKeys) {
         remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
       }
+      const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
       plugin.deepAgentInferencer = new DeepAgentInferencer(
         plugin as any, // Cast to Plugin type
         plugin.remixMCPServer.tools,
@@ -75,7 +99,7 @@ export class DeepAgentManager {
         },
         plugin.remoteInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: plugin.selectedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama', modelId: resolvedModelId }
       )
 
       await plugin.deepAgentInferencer.initialize()
@@ -283,6 +307,7 @@ export class DeepAgentManager {
         if (userApiKeys?.useOwnKeys) {
           remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
         }
+        const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
         plugin.deepAgentInferencer = new DeepAgentInferencer(
           plugin as any, // Cast to Plugin type
           plugin.remixMCPServer.tools,
@@ -294,7 +319,7 @@ export class DeepAgentManager {
           },
           plugin.remoteInferencer,
           plugin.mcpInferencer,
-          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: plugin.selectedModelId }
+          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama', modelId: resolvedModelId }
         )
         await plugin.deepAgentInferencer.initialize()
         plugin.deepAgentEnabled = true

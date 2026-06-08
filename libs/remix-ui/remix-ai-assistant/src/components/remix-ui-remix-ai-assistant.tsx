@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, listModels, isOllamaAvailable, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger, listModels } from '@remix/remix-ai-core'
 import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -155,7 +155,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   const menuRef = useRef<any>()
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
-  const [isOllamaFailureFallback, setIsOllamaFailureFallback] = useState(false)
   const [autoModeEnabled, setAutoModeEnabled] = useState(false)
   const [usingOwnApiKey, setUsingOwnApiKey] = useState(false)
   const [apiKeyError, setApiKeyError] = useState<ApiKeyErrorEvent | null>(null)
@@ -283,9 +282,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setSelectedOllamaModel(modelName)
     setShowOllamaModelSelector(false)
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_selected', value: `${modelName}|from:${previousModel || 'none'}`, isClick: true })
-    // Update the model in the backend
+    // Update the model in the backend. Use setOllamaModel (not setModel)
+    // because the modelName here is an Ollama-specific tag like
+    // 'codestral:latest', which is NOT in the AIModel catalogue and would
+    // make ModelManager.setModel throw.
     try {
-      await props.plugin.call('remixAI', 'setModel', modelName)
+      await props.plugin.call('remixAI', 'setOllamaModel', modelName)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_success', value: modelName, isClick: false })
     } catch (error: any) {
       remixAILogger.warn('Failed to set model:', error)
@@ -338,6 +340,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     props.plugin.on('remixAI', 'modelChanged', handleModelChanged)
 
+    const handleOllamaModelDiscovered = (ollamaModelName: string) => {
+      setSelectedOllamaModel(ollamaModelName)
+    }
+    props.plugin.on('remixAI', 'ollamaModelDiscovered', handleOllamaModelDiscovered)
+
     const checkApiKeyStatus = async () => {
       try {
         const isUsingOwn = await props.plugin.call('remixAI', 'isUsingOwnApiKey')
@@ -361,6 +368,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     return () => {
       props.plugin.off('remixAI', 'modelChanged')
+      props.plugin.off('remixAI', 'ollamaModelDiscovered')
       props.plugin.off('remixAI', 'apiKeyModeChanged')
       props.plugin.off('remixAI', 'onApiKeyError')
     }
@@ -1981,114 +1989,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   }, [mcpEnhanced, mcpEnabled])
   */
 
-  // Fetch available Ollama models when Ollama model is selected
+  // Clear Ollama state when switching away from Ollama provider
+  // The backend handles model discovery via handleOllamaProvider and emits
+  // 'ollamaModelDiscovered' which is handled in the useEffect above
   useEffect(() => {
-    const fetchOllamaModels = async () => {
-      if (selectedModel?.provider === 'ollama') {
-        try {
-          const available = await isOllamaAvailable()
-          if (available) {
-            const models = await listModels()
-            setOllamaModels(models)
-            if (models.length === 0) {
-              // Ollama is running but no models installed
-              setMessages(prev => [...prev, {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: '**Ollama is running but no models are installed.**\n\nTo use Ollama, you need to install at least one model. Try:\n\n```bash\nollama pull codestral:latest\n# or\nollama pull qwen2.5-coder:14b\n```\n\nSee the [Ollama Setup Guide](https://github.com/ethereum/remix-project/blob/master/OLLAMA_SETUP.md) for more information.',
-                timestamp: Date.now(),
-                sentiment: 'none'
-              }])
-            } else {
-              if (!selectedOllamaModel && models.length > 0) {
-                const defaultModel = models.find(m => m.includes('codestral')) || models[0]
-                setSelectedOllamaModel(defaultModel)
-                trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_default_model_selected', value: `${defaultModel}|codestral|total:${models.length}`, isClick: false })
-                // Sync the default model with the backend
-                try {
-                  await props.plugin.call('remixAI', 'setModel', defaultModel)
-                  setAssistantChoice(selectedModel?.provider ?? 'ollama')
-                  setMessages(prev => [...prev, {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: `**Ollama connected successfully!**\n\nFound ${models.length} model${models.length > 1 ? 's' : ''}:\n${models.map(m => `• ${m}`).join('\n')}\n\nYou can now use local AI for code completion and assistance.`,
-                    timestamp: Date.now(),
-                    sentiment: 'none'
-                  }])
-                } catch (error) {
-                  remixAILogger.warn('Failed to set default model:', error)
-                }
-              }
-            }
-          } else {
-            // Ollama is not available
-            setOllamaModels([])
-            setMessages(prev => [...prev, {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: '**Ollama is not available.**\n\nTo use Ollama with Remix IDE:\n\n1. **Install Ollama**: Visit [ollama.ai](https://ollama.ai) to download\n2. **Start Ollama**: Run `ollama serve` in your terminal\n3. **Install a model**: Run `ollama pull codestral:latest`\n4. **Configure CORS**: e.g `OLLAMA_ORIGINS=https://remix.ethereum.org ollama serve`\n\nSee the [Ollama Setup Guide](https://github.com/ethereum/remix-project/blob/master/OLLAMA_SETUP.md) for detailed instructions.\n\n*Switching back to default model for now.*',
-              timestamp: Date.now(),
-              sentiment: 'none'
-            }])
-            // Log Ollama unavailable event
-            trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_unavailable', value: 'switching_to_default', isClick: false })
-            // Set failure flag before switching back to prevent success message
-            setIsOllamaFailureFallback(true)
-            // Fall back to the API-resolved chat default (no literal id).
-            try {
-              const def: AIModel | null = await props.plugin.call('assistantState' as any, 'getDefaultModel')
-              if (def && def.id) {
-                setSelectedModelId(def.id)
-                setSelectedModel(def)
-              } else {
-                remixAILogger.warn('[RemixAI Assistant UI] Ollama unavailable and no API default model yet — leaving picker empty')
-                setSelectedModelId('')
-                setSelectedModel(null)
-              }
-            } catch (e) {
-              remixAILogger.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama fallback', e)
-              setSelectedModelId('')
-              setSelectedModel(null)
-            }
-          }
-        } catch (error: any) {
-          remixAILogger.warn('Failed to fetch Ollama models:', error)
-          setOllamaModels([])
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: `**Failed to connect to Ollama.**\n\nError: ${error.message || 'Unknown error'}\n\nPlease ensure:\n- Ollama is running (\`ollama serve\`)\n- The ollama CORS setting is configured for Remix IDE. e.g \`OLLAMA_ORIGINS=https://remix.ethereum.org ollama serve\` Please see [Ollama Setup Guide](https://github.com/ethereum/remix-project/blob/master/OLLAMA_SETUP.md) for detailed instructions.\n- At least one model is installed\n\nSee the [Ollama Setup Guide](https://github.com/ethereum/remix-project/blob/master/OLLAMA_SETUP.md) for help.\n\n*Switching back to default model.*`,
-            timestamp: Date.now(),
-            sentiment: 'none'
-          }])
-          // Log Ollama connection error
-          trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_connection_error', value: `${error.message || 'unknown'}|switching_to_default`, isClick: false })
-          // Set failure flag before switching back to prevent success message
-          setIsOllamaFailureFallback(true)
-          // Fall back to the API-resolved chat default (no literal id).
-          try {
-            const def: AIModel | null = await props.plugin.call('assistantState' as any, 'getDefaultModel')
-            if (def && def.id) {
-              setSelectedModelId(def.id)
-              setSelectedModel(def)
-            } else {
-              remixAILogger.warn('[RemixAI Assistant UI] Ollama errored and no API default model yet — leaving picker empty')
-              setSelectedModelId('')
-              setSelectedModel(null)
-            }
-          } catch (e) {
-            remixAILogger.warn('[RemixAI Assistant UI] assistantState.getDefaultModel failed during Ollama error fallback', e)
-            setSelectedModelId('')
-            setSelectedModel(null)
-          }
-        }
-      } else {
-        setOllamaModels([])
-        setSelectedOllamaModel(null)
-      }
+    if (selectedModel?.provider !== 'ollama') {
+      setOllamaModels([])
+      setSelectedOllamaModel(null)
     }
-    fetchOllamaModels()
-  }, [selectedModel?.provider, selectedOllamaModel])
+  }, [selectedModel?.provider])
 
   const handleSetModel = useCallback(() => {
     dispatchActivity('button', 'setModel')
@@ -2156,9 +2065,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     if (model.provider === 'ollama') {
       try {
-        const models = await props.plugin.call('remixAI', 'getOllamaModels')
+        // Set the Ollama provider first
+        await props.plugin.call('remixAI', 'setModel', modelId)
+        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
+        // Fetch available Ollama models (dropdown opens on button click)
+        const models = await listModels()
         setOllamaModels(models)
-        setShowOllamaModelSelector(true)
       } catch (err) {
         remixAILogger.error('Ollama not available:', err)
       }
@@ -2691,7 +2603,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showModelSelector={showModelSelector}
               setShowModelSelector={setShowModelSelector}
               selectedModelId={selectedModelId}
-              handleOllamaModelSelection={handleModelSelection}
+              handleOllamaModelSelection={handleOllamaModelSelection}
               selectedOllamaModel={selectedOllamaModel}
               ollamaModels={ollamaModels}
               messages={messages}
@@ -2740,7 +2652,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               showModelSelector={showModelSelector}
               setShowModelSelector={setShowModelSelector}
               selectedModelId={selectedModelId}
-              handleOllamaModelSelection={handleModelSelection}
+              handleOllamaModelSelection={handleOllamaModelSelection}
               selectedOllamaModel={selectedOllamaModel}
               ollamaModels={ollamaModels}
               messages={messages}

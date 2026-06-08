@@ -136,8 +136,8 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       {props.showOllamaModelSelector && props.selectedModel.provider === 'ollama' && (
         <div
-          className="pt-2 mb-2 z-3 bg-light border border-text w-75 position-absolute"
-          style={{ borderRadius: '8px' }}
+          className="pt-2 mb-2 z-3 bg-light border border-text position-absolute"
+          style={{ borderRadius: '8px', minWidth: '280px', maxWidth: '90%' }}
         >
           <div className="text-uppercase ml-2 mb-2 small">Ollama Model</div>
           <GroupListMenu

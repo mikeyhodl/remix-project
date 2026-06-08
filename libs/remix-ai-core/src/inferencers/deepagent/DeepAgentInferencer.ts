@@ -26,7 +26,6 @@ import type { DynamicStructuredTool } from '@langchain/core/tools'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { selectOptimalModel } from './helpers/modelSelection'
 import { IndexedDBCheckpointSaver } from '../../storage/IndexedDBCheckpointSaver'
-import { filterOutSpecialistTools, filterOutFileOperationTools } from './helpers/subagentToolFilters'
 import type { DeepAgent } from 'deepagents'
 import { RemixDeepAgentMiddleware } from './deepAgentMiddleWare'
 
@@ -164,14 +163,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
 
   async initialize(): Promise<void> {
     try {
-      remixAILogger.log('[DeepAgentInferencer] Initializing DeepAgent...')
-      remixAILogger.log('[DeepAgentInferencer] Initializing DeepAgent with config:', this.config)
-      remixAILogger.log('[DeepAgentInferencer] Model selection:', this.modelSelection)
       await this.logInitDiagnostics()
 
-      this.model = createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
-
-      remixAILogger.log(`[DeepAgentInferencer] Created ${this.modelSelection.provider} model: ${this.modelSelection.modelId}`)
+      this.model = await createModelInstance(this.modelSelection, DAPP_MAX_TOKENS, this.userApiKeys)
 
       if (this.config.memoryBackend === 'store') {
         this.memoryBackend = new DeepAgentMemoryBackend('remix-deepagent-memory')
@@ -776,7 +770,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       if (this.config.enableSubagents && this.model) {
         let fallbackModel = this.model
         if (notSuitableForCodeGeneration.includes(this.modelSelection.modelId)) {
-          fallbackModel = createModelInstance({
+          fallbackModel = await createModelInstance({
             provider: 'anthropic',
             modelId: 'claude-sonnet-4-6',
           }, DAPP_MAX_TOKENS, this.userApiKeys)
@@ -816,7 +810,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     this.modelSelection = selectedModel
 
     // Create new model instance
-    this.model = createModelInstance(selectedModel, DAPP_MAX_TOKENS, this.userApiKeys)
+    this.model = await createModelInstance(selectedModel, DAPP_MAX_TOKENS, this.userApiKeys)
 
     if (!this.agent) await this.createAgentWithTools(this.tools)
     else {
