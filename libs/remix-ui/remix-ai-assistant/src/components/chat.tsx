@@ -121,7 +121,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
                         marginLeft: '4px'
                       } : undefined}
                     >
-                      {msg.role === 'assistant' ? (
+                      {msg.role === 'assistant' || msg.role === 'editor_code_analysis' ? (
                         RemixMarkdownViewer(theme, msg.content, btnColor, setBtnColor)
                       ) : (
                         <div className="ai-paragraph pb-0">

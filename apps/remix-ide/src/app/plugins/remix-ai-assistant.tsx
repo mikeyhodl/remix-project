@@ -27,7 +27,7 @@ export class RemixAIAssistant extends ViewPlugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
   appStateDispatch: React.Dispatch<AppAction> = () => { }
-  queuedMessage: { text: string, timestamp: number } | null = null
+  queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number } | null = null
   event: any
   chatRef: React.RefObject<RemixUiRemixAiAssistantHandle>
   history: ChatMessage[] = []
@@ -416,7 +416,7 @@ export class RemixAIAssistant extends ViewPlugin {
     })
   }
 
-  chatPipe = (message: string) => {
+  chatPipe = (message: string, isEditorCodeAnalysis: boolean = false) => {
     remixAILogger.log('[QuickDapp] chatPipe received, length:', message?.length)
     // Show right side panel if it's hidden
     this.call('rightSidePanel', 'isPanelHidden').then((isPanelHidden) => {
@@ -434,13 +434,14 @@ export class RemixAIAssistant extends ViewPlugin {
 
     // If the inner component is mounted, call it directly
     if (this.chatRef?.current) {
-      this.chatRef.current.sendChat(message)
+      this.chatRef.current.sendChat(message, isEditorCodeAnalysis)
       return
     }
 
     // Otherwise queue it for first render
     this.queuedMessage = {
       text: message,
+      isEditorCodeAnalysis: isEditorCodeAnalysis,
       timestamp: Date.now()
     }
     this.renderComponent()
@@ -474,7 +475,7 @@ export class RemixAIAssistant extends ViewPlugin {
 
   updateComponent(state: {
     isInitializing: boolean
-    queuedMessage: { text: string, timestamp: number } | null
+    queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number } | null
     conversations: ConversationMetadata[]
     currentConversationId: string | null
     showHistorySidebar: boolean

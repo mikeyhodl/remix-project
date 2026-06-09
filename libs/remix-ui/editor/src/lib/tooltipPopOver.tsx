@@ -325,10 +325,10 @@ Focus on security implications and provide practical guidance for smart contract
                 <span className="visually-hidden">Loading...</span>
               </div>
               <span style={{ fontSize: "0.8rem" }}>
-                Analyzing {isSelectedText && keyword.length > 20 
+                Analyzing <b>"{isSelectedText && keyword.length > 20 
                   ? `${keyword.substring(0, 20)}...` 
                   : keyword
-                }...
+                }..."</b>
               </span>
             </div>
           ) : data ? (
@@ -375,18 +375,20 @@ Focus on security implications and provide practical guidance for smart contract
                           isClick: true,
                           value: keyword 
                         })
-                        console.log('data------->', data)
-                        const deeperPrompt = `Analyse this code snippet for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid. 
-                        \n\`\`\`${keyword}\`\`\``
+                        const deeperPrompt = `Analyse this code snippet for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
+
+\`\`\`solidity
+${keyword}
+\`\`\``
 
                         await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
                         await plugin.call('menuicons', 'select', 'remixaiassistant')
                         await plugin.call('remixaiassistant', 'newConversation')
 
                         // Small delay to ensure panel is open
-                        setTimeout(async () => {                          
-                          // Call RemixAI answer function
-                          await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt)
+                        setTimeout(async () => {
+                          // Call RemixAI with editor code analysis flag
+                          await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true)
                         }, 500)
                         
                         // Close the tooltip
