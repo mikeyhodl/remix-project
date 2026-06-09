@@ -284,6 +284,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
             const errorMessage = "Network Error: Unable to process the AI response. Please try again";
             cb(errorMessage);
             done_cb?.(errorMessage, threadId);
+            thinking_cb?.(false)
             return;
           }
         }
