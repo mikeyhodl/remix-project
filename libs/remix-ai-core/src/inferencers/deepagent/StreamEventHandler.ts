@@ -191,17 +191,23 @@ export class StreamEventHandler {
     const isThinkingContent = contentStr.includes('<think>') || contentStr.startsWith('<think')
     const hasEndThinkTag = contentStr.includes('</think>')
 
-    if ((reasoningContent && reasoningContent !== '') || (isThinkingContent && !hasEndThinkTag)) {
+    // Detect thinking blocks in array content (Anthropic, etc.)
+    const hasThinkingBlock = Array.isArray(rawContent) && rawContent.some(
+      (item: any) => item?.type === 'thinking' || item?.type === 'reasoning'
+    )
+
+    if ((reasoningContent && reasoningContent !== '') || (isThinkingContent && !hasEndThinkTag) || hasThinkingBlock) {
       if (!this.inThinking) {
         this.inThinking = true
         remixAILogger.log('[StreamEventHandler] Thinking phase detected', {
           hasReasoningContent: !!reasoningContent,
           isThinkingContent,
+          hasThinkingBlock,
           contentPreview: contentStr.substring(0, 100)
         })
         this.event.emit('onThinking', { isThinking: true, threadId: this.getThreadId() })
       }
-    } else if (this.inThinking && (hasEndThinkTag || (!reasoningContent && !isThinkingContent && contentStr.length > 0))) {
+    } else if (this.inThinking && (hasEndThinkTag || (!reasoningContent && !isThinkingContent && !hasThinkingBlock && contentStr.length > 0))) {
       this.inThinking = false
       remixAILogger.log('[StreamEventHandler] Thinking phase ended')
       this.event.emit('onThinking', { isThinking: false, threadId: this.getThreadId() })
