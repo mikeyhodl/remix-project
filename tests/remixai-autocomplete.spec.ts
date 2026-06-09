@@ -10,9 +10,9 @@ test('RemixAI action autocomplete panel should show available actions, selecting
   await page.goto(url);
 
   // --- 1. Sign in via topbar -----------------------------------------------
-  await page.getByRole('button', { name: 'Sign In' }).click()
-  await page.getByRole('button', { name: /E2E Test Pool/i }).click()
-  await expect(page.getByRole('button', { name: /E2E Pool/i }).first()).toBeVisible({ timeout: 30000 })
+  await page.locator('[data-id="topbarSignInButton"]').click()
+  await page.locator('[data-id="loginModalE2EPoolButton"]').click()
+  await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 })
 
   await page.getByRole('textbox', { name: 'Type "/" for more options or' }).click();
   await page.getByRole('textbox', { name: 'Type "/" for more options or' }).fill('/');
