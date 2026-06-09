@@ -375,9 +375,9 @@ Focus on security implications and provide practical guidance for smart contract
                           isClick: true,
                           value: keyword 
                         })
-                        
-                        const deeperPrompt = `Here is a code snippet, tell me more about it, its security implications, and how to use it safely in smart contract development. If applicable, provide best practices and common pitfalls to avoid. 
-                        \`\`\`${data.body}\`\`\``
+                        console.log('data------->', data)
+                        const deeperPrompt = `Analyse this code snippet for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid. 
+                        \n\`\`\`${keyword}\`\`\``
 
                         await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
                         await plugin.call('menuicons', 'select', 'remixaiassistant')
