@@ -122,7 +122,7 @@ export const HandleStreamResponse = async (streamResponse, cb: (streamText: stri
   }
 };
 
-export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void, thinking_cb?: (isThinking: boolean) => void) => {
   // Handle both IAIStreamResponse format and plain response for backward compatibility
   const streamResponse = aiResponse?.streamResponse || aiResponse
   const uiToolCallback = aiResponse?.uiToolCallback
@@ -134,6 +134,7 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
   let buffer = "";
   let threadId: string = ""
   let resultText = "";
+  let inThinking = false;
   const toolCalls: Map<number, any> = new Map(); // Accumulate tool calls by index
   const usage: any = null; // Track token usage
 
@@ -236,6 +237,18 @@ export const HandleOpenAIResponse = async (aiResponse: IAIStreamResponse | any, 
               cb("\n\n");
               HandleOpenAIResponse(response, cb, done_cb)
               return;
+            }
+
+            // Handle OpenAI o-series reasoning content
+            const reasoningContent = json.choices?.[0]?.delta?.reasoning_content
+            if (reasoningContent && reasoningContent !== '') {
+              if (!inThinking) {
+                inThinking = true
+                thinking_cb?.(true)
+              }
+            } else if (inThinking && json.choices?.[0]?.delta?.content) {
+              inThinking = false
+              thinking_cb?.(false)
             }
 
             // Handle OpenAI "thread.message.delta" format
@@ -386,7 +399,7 @@ export const HandleMistralAIResponse = async (aiResponse: IAIStreamResponse | an
   }
 }
 
-export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void) => {
+export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | any, cb: (streamText: string) => void, done_cb?: (result: string, thrID:string) => void, thinking_cb?: (isThinking: boolean) => void) => {
   // Handle both IAIStreamResponse format and plain response for backward compatibility
   const streamResponse = aiResponse?.streamResponse || aiResponse
   const uiToolCallback = aiResponse?.uiToolCallback
@@ -397,6 +410,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
   let resultText = "";
+  let inThinking = false;
   const toolUseBlocks: Map<number, any> = new Map();
   let currentBlockIndex: number = -1;
   let usage: any = null; // Track token usage
@@ -495,6 +509,25 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
               }
             }
 
+            // Handle thinking block start in Anthropic format
+            if (json.type === "content_block_start" && json.content_block?.type === "thinking") {
+              if (!inThinking) {
+                inThinking = true
+                thinking_cb?.(true)
+              }
+            }
+
+            // Handle thinking block stop
+            if (json.type === "content_block_stop" && inThinking) {
+              inThinking = false
+              thinking_cb?.(false)
+            }
+
+            // Suppress thinking deltas from regular content
+            if (json.type === "content_block_delta" && json.delta?.type === "thinking_delta") {
+              continue;
+            }
+
             // Handle text content deltas
             if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
               cb(json.delta.text);
@@ -506,6 +539,7 @@ export const HandleAnthropicResponse = async (aiResponse: IAIStreamResponse | an
             const errorMessage = "Network Error: Unable to process the AI response. Please try again";
             cb(errorMessage);
             done_cb?.(errorMessage, "");
+            thinking_cb?.(false)
             return;
           }
         }

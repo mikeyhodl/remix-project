@@ -1773,6 +1773,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
         switch (currentProvider) {
         case 'openai':
+        {
+          const thinkingCallback = (thinking: boolean) => {
+            if (abortControllerRef.current?.signal.aborted) return
+            setIsThinking(thinking)
+          }
+
           await HandleOpenAIResponse(
             response,
             (chunk: string) => {
@@ -1781,12 +1787,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
+              setIsThinking(false)
               Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
-            }
+            },
+            thinkingCallback
           )
           break;
+        }
         case 'mistralai':
           await HandleMistralAIResponse(
             response,
@@ -1803,6 +1812,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           )
           break;
         case 'anthropic':
+        {
+          const thinkingCallback = (thinking: boolean) => {
+            if (abortControllerRef.current?.signal.aborted) return
+            setIsThinking(thinking)
+          }
+
           await HandleAnthropicResponse(
             response,
             (chunk: string) => {
@@ -1811,12 +1826,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
+              setIsThinking(false)
               Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
-            }
+            },
+            thinkingCallback
           )
           break;
+        }
         case 'ollama':
         {
           const thinkingCallback = (thinking: boolean) => {
