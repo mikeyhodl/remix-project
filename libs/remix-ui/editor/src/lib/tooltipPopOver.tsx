@@ -333,24 +333,28 @@ Focus on security implications and provide practical guidance for smart contract
             </div>
           ) : data ? (
             <>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <code className="web3-tooltip-title" style={{ 
-                  maxWidth: isSelectedText ? '200px' : 'auto',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {isSelectedText && data.title.length > 30 
-                    ? `${data.title.substring(0, 30)}...` 
-                    : data.title
-                  }
-                </code>
-                {risk && (
-                  <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
-                    style={{ fontSize: "0.65rem", fontWeight: 600 }}>
-                    <i className={`${risk.icon}`} style={{ fontSize: "0.6rem" }}></i>
-                    {data.riskLabel}
-                  </span>
+              <div className="mb-2">
+                <div className="d-flex align-items-center justify-content-between">
+                  <code className="web3-tooltip-title" style={{
+                    maxWidth: isSelectedText ? '200px' : 'auto',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {isSelectedText && data.title.length > 30
+                      ? `${data.title.substring(0, 30)}...`
+                      : data.title
+                    }
+                  </code>
+                </div>
+                {risk && data.riskLabel && (
+                  <div className="mt-1">
+                    <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
+                      style={{ fontSize: "0.65rem", fontWeight: 600, width: 'fit-content' }}>
+                      <i className={`${risk.icon}`} style={{ fontSize: "0.6rem" }}></i>
+                      {data.riskLabel}
+                    </span>
+                  </div>
                 )}
               </div>
               <p className="web3-tooltip-body mb-2">{data.body}</p>
