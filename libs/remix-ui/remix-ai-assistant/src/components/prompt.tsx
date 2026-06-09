@@ -2,7 +2,7 @@ import { ActivityType } from "../lib/types"
 import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import GroupListMenu from "./contextOptMenu"
 import { AiAssistantType, AiContextType, groupListType } from '../types/componentTypes'
-import { AIEvent, MatomoEvent, trackMatomoEvent } from '@remix-api';
+import { MatomoEvent } from '@remix-api';
 import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
@@ -72,6 +72,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   onSignIn
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
+  const trackMatomoEvent = <T extends MatomoEvent = MatomoEvent>(event: T) => {
+    baseTrackEvent?.<T>(event)
+  }
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const promptAreaRef = useRef<HTMLDivElement>(null)
@@ -96,6 +99,14 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   // Handle command selection
   const handleCommandSelect = useCallback((command: Command) => {
     const formattedCommand = '/' + command.name
+
+    // Track command selection with Matomo
+    trackMatomoEvent({
+      category: 'ai',
+      action: 'remixAI',
+      value: `command_selected_${command.name}`,
+      isClick: true
+    })
 
     // If user has already typed something after the initial "/", preserve it
     const spaceIndex = input.indexOf(' ')
