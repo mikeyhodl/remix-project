@@ -29,9 +29,8 @@ export interface RemixUiSkillsExplorerModalProps {
 
 export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProps) {
   const { features } = useAuth()
-  const skillsPermissionLevel = features['ai:skills']?.permission || 'none'
-  const hasBasicSkills = skillsPermissionLevel === 'skills:basic' || skillsPermissionLevel === 'skills:advanced'
-  const hasAdvancedSkills = skillsPermissionLevel === 'skills:advanced'
+  const hasBasicSkills = !!features['skills:basic']
+  const hasAdvancedSkills = !!features['skills:advanced']
   const { isOpen, onClose, plugin } = props
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -50,6 +49,11 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploading, setUploading] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Helper function to check if a skill is basic (free)
+  const isBasicSkill = (skillName: string) => {
+    return basicSkillNames.includes(skillName.toLowerCase())
+  }
 
   const fetchSkillsList = async (): Promise<SkillInfo[]> => {
     if (!plugin) throw new Error('Plugin not available')
@@ -261,16 +265,25 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
 
   // Define basic skills that are always available to free users
   const basicSkillNames = [
-    'hello-world',
-    'simple-storage', 
-    'basic-token',
-    'ownable',
-    'erc20-basics',
-    'events-basics'
+    'Why Ethereum'.toLowerCase(),
+    'Gas & Costs'.toLowerCase(), 
+    'Ship'.toLowerCase(),
+    'Wallets'.toLowerCase(),
+    'Layer 2s'.toLowerCase(),
+    'Standards'.toLowerCase(),
+    'Money Legos'.toLowerCase(),
+    'Contract Addresses'.toLowerCase(),
+    'ethereum-address-safety'.toLowerCase(),
+    'use-circle-cli'.toLowerCase(),
+    'use-circle-wallets'.toLowerCase(),
+    'use-developer-controlled-wallets'.toLowerCase(),
+    'use-gateway'.toLowerCase(),
+    'use-usdc'.toLowerCase()
   ]
 
   // Filter skills based on search term and permission level
   const filteredSkills = skills.filter(skill => {
+    console.log(`[SkillsExplorer] Checking skill "${skill.name}" against search term "${searchTerm}" and permissions (basic: ${hasBasicSkills}, advanced: ${hasAdvancedSkills})`)
     // First check search term match
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -287,11 +300,6 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     // If no skills permission, still show basic skills (free tier)
     return isBasicSkill(skill.name)
   })
-  
-  // Helper function to check if a skill is basic (free)
-  const isBasicSkill = (skillName: string) => {
-    return basicSkillNames.includes(skillName.toLowerCase())
-  }
 
   const toggleSkill = (id: string) => {
     // Find the skill to check if it's basic
@@ -501,7 +509,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                           <i className="fa-solid fa-info-circle me-2"></i>
                           {hasBasicSkills 
                             ? "You have access to basic skills. Upgrade to a paid plan to access all premium skills."
-                            : "Basic skills (marked as \"Free\") are available to all users. Upgrade to a paid plan to access more skills."}
+                            : "Basic skills are available to all users. Upgrade to a paid plan to access more skills."}
                         </div>
                       )}
 
