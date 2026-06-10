@@ -157,19 +157,19 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     ]
     if (handleOpenSettings) cmds.push({ name: 'settings', description: 'Open RemixAI settings', category: 'Settings', action: handleOpenSettings })
     if (handleLoadSkills) {
-      cmds.push({ 
-        name: 'Load Skills', 
+      cmds.push({
+        name: 'Load Skills',
         description: 'Load skills',
-        category: 'Tools', 
+        category: 'Tools',
         action: handleLoadSkills,
         disabled: false
       })
     }
     if (handleLoadAuditChecklist) {
-      cmds.push({ 
-        name: 'Start Security Audit', 
-        description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan', 
-        category: 'Tools', 
+      cmds.push({
+        name: 'Start Security Audit',
+        description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan',
+        category: 'Tools',
         action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
         disabled: !hasAuditorPermission
       })

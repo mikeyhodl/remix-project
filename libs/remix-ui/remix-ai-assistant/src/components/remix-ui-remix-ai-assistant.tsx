@@ -112,7 +112,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     upgrade: 'hidden',
     buyCredits: 'hidden'
   })
-  
+
   // Permission state for specific features
   const [hasAuditorPermission, setHasAuditorPermission] = useState(false)
   const [hasSkillsPermission, setHasSkillsPermission] = useState(false)
@@ -897,11 +897,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         return entry?.is_enabled !== false && entry?.allowed !== false
       }
       const comingSoon = isOn('ai:modes_coming_soon')
-      
+
       // Check specific feature permissions
       setHasAuditorPermission(isOn('ai:auditor'))
       setHasSkillsPermission(isOn('ai:skills'))
-      
+
       const nextPillStates = {
         upgrade: comingSoon ? 'coming_soon' : isOn('ai:upgrade_available') ? 'available' : 'hidden',
         buyCredits: comingSoon ? 'hidden' : isOn('ai:buy_credits') ? 'available' : 'hidden'
