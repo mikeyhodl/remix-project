@@ -266,7 +266,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
   // Define basic skills that are always available to free users
   const basicSkillNames = [
     'Why Ethereum'.toLowerCase(),
-    'Gas & Costs'.toLowerCase(), 
+    'Gas & Costs'.toLowerCase(),
     'Ship'.toLowerCase(),
     'Wallets'.toLowerCase(),
     'Layer 2s'.toLowerCase(),
@@ -287,16 +287,16 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     // First check search term match
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     // Then check permission level
     if (!matchesSearch) return false
-    
+
     // If user has advanced skills permission, show all skills
     if (hasAdvancedSkills) return true
-    
+
     // If user has basic skills permission, show only basic skills
     if (hasBasicSkills) return isBasicSkill(skill.name)
-    
+
     // If no skills permission, still show basic skills (free tier)
     return isBasicSkill(skill.name)
   })
@@ -305,10 +305,10 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     // Find the skill to check if it's basic
     const skill = skills.find(s => s.id === id)
     if (!skill) return
-    
+
     // Check if user can select this skill based on permission level
     const isBasic = isBasicSkill(skill.name)
-    
+
     // Advanced users can select all skills
     if (hasAdvancedSkills) {
       setSelectedSkills(prev => {
@@ -318,7 +318,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
       })
       return
     }
-    
+
     // Basic users and free tier can only select basic skills
     if (isBasic) {
       setSelectedSkills(prev => {
@@ -503,11 +503,11 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                       <div className="category-description mb-4">
                         Select one or more Ethereum development skills to add to your workspace
                       </div>
-                      
+
                       {!hasAdvancedSkills && (
                         <div className="alert alert-info mb-3" role="alert">
                           <i className="fa-solid fa-info-circle me-2"></i>
-                          {hasBasicSkills 
+                          {hasBasicSkills
                             ? "You have access to basic skills. Upgrade to a paid plan to access all premium skills."
                             : "Basic skills are available to all users. Upgrade to a paid plan to access more skills."}
                         </div>
@@ -524,7 +524,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                             const isSelected = selectedSkills.has(skill.id)
                             const isBasic = isBasicSkill(skill.name)
                             const isDisabled = !hasAdvancedSkills && !isBasic
-                            
+
                             return (
                               <div
                                 key={skill.id}
@@ -637,129 +637,129 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                 </div>
               ) : (
                 <>
-              {/* Upload Step 1: Select file */}
-              {uploadStep === 'select' && (
-                <div className="upload-skill-step">
-                  <div className="category-title">Upload a Skill</div>
-                  <div className="category-description mb-4">
+                  {/* Upload Step 1: Select file */}
+                  {uploadStep === 'select' && (
+                    <div className="upload-skill-step">
+                      <div className="category-title">Upload a Skill</div>
+                      <div className="category-description mb-4">
                     Add a custom skill to your workspace by uploading a skill file
-                  </div>
+                      </div>
 
-                  {/* Drag and drop area */}
-                  <div
-                    className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    data-id="skills-upload-dropzone"
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".md,.zip,.skill"
-                      onChange={handleFileInputChange}
-                      style={{ display: 'none' }}
-                      data-id="skills-upload-input"
-                    />
-                    <i className="fa-solid fa-cloud-arrow-up fa-3x mb-3 text-muted"></i>
-                    <div className="upload-dropzone-text">
-                      <span className="text-primary">Click to upload</span> or drag and drop
-                    </div>
-                    <div className="upload-dropzone-hint text-muted small mt-2">
+                      {/* Drag and drop area */}
+                      <div
+                        className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        data-id="skills-upload-dropzone"
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".md,.zip,.skill"
+                          onChange={handleFileInputChange}
+                          style={{ display: 'none' }}
+                          data-id="skills-upload-input"
+                        />
+                        <i className="fa-solid fa-cloud-arrow-up fa-3x mb-3 text-muted"></i>
+                        <div className="upload-dropzone-text">
+                          <span className="text-primary">Click to upload</span> or drag and drop
+                        </div>
+                        <div className="upload-dropzone-hint text-muted small mt-2">
                       .md, .zip, or .skill files
-                    </div>
-                  </div>
+                        </div>
+                      </div>
 
-                  {uploadError && (
-                    <div className="alert alert-danger mt-3" role="alert">
-                      <i className="fa-solid fa-exclamation-triangle me-2"></i>
-                      <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{uploadError}</pre>
-                    </div>
-                  )}
+                      {uploadError && (
+                        <div className="alert alert-danger mt-3" role="alert">
+                          <i className="fa-solid fa-exclamation-triangle me-2"></i>
+                          <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{uploadError}</pre>
+                        </div>
+                      )}
 
-                  {/* File requirements info */}
-                  <div className="upload-requirements mt-4">
-                    <div className="requirements-title text-muted mb-2">
-                      <i className="fa-solid fa-info-circle me-2"></i>
+                      {/* File requirements info */}
+                      <div className="upload-requirements mt-4">
+                        <div className="requirements-title text-muted mb-2">
+                          <i className="fa-solid fa-info-circle me-2"></i>
                       File Requirements
-                    </div>
-                    <ul className="requirements-list small text-muted">
-                      <li><strong>.md file:</strong> A markdown file containing the skill instructions (will be saved as SKILL.md)</li>
-                      <li><strong>.zip or .skill file:</strong> An archive that must include a SKILL.md file</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* Upload Step 2: Preview */}
-              {uploadStep === 'preview' && parsedSkill && (
-                <div className="upload-preview-step">
-                  <div className="d-flex flex-column align-items-center py-4">
-                    <i className="fa-solid fa-file-circle-check fa-3x mb-4 text-success"></i>
-                    <h3 className="mb-3">Skill Ready to Add</h3>
-
-                    <div className="upload-preview-details mb-4 w-100">
-                      <div className="preview-item d-flex justify-content-between py-2 border-bottom">
-                        <span className="text-muted">Source File:</span>
-                        <span className="text-info">{parsedSkill.sourceFileName}</span>
-                      </div>
-                      <div className="preview-item d-flex justify-content-between py-2 border-bottom">
-                        <span className="text-muted">Skill Folder:</span>
-                        <code>skills/{parsedSkill.folderName}</code>
-                      </div>
-                      <div className="preview-item d-flex justify-content-between py-2 border-bottom">
-                        <span className="text-muted">Files:</span>
-                        <span className="text-info">{Object.keys(parsedSkill.files).length} file(s)</span>
-                      </div>
-                      <div className="preview-files mt-3">
-                        <span className="text-muted small">Files to be created:</span>
-                        <ul className="files-list small mt-2">
-                          {Object.keys(parsedSkill.files).map((filename) => (
-                            <li key={filename}>
-                              <code>{parsedSkill.folderName}/{filename}</code>
-                            </li>
-                          ))}
+                        </div>
+                        <ul className="requirements-list small text-muted">
+                          <li><strong>.md file:</strong> A markdown file containing the skill instructions (will be saved as SKILL.md)</li>
+                          <li><strong>.zip or .skill file:</strong> An archive that must include a SKILL.md file</li>
                         </ul>
                       </div>
                     </div>
+                  )}
 
-                    {uploadError && (
-                      <div className="alert alert-danger mb-3 w-100" role="alert">
-                        <i className="fa-solid fa-exclamation-triangle me-2"></i>
-                        <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{uploadError}</pre>
-                      </div>
-                    )}
+                  {/* Upload Step 2: Preview */}
+                  {uploadStep === 'preview' && parsedSkill && (
+                    <div className="upload-preview-step">
+                      <div className="d-flex flex-column align-items-center py-4">
+                        <i className="fa-solid fa-file-circle-check fa-3x mb-4 text-success"></i>
+                        <h3 className="mb-3">Skill Ready to Add</h3>
 
-                    <div className="d-flex gap-3">
-                      <button className="btn btn-secondary" onClick={resetUpload}>Cancel</button>
-                      <button
-                        data-id="skills-upload-confirm"
-                        className="btn btn-primary"
-                        onClick={handleUploadConfirm}
-                      >
-                        <i className="fa-solid fa-plus me-2"></i>
+                        <div className="upload-preview-details mb-4 w-100">
+                          <div className="preview-item d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Source File:</span>
+                            <span className="text-info">{parsedSkill.sourceFileName}</span>
+                          </div>
+                          <div className="preview-item d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Skill Folder:</span>
+                            <code>skills/{parsedSkill.folderName}</code>
+                          </div>
+                          <div className="preview-item d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Files:</span>
+                            <span className="text-info">{Object.keys(parsedSkill.files).length} file(s)</span>
+                          </div>
+                          <div className="preview-files mt-3">
+                            <span className="text-muted small">Files to be created:</span>
+                            <ul className="files-list small mt-2">
+                              {Object.keys(parsedSkill.files).map((filename) => (
+                                <li key={filename}>
+                                  <code>{parsedSkill.folderName}/{filename}</code>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        {uploadError && (
+                          <div className="alert alert-danger mb-3 w-100" role="alert">
+                            <i className="fa-solid fa-exclamation-triangle me-2"></i>
+                            <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{uploadError}</pre>
+                          </div>
+                        )}
+
+                        <div className="d-flex gap-3">
+                          <button className="btn btn-secondary" onClick={resetUpload}>Cancel</button>
+                          <button
+                            data-id="skills-upload-confirm"
+                            className="btn btn-primary"
+                            onClick={handleUploadConfirm}
+                          >
+                            <i className="fa-solid fa-plus me-2"></i>
                         Add Skill
-                      </button>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* Upload Step 3: Uploading */}
-              {uploadStep === 'uploading' && (
-                <div className="uploading-skill-step">
-                  <div className="d-flex flex-column align-items-center py-5">
-                    <div className="spinner-border text-primary fa-3x mb-4" role="status">
-                      <span className="visually-hidden">Adding skill...</span>
-                    </div>
-                    <h3 className="text-light mb-3">Adding Skill</h3>
-                    <p className="text-muted">
+                  {/* Upload Step 3: Uploading */}
+                  {uploadStep === 'uploading' && (
+                    <div className="uploading-skill-step">
+                      <div className="d-flex flex-column align-items-center py-5">
+                        <div className="spinner-border text-primary fa-3x mb-4" role="status">
+                          <span className="visually-hidden">Adding skill...</span>
+                        </div>
+                        <h3 className="text-light mb-3">Adding Skill</h3>
+                        <p className="text-muted">
                       Saving skill files to your workspace...
-                    </p>
-                  </div>
-                </div>
-              )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </>
