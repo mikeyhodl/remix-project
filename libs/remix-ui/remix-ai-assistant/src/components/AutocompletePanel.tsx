@@ -190,12 +190,12 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                   borderBottom: `1px solid ${borderColor}`
                 }}
               >
-                {category === 'Build' && '🔨 '}
-                {category === 'Deploy' && '🚀 '}
-                {category === 'Import' && '📥 '}
-                {category === 'Data' && '📁 '}
-                {category === 'DeFi' && '💰 '}
-                {category === 'Frontend' && '🎨 '}
+                {category === 'Build'}
+                {category === 'Deploy'}
+                {category === 'Import'}
+                {category === 'Data'}
+                {category === 'DeFi'}
+                {category === 'Frontend'}
                 {category}
               </div>
               {commands.map((cmd) => {
