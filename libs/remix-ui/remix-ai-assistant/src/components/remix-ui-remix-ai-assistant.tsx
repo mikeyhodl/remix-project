@@ -296,9 +296,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     uiToolCallbackRef.current = null
   }, [props.currentConversationId, props.plugin])
 
-  // Post an assistant-style notice directly into the conversation. Used to
-  // surface Ollama availability / model-support problems in the chat instead
-  // of failing silently.
   const pushSystemNotice = useCallback((content: string) => {
     setMessages(prev => [
       ...prev,
@@ -311,10 +308,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setSelectedOllamaModel(modelName)
     setShowOllamaModelSelector(false)
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_selected', value: `${modelName}|from:${previousModel || 'none'}`, isClick: true })
-    // Update the model in the backend. Use setOllamaModel (not setModel)
-    // because the modelName here is an Ollama-specific tag like
-    // 'codestral:latest', which is NOT in the AIModel catalogue and would
-    // make ModelManager.setModel throw.
     try {
       await props.plugin.call('remixAI', 'setOllamaModel', modelName)
       trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'ollama_model_set_backend_success', value: modelName, isClick: false })
@@ -2144,8 +2137,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       try {
         await props.plugin.call('remixAI', 'setModel', modelId)
         trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
-        // All installed models, flagged by tool support. Unsupported ones are
-        // kept in the list (shown grayed out) rather than hidden.
         const models: { name: string; supported: boolean }[] = await props.plugin.call('remixAI', 'getOllamaModels')
         setOllamaModels(models || [])
         if (!models || models.length === 0) {
@@ -2154,8 +2145,6 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           pushSystemNotice('None of your installed Ollama models support tool calling, which the agent requires. Install a tool-capable model (e.g. `ollama pull qwen2.5-coder`).')
         }
       } catch (err: any) {
-        // Ollama unreachable — surface the setup guide in the chat instead of
-        // silently showing models, and switch back to the default model.
         remixAILogger.error('Ollama not available:', err)
         setOllamaModels([])
         pushSystemNotice(OLLAMA_NOT_AVAILABLE_MESSAGE)
