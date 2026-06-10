@@ -55,13 +55,13 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
-      .assert.elementPresent('*[data-id="topbarSignInButton"]')
+      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .assert.elementPresent('*[data-id="login-button"]')
   },
 
   'Should login via the test pool through the real UI flow': function (browser: NightwatchBrowser) {
     browser
-      .click('*[data-id="topbarSignInButton"]')
+      .click('*[data-id="login-button"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
