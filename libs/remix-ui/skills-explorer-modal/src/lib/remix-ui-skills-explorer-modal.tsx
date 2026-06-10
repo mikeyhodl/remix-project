@@ -29,7 +29,9 @@ export interface RemixUiSkillsExplorerModalProps {
 
 export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProps) {
   const { features } = useAuth()
-  const hasSkillsPermission = features['ai:skills']?.is_enabled === true
+  const skillsPermissionLevel = features['ai:skills']?.permission || 'none'
+  const hasBasicSkills = skillsPermissionLevel === 'skills:basic' || skillsPermissionLevel === 'skills:advanced'
+  const hasAdvancedSkills = skillsPermissionLevel === 'skills:advanced'
   const { isOpen, onClose, plugin } = props
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -267,11 +269,24 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     'events-basics'
   ]
 
-  // Filter skills based on search term only (show all skills regardless of permissions)
-  const filteredSkills = skills.filter(skill =>
-    skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    skill.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filter skills based on search term and permission level
+  const filteredSkills = skills.filter(skill => {
+    // First check search term match
+    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         skill.description.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Then check permission level
+    if (!matchesSearch) return false
+    
+    // If user has advanced skills permission, show all skills
+    if (hasAdvancedSkills) return true
+    
+    // If user has basic skills permission, show only basic skills
+    if (hasBasicSkills) return isBasicSkill(skill.name)
+    
+    // If no skills permission, still show basic skills (free tier)
+    return isBasicSkill(skill.name)
+  })
   
   // Helper function to check if a skill is basic (free)
   const isBasicSkill = (skillName: string) => {
@@ -283,14 +298,27 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
     const skill = skills.find(s => s.id === id)
     if (!skill) return
     
-    // Only allow selection if user has permissions OR if it's a basic skill
-    if (!hasSkillsPermission && !isBasicSkill(skill.name)) return
+    // Check if user can select this skill based on permission level
+    const isBasic = isBasicSkill(skill.name)
     
-    setSelectedSkills(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    // Advanced users can select all skills
+    if (hasAdvancedSkills) {
+      setSelectedSkills(prev => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+      return
+    }
+    
+    // Basic users and free tier can only select basic skills
+    if (isBasic) {
+      setSelectedSkills(prev => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const handleLoadSelected = () => {
@@ -407,7 +435,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
               <i className="fa-solid fa-compass me-2"></i>
               Browse Skills
             </button>
-            {!hasSkillsPermission ? (
+            {!hasAdvancedSkills ? (
               <CustomTooltip
                 placement="top"
                 tooltipText="Upgrade to a paid plan to enable the upload feature."
@@ -468,10 +496,12 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                         Select one or more Ethereum development skills to add to your workspace
                       </div>
                       
-                      {!hasSkillsPermission && (
+                      {!hasAdvancedSkills && (
                         <div className="alert alert-info mb-3" role="alert">
                           <i className="fa-solid fa-info-circle me-2"></i>
-                          Basic skills (marked as "Free") are available to all users. Upgrade to a paid plan to access all premium skills.
+                          {hasBasicSkills 
+                            ? "You have access to basic skills. Upgrade to a paid plan to access all premium skills."
+                            : "Basic skills (marked as \"Free\") are available to all users. Upgrade to a paid plan to access more skills."}
                         </div>
                       )}
 
@@ -485,7 +515,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                           {filteredSkills.map((skill) => {
                             const isSelected = selectedSkills.has(skill.id)
                             const isBasic = isBasicSkill(skill.name)
-                            const isDisabled = !hasSkillsPermission && !isBasic
+                            const isDisabled = !hasAdvancedSkills && !isBasic
                             
                             return (
                               <div
@@ -497,14 +527,14 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                                 }}
                                 onClick={() => toggleSkill(skill.id)}
                                 data-id={`skill-card-${skill.id}`}
-                                title={isDisabled ? 'Upgrade to a paid plan to select this skill' : ''}
+                                title={isDisabled ? 'Upgrade to the advanced plan to select this skill' : ''}
                               >
                                 <div className="card-body">
                                   <div className="d-flex justify-content-between align-items-start mb-2">
                                     <h6 className="card-title text-dark mb-0">{skill.name}</h6>
                                     <div className="d-flex align-items-center">
-                                      {isBasic && !hasSkillsPermission && (
-                                        <span className="badge bg-success me-2">Free</span>
+                                      {isBasic && !hasAdvancedSkills && (
+                                        <span className="badge bg-success me-2">Basic</span>
                                       )}
                                       {isSelected && (
                                         <i className="fa-solid fa-circle-check text-primary flex-shrink-0"></i>
@@ -589,7 +619,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
           {activeTab === 'upload' && (
             <>
               {/* Check permissions first */}
-              {!hasSkillsPermission ? (
+              {!hasAdvancedSkills ? (
                 <div className="d-flex flex-column align-items-center py-5">
                   <i className="fa-solid fa-lock fa-3x mb-4 text-muted"></i>
                   <h3 className="mb-3">Upload Feature Restricted</h3>
