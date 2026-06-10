@@ -9,7 +9,7 @@ import { endpointUrls } from '@remix-endpoints-helper'
 import { ModelSelection, IUserApiKeyConfig } from '../../types/deepagent'
 import { DAPP_MAX_TOKENS } from './constants'
 import { getRemixAuthHeader } from '../auth'
-import { discoverOllamaHost, getBestAvailableModel } from '../local/ollama'
+import { discoverOllamaHost, getBestAvailableModel, getModelCapabilities } from '../local/ollama'
 
 const AI_DEBUG = (() => {
   try { return typeof window !== 'undefined' && window.localStorage?.getItem('AI_DEBUG') === 'true' } catch { return false }
@@ -305,16 +305,21 @@ export async function createModelInstance(
       : await getBestAvailableModel()
     console.log('Chosen Ollama model:', chosenModel)
     if (!chosenModel) {
-      throw new Error('[ModelFactory] No local Ollama models installed')
+      throw new Error('[ModelFactory] No tool-capable Ollama model is installed. The Remix agent requires a model that supports tool calling — install one (e.g. `ollama pull qwen2.5-coder`) and try again.')
     }
-    remixAILogger.log(`[ModelFactory] Creating Ollama model: ${chosenModel} @ ${host}`)
+
+    const caps = await getModelCapabilities(chosenModel)
+    if (!caps.tools) {
+      throw new Error(`[ModelFactory] Ollama model "${chosenModel}" does not support tool calling, which the Remix agent requires. Choose a tool-capable model (e.g. qwen2.5-coder, llama3.1, mistral-nemo).`)
+    }
+    remixAILogger.log(`[ModelFactory] Creating Ollama model: ${chosenModel} @ ${host} (thinking: ${caps.thinking})`)
     return wrapModelForDebug(new ChatOllama({
       baseUrl: host,
       model: chosenModel,
       temperature: 0.7,
       numPredict: maxTokens,
       streaming: true,
-      think: true
+      ...(caps.thinking ? { think: true } : {})
     }), `ollama/${chosenModel}`)
   }
 

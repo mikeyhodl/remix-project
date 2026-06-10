@@ -149,13 +149,19 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
             setChoice={props.handleOllamaModelSelection}
             setShowOptions={props.setShowOllamaModelSelector}
             choice={props.selectedOllamaModel}
-            groupList={props.ollamaModels.map((model: any) => ({
-              label: model,
-              bodyText: '',
-              icon: 'fa-solid fa-check',
-              stateValue: model,
-              dataId: `ollama-model-${model.replace(/[^a-zA-Z0-9]/g, '-')}`
-            }))}
+            groupList={props.ollamaModels.map((model: any) => {
+              const name = typeof model === 'string' ? model : model.name
+              const supported = typeof model === 'string' ? true : model.supported
+              return {
+                label: name,
+                bodyText: '',
+                icon: 'fa-solid fa-check',
+                stateValue: name,
+                dataId: `ollama-model-${name.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                disabled: !supported,
+                disabledReason: 'No tool support'
+              }
+            })}
           />
         </div>
       )}

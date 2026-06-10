@@ -10,6 +10,18 @@ const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';
 
 let discoveredOllamaHost: string | null = null;
 
+export interface OllamaModelCapabilities {
+  /** Model can call tools / functions (required by the Remix agent). */
+  tools: boolean;
+  /** Model emits a reasoning/thinking stream. */
+  thinking: boolean;
+  /** Model supports fill-in-the-middle / insertion (code completion). */
+  insert: boolean;
+}
+
+// Capabilities are immutable per model, so cache them for the session.
+const modelCapabilitiesCache = new Map<string, OllamaModelCapabilities>();
+
 function getConfiguredOllamaEndpoint(): string | null {
   const filemanager = Registry.getInstance().get('filemanager').api;
   try {
@@ -130,6 +142,7 @@ export function resetOllamaHost(): void {
   const fileManager = Registry.getInstance().get('filemanager').api;
   trackMatomoEvent(fileManager, { category: 'ai', action: 'remixAI', name: `ollama_reset_host:${discoveredOllamaHost || 'null'}` });
   discoveredOllamaHost = null;
+  modelCapabilitiesCache.clear();
 }
 
 export function resetOllamaHostOnSettingsChange(): void {
@@ -170,12 +183,67 @@ export async function validateModel(modelName: string): Promise<boolean> {
   }
 }
 
+export async function getModelCapabilities(modelName: string): Promise<OllamaModelCapabilities> {
+  console.log(`[Ollama] Getting capabilities for model "${modelName}"`)
+  if (modelCapabilitiesCache.has(modelName)) return modelCapabilitiesCache.get(modelName) as OllamaModelCapabilities;
+
+  const fallback: OllamaModelCapabilities = { tools: false, thinking: false, insert: false };
+  const host = await discoverOllamaHost();
+  if (!host) return fallback;
+
+  try {
+    const res = await axios.post(`${host}/api/show`, { name: modelName });
+    if (res.status === 200 && res.data) {
+      const caps: string[] = Array.isArray(res.data.capabilities) ? res.data.capabilities : [];
+      const template: string = res.data.template || '';
+      const result: OllamaModelCapabilities = {
+        // `.Tools` / `ToolCalls` appear in the chat template of tool-capable models
+        // when the explicit `capabilities` array is absent (older Ollama).
+        tools: caps.includes('tools') || /\.Tools|ToolCalls/.test(template),
+        thinking: caps.includes('thinking') || caps.includes('reasoning'),
+        insert: caps.includes('insert') ||
+          template.includes('fim') || template.includes('suffix') ||
+          template.includes('.Suffix') || template.includes('<fim_') || template.includes('<|fim_'),
+      };
+      modelCapabilitiesCache.set(modelName, result);
+      console.log(`[Ollama] Capabilities for model "${modelName}":`, result);
+      return result;
+    }
+  } catch (error) {
+    remixAILogger.warn(`[Ollama] Failed to read capabilities for "${modelName}": ${error}`);
+  }
+  return fallback;
+}
+
+/** True when the model can call tools — a hard requirement for the Remix agent. */
+export async function modelSupportsTools(modelName: string): Promise<boolean> {
+  return (await getModelCapabilities(modelName)).tools;
+}
+
+/** True when the model supports a thinking/reasoning stream. */
+export async function modelSupportsThinking(modelName: string): Promise<boolean> {
+  return (await getModelCapabilities(modelName)).thinking;
+}
+
+/** List only the installed models that support tool calling. */
+export async function listToolCapableModels(): Promise<string[]> {
+  const models = await listModels();
+  const checked = await Promise.all(
+    models.map(async (m) => ({ model: m, tools: (await getModelCapabilities(m)).tools }))
+  );
+  return checked.filter((c) => c.tools).map((c) => c.model);
+}
+
 export async function getBestAvailableModel(): Promise<string | null> {
   try {
     const models = await listModels();
     if (models.length === 0) return null;
-    // Simply return the first available model
-    return models[0];
+    // The agent needs tool calling — return the first tool-capable model, not
+    // just the first installed one. Returns null when none qualify.
+    for (const model of models) {
+      if ((await getModelCapabilities(model)).tools) return model;
+    }
+    return null;
   } catch (error: unknown) {
     remixAILogger.error('Error getting available model:', error);
     return null;

@@ -6,6 +6,7 @@ import { remixAILogger,
   isOllamaAvailable,
   getBestAvailableModel,
   listModels,
+  modelSupportsTools,
   getModelById
 } from '@remix/remix-ai-core'
 import type { AIModel } from '@remix/remix-ai-core'
@@ -125,7 +126,7 @@ export class ModelManager {
 
     const bestModel = await getBestAvailableModel()
     if (!bestModel) {
-      throw new Error('[ModelManager.handleOllamaProvider] No Ollama models installed locally. Run `ollama pull codestral:latest` (or another model) and try again.')
+      throw new Error('[ModelManager.handleOllamaProvider] No tool-capable Ollama model is installed. The agent needs a model that supports tool calling — run `ollama pull qwen2.5-coder` (or another tool-capable model) and try again.')
     }
 
     (plugin as any).discoveredOllamaModel = bestModel
@@ -147,6 +148,11 @@ export class ModelManager {
     if (!isAvailable) {
       remixAILogger.error('Ollama is not available. Please ensure Ollama is running.')
       return
+    }
+
+    // Block models without tool support — the agent depends on tool calling.
+    if (!(await modelSupportsTools(ollamaModelName))) {
+      throw new Error(`Ollama model "${ollamaModelName}" does not support tool calling and can't be used with the Remix agent. Pick a tool-capable model (e.g. qwen2.5-coder, llama3.1).`)
     }
 
     (plugin as any).discoveredOllamaModel = ollamaModelName
@@ -177,7 +183,7 @@ export class ModelManager {
     await this.setModel(chosen.id)
   }
 
-  async getOllamaModels(): Promise<string[]> {
+  async getOllamaModels(): Promise<{ name: string; supported: boolean }[]> {
     const plugin = this.deps.plugin
 
     if (plugin.selectedModel.provider !== 'ollama') {
@@ -189,7 +195,10 @@ export class ModelManager {
       throw new Error('Ollama is not running')
     }
 
-    const models = await listModels()
-    return models
+    // Return ALL installed models, flagged by tool support, so the UI can show
+    // unsupported models grayed out rather than hiding them. `supported` means
+    // the model can call tools — the hard requirement for the agent.
+    const all = await listModels()
+    return Promise.all(all.map(async (name) => ({ name, supported: await modelSupportsTools(name) })))
   }
 }

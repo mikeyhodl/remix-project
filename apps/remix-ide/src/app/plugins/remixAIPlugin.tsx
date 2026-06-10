@@ -1003,7 +1003,7 @@ export class RemixAIPlugin extends Plugin {
     return []
   }
 
-  async getOllamaModels(): Promise<string[]> {
+  async getOllamaModels(): Promise<{ name: string; supported: boolean }[]> {
     return this.modelManager.getOllamaModels()
   }
 
