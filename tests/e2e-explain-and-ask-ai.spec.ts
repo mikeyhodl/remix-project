@@ -20,7 +20,7 @@ test('explain contract with AI', async ({ page }) => {
   await page.goto(url);
 
   // --- 1. Sign in via topbar -------------------------------------------------
-  await page.locator('[data-id="topbarSignInButton"]').click();
+  await page.locator('[data-id="login-button"]').click();
   await page.locator('[data-id="loginModalE2EPoolButton"]').click();
 
   // Confirm we're signed in (topbar user menu shows pool label)
@@ -79,7 +79,7 @@ test('ask AI about a compile error', async ({ page }) => {
   await page.goto(url);
 
   // --- 1. Sign in via topbar -------------------------------------------------
-  await page.locator('[data-id="topbarSignInButton"]').click();
+  await page.locator('[data-id="login-button"]').click();
   await page.locator('[data-id="loginModalE2EPoolButton"]').click();
   await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
 
@@ -157,7 +157,7 @@ test('anonymous user is prompted by plan-manager when triggering AI actions', as
   await page.goto(url);
 
   // Make sure we're really signed out — topbar should show Sign In
-  await expect(page.locator('[data-id="topbarSignInButton"]')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-id="login-button"]')).toBeVisible({ timeout: 30000 });
 
   // --- Open contracts/1_Storage.sol ----------------------------------------
   await page.locator('li[data-id="treeViewLitreeViewItemcontracts"]').click();
