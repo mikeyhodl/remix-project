@@ -1461,6 +1461,23 @@ export const EditorUI = (props: EditorUIProps) => {
     setTooltipData(null)
   }
 
+  const handleClearSelection = () => {
+    // Clear the selection in the editor to prevent popover from re-appearing
+    if (editorRef.current) {
+      const selection = editorRef.current.getSelection()
+      if (selection && !selection.isEmpty()) {
+        // Move cursor to end of selection and clear selection
+        const endPosition = selection.getEndPosition()
+        editorRef.current.setSelection({
+          startLineNumber: endPosition.lineNumber,
+          startColumn: endPosition.column,
+          endLineNumber: endPosition.lineNumber,
+          endColumn: endPosition.column
+        })
+      }
+    }
+  }
+
   function handleEditorWillMount(monaco) {
 
     monacoRef.current = monaco
@@ -1950,6 +1967,7 @@ export const EditorUI = (props: EditorUIProps) => {
           keyword={tooltipData.keyword}
           position={tooltipData.position}
           onClose={closeTooltip}
+          onClearSelection={handleClearSelection}
           visible={true}
           plugin={props.plugin}
           line={tooltipData.line}

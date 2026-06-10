@@ -9,6 +9,7 @@ export interface TooltipPopOverProps {
   keyword: string
   position: { x: number; y: number }
   onClose: () => void
+  onClearSelection?: () => void
   visible: boolean
   plugin?: any
   line?: string
@@ -37,7 +38,7 @@ export const openContextualTooltip = (
 
   // Check if there's selected text first
   const selection = editorRef.current.getSelection()
-  const selectedText = selection && !selection.isEmpty() 
+  const selectedText = selection && !selection.isEmpty()
     ? model.getValueInRange(selection)
     : null
 
@@ -90,7 +91,7 @@ export const openContextualTooltip = (
         : ''
     }
   }
-  
+
   // Only proceed if we have something to show
   if (hoveredExpression) {
     // Get screen position for tooltip
@@ -143,6 +144,7 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   keyword,
   position,
   onClose,
+  onClearSelection,
   visible,
   plugin,
   line,
@@ -372,18 +374,23 @@ Focus on security implications and provide practical guidance for smart contract
                     if (plugin && data) {
                       try {
                         // Track button click
-                        trackMatomoEvent({ 
-                          category: 'ai', 
-                          action: 'remixAI', 
-                          name: 'contextual_popup_open_remixai_clicked', 
+                        trackMatomoEvent({
+                          category: 'ai',
+                          action: 'remixAI',
+                          name: 'contextual_popup_open_remixai_clicked',
                           isClick: true,
-                          value: keyword 
+                          value: keyword
                         })
                         const deeperPrompt = `Analyse this code snippet for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
 
 \`\`\`solidity
 ${keyword}
 \`\`\``
+
+                        // Clear the selection in the editor to prevent popover from re-appearing
+                        if (onClearSelection) {
+                          onClearSelection()
+                        }
 
                         await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
                         await plugin.call('menuicons', 'select', 'remixaiassistant')
@@ -394,7 +401,7 @@ ${keyword}
                           // Call RemixAI with editor code analysis flag
                           await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true)
                         }, 500)
-                        
+
                         // Close the tooltip
                         onClose()
                       } catch (error) {
