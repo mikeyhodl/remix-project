@@ -25,6 +25,19 @@ interface KeywordData {
 }
 
 // Utility function to open contextual tooltip
+// In-memory flag for hiding popover (resets on page reload)
+let isPopoverDisabledFlag = false
+
+// Check if popover is disabled for this session
+export const isPopoverDisabled = (): boolean => {
+  return isPopoverDisabledFlag
+}
+
+// Disable popover for this session
+export const disablePopoverForSession = (): void => {
+  isPopoverDisabledFlag = true
+}
+
 export const openContextualTooltip = (
   position: IPosition,
   editorRef: any,
@@ -32,6 +45,9 @@ export const openContextualTooltip = (
   setTooltipData: (data: any) => void,
   trackMatomoEvent: (event: any) => void
 ) => {
+  // Check if popover is disabled for this session
+  if (isPopoverDisabled()) return
+
   if (!editorRef.current) return
   const model = editorRef.current.getModel()
   if (!model) return
@@ -330,7 +346,7 @@ Focus on security implications and provide practical guidance for smart contract
                 Analyzing <b>"{isSelectedText && keyword.length > 20
                   ? `${keyword.substring(0, 20)}...`
                   : keyword
-                }..."</b>
+                }"</b>
               </span>
             </div>
           ) : data ? (
@@ -353,7 +369,7 @@ Focus on security implications and provide practical guidance for smart contract
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {isSelectedText && data.title.length > 30
+                    {isSelectedText && data.title && data.title.length > 30
                       ? `${data.title.substring(0, 30)}...`
                       : data.title
                     }
@@ -370,11 +386,11 @@ Focus on security implications and provide practical guidance for smart contract
                 )}
               </div>
               <p className="web3-tooltip-body mb-2">{data.body}</p>
-              <div className="d-flex align-items-center justify-content-between">
+              <div className="d-flex flex-column gap-2">
                 <button
-                  className="btn btn-link p-0"
-                  style={{ 
-                    fontSize: "0.7rem", 
+                  className="btn btn-link p-0 text-start"
+                  style={{
+                    fontSize: "0.7rem",
                     color: "var(--bs-primary)",
                     textDecoration: "none",
                     pointerEvents: "auto" // Enable pointer events for this button
@@ -422,6 +438,34 @@ ${keyword}
                 >
                   <i className="fas fa-external-link-alt me-1" style={{ fontSize: "0.65rem" }}></i>
                   Open in RemixAI
+                </button>
+                <button
+                  className="btn btn-link p-0 text-start"
+                  style={{
+                    fontSize: "0.65rem",
+                    color: "var(--bs-body-color)",
+                    textDecoration: "none",
+                    pointerEvents: "auto",
+                    opacity: 0.7
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // Track button click
+                    trackMatomoEvent({
+                      category: 'ai',
+                      action: 'remixAI',
+                      name: 'contextual_popup_hide_for_session_clicked',
+                      isClick: true,
+                      value: keyword
+                    })
+                    // Disable popover for this session
+                    disablePopoverForSession()
+                    // Close the tooltip
+                    onClose()
+                  }}
+                >
+                  <i className="fas fa-eye-slash me-1" style={{ fontSize: "0.6rem" }}></i>
+                  Do not show analysis for this session
                 </button>
               </div>
             </>

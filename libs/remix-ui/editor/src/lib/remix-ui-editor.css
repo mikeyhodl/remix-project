@@ -115,7 +115,7 @@ div.monaco-list-row > span.title {
 
 .web3-tooltip-popup .btn-link:hover {
     text-decoration: underline !important;
-    color: var(--bs-primary) !important;
+    opacity: 1 !important;
     transform: translateX(2px);
 }
 
