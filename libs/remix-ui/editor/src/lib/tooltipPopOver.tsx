@@ -320,22 +320,32 @@ Focus on security implications and provide practical guidance for smart contract
         }
       }}
     >
-        <div className="web3-tooltip-inner">
+        <div className="web3-tooltip-inner" style={{ position: 'relative' }}>
           {loading ? (
             <div className="d-flex align-items-center gap-2">
               <div className="spinner-border spinner-border-sm" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
               <span style={{ fontSize: "0.8rem" }}>
-                Analyzing <b>"{isSelectedText && keyword.length > 20 
-                  ? `${keyword.substring(0, 20)}...` 
+                Analyzing <b>"{isSelectedText && keyword.length > 20
+                  ? `${keyword.substring(0, 20)}...`
                   : keyword
                 }..."</b>
               </span>
             </div>
           ) : data ? (
             <>
-              <div className="mb-2">
+              {/* Close button - only shown when data is loaded */}
+              <button
+                className="web3-tooltip-close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+              <div className="mb-2" style={{ paddingRight: '16px' }}>
                 <div className="d-flex align-items-center justify-content-between">
                   <code className="web3-tooltip-title" style={{
                     maxWidth: isSelectedText ? '200px' : 'auto',

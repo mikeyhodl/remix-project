@@ -124,6 +124,29 @@ div.monaco-list-row > span.title {
     box-shadow: none !important;
 }
 
+/* Close button for popover */
+.web3-tooltip-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: var(--bs-secondary-bg);
+    border: none;
+    color: var(--bs-body-color);
+    cursor: pointer;
+    padding: 4px 6px;
+    line-height: 1;
+    font-size: 0.7rem;
+    opacity: 0.7;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.web3-tooltip-close:hover {
+    opacity: 1;
+    background: var(--bs-secondary);
+    color: var(--bs-white);
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
