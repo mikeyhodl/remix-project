@@ -39,8 +39,8 @@ export function loginWithE2EPool (browser: NightwatchBrowser): void {
     })
     .refreshPage()
     .pause(5000)
-    .waitForElementVisible('*[data-id="login-button"]', 15000)
-    .click('*[data-id="login-button"]')
+    .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+    .click('*[data-id="topbarSignInButton"]')
     .pause(3000)
     .waitForElementVisible({
       selector: '//button[contains(., "E2E Test Pool")]',

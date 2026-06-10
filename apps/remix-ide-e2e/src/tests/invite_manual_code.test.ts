@@ -47,8 +47,8 @@ const test = {
     'Should click Sign In to open login modal #group1': function (browser: NightwatchBrowser) {
         browser
             // No invite in URL, so no invite overlay — just the normal IDE with a Sign In button
-            .waitForElementVisible('*[data-id="login-button"]', 30000)
-            .click('*[data-id="login-button"]')
+            .waitForElementVisible('*[data-id="topbarSignInButton"]', 30000)
+            .click('*[data-id="topbarSignInButton"]')
             .pause(2000)
     },
 

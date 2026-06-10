@@ -80,6 +80,7 @@ test('ask AI about a compile error', async ({ page }) => {
 
   // --- 1. Sign in via topbar -------------------------------------------------
 <<<<<<< HEAD
+<<<<<<< HEAD
   await page.locator('[data-id="login-button"]').click();
   await page.locator('[data-id="loginModalE2EPoolButton"]').click();
   await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
@@ -94,6 +95,11 @@ test('ask AI about a compile error', async ({ page }) => {
   await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
 >>>>>>> 6058e0b2d2 (udpate playwright)
 >>>>>>> 076d942344 (udpate playwright)
+=======
+  await page.locator('[data-id="topbarSignInButton"]').click();
+  await page.locator('[data-id="loginModalE2EPoolButton"]').click();
+  await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
+>>>>>>> 7ae096f4e4 (fix E2E)
 
   // --- 2. Open contracts/1_Storage.sol via file explorer --------------------
   await page.locator('li[data-id="treeViewLitreeViewItemcontracts"]').click();

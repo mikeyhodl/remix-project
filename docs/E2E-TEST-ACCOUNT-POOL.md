@@ -125,7 +125,7 @@ before: function (browser, done) {
 browser
   .execute(() => localStorage.setItem('enableLogin', 'true'))
   .refreshPage()
-  .click('*[data-id="login-button"]')           // Sign In
+  .click('*[data-id="topbarSignInButton"]')           // Sign In
   .click({                                        // E2E Test Pool
     selector: '//button[contains(., "E2E Test Pool")]',
     locateStrategy: 'xpath'

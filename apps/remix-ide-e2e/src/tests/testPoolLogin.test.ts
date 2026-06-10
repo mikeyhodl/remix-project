@@ -52,14 +52,14 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .assert.elementPresent('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .assert.elementPresent('*[data-id="topbarSignInButton"]')
   },
 
   'Should login via the test pool through the real UI flow #group1': function (browser: NightwatchBrowser) {
     browser
       // Open the login modal
-      .click('*[data-id="login-button"]')
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       // The modal should detect the e2e_pool_key and show the "E2E Test Pool" button
       .waitForElementVisible({
@@ -128,8 +128,8 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -222,8 +222,8 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -469,8 +469,8 @@ module.exports = {
       .refreshPage()
       .pause(5000)
 //       .clickLaunchIcon('filePanel')
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -652,8 +652,8 @@ module.exports = {
       .refreshPage()
       .pause(5000)
 //       .clickLaunchIcon('filePanel')
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -878,8 +878,8 @@ module.exports = {
       .refreshPage()
       .pause(5000)
 //       .clickLaunchIcon('filePanel')
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1194,8 +1194,8 @@ module.exports = {
       })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1264,7 +1264,7 @@ module.exports = {
 
     // After logout, should see the Sign In button again
     browser
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
 
     // Cloud workspace should NOT be in the dropdown — only the local default_workspace
     browser
@@ -1288,7 +1288,7 @@ module.exports = {
     // Log in again — the pool should give us a DIFFERENT account
     // Cloud stays OFF — we just verify the workspace list is empty for this user
     browser
-      .click('*[data-id="login-button"]')
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1325,8 +1325,8 @@ module.exports = {
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1558,8 +1558,8 @@ module.exports = {
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1741,8 +1741,8 @@ module.exports = {
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
@@ -1839,8 +1839,8 @@ module.exports = {
       .execute(function () { localStorage.setItem('enableLogin', 'true') })
       .refreshPage()
       .pause(5000)
-      .waitForElementVisible('*[data-id="login-button"]', 15000)
-      .click('*[data-id="login-button"]')
+      .waitForElementVisible('*[data-id="topbarSignInButton"]', 15000)
+      .click('*[data-id="topbarSignInButton"]')
       .pause(3000)
       .waitForElementVisible({
         selector: '//button[contains(., "E2E Test Pool")]',
