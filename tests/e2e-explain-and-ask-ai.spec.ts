@@ -51,11 +51,11 @@ test('explain contract with AI', async ({ page }) => {
   // the first message is added, and an assistant bubble (.me-3) eventually appears.
   await expect(page.locator('[data-id="ai-assistant-landing"]')).toBeHidden({ timeout: 15000 });
   await expect(
-    page.locator('[data-id="ai-response-chat-bubble-section"].me-3').first()
+    page.locator('[data-id="ai-response-chat-bubble-section"] [data-id="ai-user-chat-bubble"]').first()
   ).toBeVisible({ timeout: 90000 });
   // Sanity: the assistant bubble should actually contain text
   await expect.poll(
-    async () => (await page.locator('[data-id="ai-response-chat-bubble-section"].me-3').first().innerText()).trim().length,
+    async () => (await page.locator('[data-id="ai-response-chat-bubble-section"] [data-id="ai-user-chat-bubble"]').first().innerText()).trim().length,
     { timeout: 90000, intervals: [1000, 2000, 3000] }
   ).toBeGreaterThan(20)
 });
@@ -132,7 +132,7 @@ contract Storage {
   // --- 6. Click "Ask RemixAI" on the error card -----------------------------
   await askAiBtn.click();
 
-  const assistantBubbles = page.locator('[data-id="ai-response-chat-bubble-section"].me-3')
+  const assistantBubbles = page.locator('[data-id="ai-response-chat-bubble-section"] [data-id="ai-user-chat-bubble"]')
   await expect(assistantBubbles.first()).toBeVisible({ timeout: 90000 })
   await expect.poll(
     async () => (await assistantBubbles.last().innerText()).trim().length,
