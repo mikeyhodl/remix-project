@@ -57,6 +57,8 @@ interface AiChatPromptAreaProps {
     aiRouteReady?: boolean
     isAuthenticated?: boolean
     onSignIn?: () => void
+    hasAuditorPermission?: boolean
+    hasSkillsPermission?: boolean
 }
 
 export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
@@ -193,6 +195,8 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
         handleOpenSettings={props.handleOpenSettings}
         handleLoadAuditChecklist={props.handleLoadAuditChecklist}
         handleGasOptimisationAudit={props.handleGasOptimisationAudit}
+        hasAuditorPermission={props.hasAuditorPermission}
+        hasSkillsPermission={props.hasSkillsPermission}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>

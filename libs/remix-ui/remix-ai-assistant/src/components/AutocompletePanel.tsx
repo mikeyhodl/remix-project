@@ -6,6 +6,7 @@ export interface Command {
   shortcut?: string
   category?: string
   action?: () => void
+  disabled?: boolean
 }
 
 interface AutocompletePanelProps {
@@ -212,24 +213,30 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                     className="d-flex align-items-center justify-content-between w-100 px-2 py-1 border-0 rounded-1 text-left"
                     style={{
                       backgroundColor: isSelected ? selectedColor : 'var(--bs-body-bg)',
-                      color: textColor,
-                      cursor: 'pointer',
+                      color: cmd.disabled ? 'var(--bs-secondary-color)' : textColor,
+                      cursor: cmd.disabled ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s ease',
-                      borderLeft: isSelected ? '3px solid var(--custom-ai-color)' : '3px solid transparent'
+                      borderLeft: isSelected ? '3px solid var(--custom-ai-color)' : '3px solid transparent',
+                      opacity: cmd.disabled ? 0.6 : 1
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = isSelected ? selectedColor : hoverColor
-                      onSelectedIndexChange(index)
+                      if (!cmd.disabled) {
+                        e.currentTarget.style.backgroundColor = isSelected ? selectedColor : hoverColor
+                        onSelectedIndexChange(index)
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = isSelected ? selectedColor : 'var(--bs-body-bg)'
+                      if (!cmd.disabled) {
+                        e.currentTarget.style.backgroundColor = isSelected ? selectedColor : 'var(--bs-body-bg)'
+                      }
                     }}
-                    onClick={() => onSelect(cmd)}
+                    onClick={() => !cmd.disabled && onSelect(cmd)}
                     data-id={`autocomplete-item-${cmd.name}`}
+                    disabled={cmd.disabled}
                   >
                     <div className="d-flex flex-column">
                       <div className="d-flex align-items-center">
-                        <span className="font-weight-medium" style={{ fontSize: '0.78rem' }}>
+                        <span className="font-weight-medium" style={{ fontSize: '0.78rem', opacity: cmd.disabled ? 0.6 : 1 }}>
                       /{cmd.name}
                         </span>
                         {cmd.shortcut && (
@@ -249,17 +256,18 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                       <span
                         className="small"
                         style={{
-                          color: secondaryTextColor,
+                          color: cmd.disabled ? 'var(--bs-warning)' : secondaryTextColor,
                           fontSize: '0.78rem',
                           marginTop: '2px',
-                          opacity: 0.85,
+                          opacity: cmd.disabled ? 1 : 0.85,
                           textAlign: 'left',
+                          fontStyle: cmd.disabled ? 'italic' : 'normal'
                         }}
                       >
                         {cmd.description}
                       </span>
                     </div>
-                    {isSelected && (
+                    {isSelected && !cmd.disabled && (
                       <span
                         className="badge rounded-pill ms-2"
                         style={{

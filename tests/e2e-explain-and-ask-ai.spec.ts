@@ -79,27 +79,9 @@ test('ask AI about a compile error', async ({ page }) => {
   await page.goto(url);
 
   // --- 1. Sign in via topbar -------------------------------------------------
-<<<<<<< HEAD
-<<<<<<< HEAD
   await page.locator('[data-id="login-button"]').click();
   await page.locator('[data-id="loginModalE2EPoolButton"]').click();
   await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
-=======
-<<<<<<< HEAD
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await page.getByRole('button', { name: /E2E Test Pool/i }).click();
-  await expect(page.getByRole('button', { name: /E2E Pool/i }).first()).toBeVisible({ timeout: 30000 });
-=======
-  await page.locator('[data-id="topbarSignInButton"]').click();
-  await page.locator('[data-id="loginModalE2EPoolButton"]').click();
-  await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
->>>>>>> 6058e0b2d2 (udpate playwright)
->>>>>>> 076d942344 (udpate playwright)
-=======
-  await page.locator('[data-id="topbarSignInButton"]').click();
-  await page.locator('[data-id="loginModalE2EPoolButton"]').click();
-  await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 });
->>>>>>> 7ae096f4e4 (fix E2E)
 
   // --- 2. Open contracts/1_Storage.sol via file explorer --------------------
   await page.locator('li[data-id="treeViewLitreeViewItemcontracts"]').click();
@@ -175,11 +157,7 @@ test('anonymous user is prompted by plan-manager when triggering AI actions', as
   await page.goto(url);
 
   // Make sure we're really signed out — topbar should show Sign In
-<<<<<<< HEAD
   await expect(page.locator('[data-id="login-button"]')).toBeVisible({ timeout: 30000 });
-=======
-  await expect(page.locator('[data-id="topbarSignInButton"]')).toBeVisible({ timeout: 30000 });
->>>>>>> 076d942344 (udpate playwright)
 
   // --- Open contracts/1_Storage.sol ----------------------------------------
   await page.locator('li[data-id="treeViewLitreeViewItemcontracts"]').click();

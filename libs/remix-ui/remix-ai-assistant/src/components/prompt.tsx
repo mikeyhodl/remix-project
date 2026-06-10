@@ -89,6 +89,8 @@ export interface PromptAreaProps {
   handleOpenSettings?: () => void
   handleLoadAuditChecklist?: () => void
   handleGasOptimisationAudit?: () => void
+  hasAuditorPermission?: boolean
+  hasSkillsPermission?: boolean
 }
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
@@ -117,7 +119,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleLoadSkills,
   handleOpenSettings,
   handleLoadAuditChecklist,
-  handleGasOptimisationAudit
+  handleGasOptimisationAudit,
+  hasAuditorPermission = false,
+  hasSkillsPermission = false
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = MatomoEvent>(event: T) => {
@@ -152,11 +156,27 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       { name: 'model', description: 'Switch AI model', category: 'Settings', action: handleSetModel },
     ]
     if (handleOpenSettings) cmds.push({ name: 'settings', description: 'Open RemixAI settings', category: 'Settings', action: handleOpenSettings })
-    if (handleLoadSkills) cmds.push({ name: 'skills', description: 'Load skills', category: 'Tools', action: handleLoadSkills })
-    if (handleLoadAuditChecklist) cmds.push({ name: 'audit', description: 'Load audit checklist', category: 'Tools', action: handleLoadAuditChecklist })
-    if (handleGasOptimisationAudit) cmds.push({ name: 'gas-audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit })
+    if (handleLoadSkills) {
+      cmds.push({ 
+        name: 'Load Skills', 
+        description: 'Load skills',
+        category: 'Tools', 
+        action: handleLoadSkills,
+        disabled: false
+      })
+    }
+    if (handleLoadAuditChecklist) {
+      cmds.push({ 
+        name: 'Start Security Audit', 
+        description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan', 
+        category: 'Tools', 
+        action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
+        disabled: !hasAuditorPermission
+      })
+    }
+    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Upgrade to a paid plan', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
     return cmds
-  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit])
+  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission])
 
   // Handle command selection
   const handleCommandSelect = useCallback((command: Command) => {
