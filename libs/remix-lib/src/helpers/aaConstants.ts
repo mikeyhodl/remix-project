@@ -1,5 +1,4 @@
 import { ZeroAddress } from 'ethers'
-import { endpointUrls } from '@remix-endpoints-helper'
 
 // AA02: Add network name and public URL to support contract transactions using smart account
 export const aaSupportedNetworks = {
@@ -14,7 +13,7 @@ export const aaSupportedNetworks = {
 }
 
 export const getPimlicoBundlerURL = (chainId) => {
-  return `${endpointUrls.pimlico}/api/proxy/${chainId}`
+  return `https://api.remix.live/endpoints/pimlico/api/proxy/${chainId}`
 }
 
 export const aaLocalStorageKey = 'smartAccounts'
