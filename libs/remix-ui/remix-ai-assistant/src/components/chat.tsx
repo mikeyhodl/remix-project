@@ -36,7 +36,7 @@ interface AiChatIntroProps {
 const AiChatIntro: React.FC<AiChatIntroProps> = ({ theme }) => {
   return (
     <div className="assistant-landing d-flex flex-column gap-1 mx-1 align-items-center justify-content-center text-center h-100 w-100" data-id="ai-assistant-landing">
-      <div className="d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px'}}>
+      <div className="d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
         <img src={theme && theme.toLowerCase() === 'dark' ? assistantAvatar : assitantAvatarLight} alt="RemixAI logo" style={{ width: '48px', height: '48px' }} className="container-img" />
       </div>
       <p className="mb-4" style={{ fontSize: '0.875rem' }}>
@@ -89,7 +89,7 @@ export const ChatHistoryComponent: React.FC<ChatHistoryComponentProps> = ({
             <div key={msg.id} className={`chat-row d-flex mb-2 gap-2 ${msg.role === 'user' ? 'justify-content-end' : ''}`} style={{ minWidth: '90%' }}>
               {/* Avatar for assistant */}
               {msg.role === 'assistant' && (
-                
+
                 <img
                   src={theme && theme.toLowerCase() === 'dark' ? assistantAvatar : assitantAvatarLight}
                   alt="AI"
