@@ -156,10 +156,10 @@ function EditHtmlTemplate(): JSX.Element {
 
     // Hide modal immediately to prevent UI hang during async deletion
     setShowDeleteModal(false);
-    const workspaceToDelete = activeDapp.workspaceName;
+    const slugToDelete = activeDapp.slug;
 
     try {
-      await dappManager.deleteDapp(workspaceToDelete);
+      await dappManager.deleteDapp(slugToDelete);
       let updatedDapps = await dappManager.getDapps();
       if (!updatedDapps) updatedDapps = [];
 
