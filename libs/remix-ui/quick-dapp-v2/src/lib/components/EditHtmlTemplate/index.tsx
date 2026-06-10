@@ -188,7 +188,7 @@ function EditHtmlTemplate(): JSX.Element {
 
     if (dappManager && activeDapp) {
       try {
-        const updatedConfig = await dappManager.getDappConfig(activeDapp.workspaceName);
+        const updatedConfig = await dappManager.getDappConfig(activeDapp.slug);
         if (updatedConfig) {
           const updatedDapps = appState.dapps.map((d: any) =>
             d.slug === activeDapp.slug ? updatedConfig : d
@@ -237,7 +237,8 @@ function EditHtmlTemplate(): JSX.Element {
         }
       });
 
-      const previewPath = 'preview.png';
+      const isInlineMode = activeDapp.mode === 'inline';
+      const previewPath = isInlineMode ? 'frontend/preview.png' : 'preview.png';
       await plugin.call('fileManager', 'writeFile', previewPath, dataUrl);
     } catch (error) {
       console.error('[Capture] Failed:', error);
