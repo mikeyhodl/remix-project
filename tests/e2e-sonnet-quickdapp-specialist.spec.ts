@@ -63,7 +63,7 @@ test('Sonnet identifies the QuickDapp Specialist subagent', async ({ page }) => 
   
   // --- 4. Wait for the assistant response ----------------------------------
   await expect(page.locator('[data-id="ai-assistant-landing"]')).toBeHidden({ timeout: 15000 })
-  const assistantBubble = page.locator('[data-id="ai-response-chat-bubble-section"].me-3').first()
+  const assistantBubble = page.locator('[data-id="ai-response-chat-bubble-section"] [data-id="ai-user-chat-bubble"]').first()
   await expect(assistantBubble).toBeVisible({ timeout: 90000 })
 
   // Poll until the bubble settles (length stabilises) — streaming UI. Subagent
