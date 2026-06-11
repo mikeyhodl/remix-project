@@ -12,8 +12,7 @@ export interface TooltipPopOverProps {
   onClearSelection?: () => void
   visible: boolean
   plugin?: any
-  line?: string
-  context?: { above: string; below: string }
+  contextLines?: string
   isSelectedText?: boolean
 }
 
@@ -58,101 +57,59 @@ export const openContextualTooltip = (
     ? model.getValueInRange(selection)
     : null
 
-  let hoveredExpression = ''
-  let isSelectedText = false
-  let lineContent = ''
-  let lineAbove = ''
-  let lineBelow = ''
-  
-  if (selectedText && selectedText.trim().length > 0) {
-    // Use selected text if available
-    hoveredExpression = selectedText.trim()
-    isSelectedText = true
-    
-    // For selected text, use the line where selection starts (no context needed)
-    const selectionStartLine = selection.getStartPosition().lineNumber
-    lineContent = model.getLineContent(selectionStartLine)
-  } else {
-    // Fall back to word at position
-    const wordAtPosition = model.getWordAtPosition(position)
-    
-    if (wordAtPosition) {
-      // Get the line content to check for multi-character expressions like "msg.sender"
-      lineContent = model.getLineContent(position.lineNumber)
-      const startColumn = wordAtPosition.startColumn
-      const endColumn = wordAtPosition.endColumn
-      
-      // Check for dot notation expressions (like msg.sender, tx.origin, block.timestamp)
-      let expandedStart = startColumn - 1
-      let expandedEnd = endColumn - 1
-      
-      // Expand backwards to include preceding word and dot
-      while (expandedStart > 0 && /[a-zA-Z0-9_.]/.test(lineContent[expandedStart - 1])) {
-        expandedStart--
-      }
-      
-      // Expand forwards to include following dot and word  
-      while (expandedEnd < lineContent.length && /[a-zA-Z0-9_.]/.test(lineContent[expandedEnd])) {
-        expandedEnd++
-      }
-      
-      hoveredExpression = lineContent.substring(expandedStart, expandedEnd)
-      
-      // Get context lines (line above and below)
-      lineAbove = position.lineNumber > 1 
-        ? model.getLineContent(position.lineNumber - 1)
-        : ''
-      lineBelow = position.lineNumber < model.getLineCount()
-        ? model.getLineContent(position.lineNumber + 1)
-        : ''
-    }
-  }
+  // Only proceed if user has selected text
+  if (!selectedText || selectedText.trim().length === 0) return
 
-  // Only proceed if we have something to show
-  if (hoveredExpression) {
-    // Get screen position for tooltip
-    const editorElement = editorRef.current.getDomNode()
-    const editorRect = editorElement?.getBoundingClientRect()
-    
-    if (editorRect && monacoRef.current) {
-      const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
-      let x, y
-      
-      if (isSelectedText) {
-        // For selected text, position tooltip at the center of the selection
-        const selectionStartPos = selection.getStartPosition()
-        const selectionEndPos = selection.getEndPosition()
-        const startColumn = (selectionStartPos.column + selectionEndPos.column) / 2
-        const startLine = selectionStartPos.lineNumber
-        
-        x = editorRect.left + (startColumn - 1) * 8
-        y = editorRect.top + (startLine - 1) * lineHeight + lineHeight
-      } else {
-        // For keyword hover, use the original positioning
-        x = editorRect.left + (position.column - 1) * 8 // Approximate character width
-        y = editorRect.top + (position.lineNumber - 1) * lineHeight + lineHeight
-      }
-      
-      setTooltipData({
-        keyword: hoveredExpression,
-        position: { x, y },
-        line: lineContent,
-        context: isSelectedText ? undefined : {
-          above: lineAbove,
-          below: lineBelow
-        },
-        isSelectedText
-      })
-      
-      // Track popup appearance with different names for selected text vs keyword
-      trackMatomoEvent({ 
-        category: 'ai', 
-        action: 'remixAI', 
-        name: isSelectedText ? 'contextual_popup_selected_text_shown' : 'contextual_popup_keyword_shown', 
-        isClick: false,
-        value: hoveredExpression 
-      })
-    }
+  const selectedExpression = selectedText.trim()
+  let contextLines = ''
+
+  // Check if it's a single word selection (no spaces, newlines, or special chars except dots)
+  const isSingleWord = /^[a-zA-Z0-9_.]+$/.test(selectedExpression) && !selectedExpression.includes('\n')
+
+  if (isSingleWord) {
+    // For single word selection, include nearby context lines for better analysis
+    const selectionStartLine = selection.getStartPosition().lineNumber
+    const lineContent = model.getLineContent(selectionStartLine)
+    const lineAbove = selectionStartLine > 1
+      ? model.getLineContent(selectionStartLine - 1)
+      : ''
+    const lineBelow = selectionStartLine < model.getLineCount()
+      ? model.getLineContent(selectionStartLine + 1)
+      : ''
+
+    contextLines = `${lineAbove ? `Line above: ${lineAbove}\n` : ''}Current line: ${lineContent}\n${lineBelow ? `Line below: ${lineBelow}` : ''}`
+  }
+  // else: multi-word/multi-line selection - no context needed, analyze the selection directly
+
+  // Get screen position for tooltip at the center of the selection
+  const editorElement = editorRef.current.getDomNode()
+  const editorRect = editorElement?.getBoundingClientRect()
+
+  if (editorRect && monacoRef.current) {
+    const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+    const selectionStartPos = selection.getStartPosition()
+    const selectionEndPos = selection.getEndPosition()
+    const startColumn = (selectionStartPos.column + selectionEndPos.column) / 2
+    const startLine = selectionStartPos.lineNumber
+
+    const x = editorRect.left + (startColumn - 1) * 8
+    const y = editorRect.top + (startLine - 1) * lineHeight + lineHeight
+
+    setTooltipData({
+      keyword: selectedExpression,
+      position: { x, y },
+      contextLines: contextLines || undefined,
+      isSelectedText: true
+    })
+
+    // Track popup appearance
+    trackMatomoEvent({
+      category: 'ai',
+      action: 'remixAI',
+      name: isSingleWord ? 'contextual_popup_single_word_shown' : 'contextual_popup_multi_word_shown',
+      isClick: false,
+      value: selectedExpression
+    })
   }
 }
 
@@ -163,8 +120,7 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   onClearSelection,
   visible,
   plugin,
-  line,
-  context,
+  contextLines,
   isSelectedText = false
 }) => {
   //@ts-ignore
@@ -184,12 +140,17 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
     const fetchKeywordInfo = async () => {
       setLoading(true)
       try {
-        const contextLines = context 
-          ? `${context.above ? `Line above: ${context.above}` : ''}\nCurrent line: ${line || ''}\n${context.below ? `Line below: ${context.below}` : ''}`
-          : line || ''
-        
-        const prompt = isSelectedText 
-          ? `Analyze this Web3/Solidity code snippet:
+        // Get current file to determine language context
+        const currentFile = await plugin.call('fileManager', 'getCurrentFile')
+        const isSolidityFile = currentFile?.endsWith('.sol')
+
+        // Determine if we have context (single word selection) or not (multi-word selection)
+        const hasContext = contextLines && contextLines.length > 0
+
+        const prompt = isSelectedText && !hasContext
+          ? // Multi-word/multi-line selection - analyze the code snippet directly
+            isSolidityFile
+            ? `Analyze this Web3/Solidity code snippet:
 
 ${keyword}
 
@@ -202,19 +163,47 @@ Return a JSON response with the following structure:
 }
 
 Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 50 words.`
-          : `Analyze the Web3/Solidity keyword "${keyword}" in the context of this code:
+            : `Analyze this code snippet:
+
+${keyword}
+
+Return a JSON response with the following structure:
+{
+  "title": "Code Analysis",
+  "body": "Brief explanation of what this code does and any potential issues or best practices",
+  "risk": "high|medium|low",
+  "riskLabel": "Short risk description"
+}
+
+Focus on code quality, potential issues, and best practices. The body should contain max 50 words.`
+          : // Single word selection - analyze with context lines
+            isSolidityFile
+            ? `Analyze this Web3/Solidity code snippet focusing on the keyword "${keyword}":
 
 ${contextLines}
 
 Return a JSON response with the following structure:
 {
   "title": "${keyword}",
-  "body": "Brief explanation of what this keyword does and any security implications in this specific context",
+  "body": "Brief explanation of what "${keyword}" does and any security implications in this context",
   "risk": "high|medium|low",
   "riskLabel": "Short risk description"
 }
 
-Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 40 words. Consider the specific usage context from the surrounding code lines.`
+Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 40 words. Consider the surrounding code context.`
+            : `Analyze this code snippet focusing on the keyword "${keyword}":
+
+${contextLines}
+
+Return a JSON response with the following structure:
+{
+  "title": "${keyword}",
+  "body": "Brief explanation of what "${keyword}" does and any potential issues in this context",
+  "risk": "high|medium|low",
+  "riskLabel": "Short risk description"
+}
+
+Focus on code quality, potential issues, and best practices. The body should contain max 40 words. Consider the surrounding code context.`
         const response = await plugin.call('remixAI', 'basic_prompt', prompt)
         
         // Parse the JSON response
@@ -259,7 +248,7 @@ Focus on security implications and provide practical guidance for smart contract
     }
 
     fetchKeywordInfo()
-  }, [keyword, visible, plugin, line, context])
+  }, [keyword, visible, plugin, contextLines, isSelectedText])
 
   // Position adjustment effect
   useEffect(() => {
@@ -407,10 +396,44 @@ Focus on security implications and provide practical guidance for smart contract
                           isClick: true,
                           value: keyword
                         })
-                        const deeperPrompt = `Analyse this code snippet for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
+
+                        // Get current file to determine language
+                        const currentFile = await plugin.call('fileManager', 'getCurrentFile')
+                        const isSolidityFile = currentFile?.endsWith('.sol')
+
+                        // Detect language from file extension
+                        const getLanguage = (filename: string) => {
+                          if (!filename) return ''
+                          if (filename.endsWith('.sol')) return 'solidity'
+                          if (filename.endsWith('.js')) return 'javascript'
+                          if (filename.endsWith('.ts')) return 'typescript'
+                          if (filename.endsWith('.py')) return 'python'
+                          if (filename.endsWith('.vy')) return 'vyper'
+                          if (filename.endsWith('.cairo')) return 'cairo'
+                          if (filename.endsWith('.rs')) return 'rust'
+                          if (filename.endsWith('.move')) return 'move'
+                          return ''
+                        }
+
+                        const language = getLanguage(currentFile)
+                        const languageLabel = language ? language : 'code'
+
+                        // Use contextLines if available (single word selection), otherwise use keyword (multi-word selection)
+                        const codeToAnalyze = contextLines || keyword
+                        const analysisContext = contextLines
+                          ? `focusing on the keyword "${keyword}"`
+                          : ''
+
+                        const deeperPrompt = isSolidityFile
+                          ? `Analyse this code snippet ${analysisContext} for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
 
 \`\`\`solidity
-${keyword}
+${codeToAnalyze}
+\`\`\``
+                          : `Analyse this ${languageLabel} code snippet ${analysisContext} for potential issues, best practices, and code quality improvements. If applicable, highlight any security concerns or common pitfalls to avoid.
+
+\`\`\`${language}
+${codeToAnalyze}
 \`\`\``
 
                         // Clear the selection in the editor to prevent popover from re-appearing

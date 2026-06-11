@@ -234,7 +234,7 @@ export const EditorUI = (props: EditorUIProps) => {
   const inlineCompletionProviderRef = useRef<RemixInLineCompletionProvider|null>(null)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastHoverPositionRef = useRef<monacoTypes.IPosition | null>(null)
-  const [tooltipData, setTooltipData] = useState<{keyword: string, position: {x: number, y: number}, line: string, context?: {above: string, below: string}, isSelectedText?: boolean} | null>(null)
+  const [tooltipData, setTooltipData] = useState<{keyword: string, position: {x: number, y: number}, contextLines?: string, isSelectedText?: boolean} | null>(null)
 
   // const currentDecorations = useRef({ sourceAnnotationsPerFile: {}, markerPerFile: {} }) // decorations that are currently in use by the editor
   // const registeredDecorations = useRef({}) // registered decorations
@@ -1972,8 +1972,7 @@ export const EditorUI = (props: EditorUIProps) => {
           onClearSelection={handleClearSelection}
           visible={true}
           plugin={props.plugin}
-          line={tooltipData.line}
-          context={tooltipData.context}
+          contextLines={tooltipData.contextLines}
           isSelectedText={tooltipData.isSelectedText}
         />
       )}
