@@ -6,7 +6,7 @@ import { appActionTypes, AppContext, useAuth } from '@remix-ui/app'
 import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { FormattedMessage } from 'react-intl'
-import { uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { uploadFolderExcludingRootFolder } from '@remix-ui/workspace'
 
 export interface RemixUiHomeTabProps {
   plugin: any
