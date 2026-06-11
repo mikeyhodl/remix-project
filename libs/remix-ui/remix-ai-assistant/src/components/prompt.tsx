@@ -9,6 +9,16 @@ import { AIModel } from '@remix/remix-ai-core'
 import { PromptDefault } from "./promptDefault";
 import { AutocompletePanel, Command } from './AutocompletePanel'
 
+const getSlashWord = (text: string): string | null => {
+  const lastSpaceSlash = text.lastIndexOf(' /')
+  const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
+  if (slashStart === -1) return null
+  const afterSlash = text.slice(slashStart)
+  const nextSpace = afterSlash.indexOf(' ')
+  const word = nextSpace === -1 ? afterSlash : afterSlash.slice(0, nextSpace)
+  return word.includes(':') ? null : word
+}
+
 const SHORTCUT_CATEGORIES = [
   {
     id: 'code',
@@ -143,12 +153,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   // Handle autocomplete visibility
   useEffect(() => {
-    if (input.startsWith('/') && input.length > 0 && !isStreaming) {
-      // Check if this is the new format with space after /
-      setShowAutocomplete(true)
-    } else {
-      setShowAutocomplete(false)
-    }
+    setShowAutocomplete(!!getSlashWord(input) && !isStreaming)
     if (input.length > 0) setActiveShortcut(null)
   }, [input, isStreaming])
 
@@ -187,8 +192,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       return
     }
 
-    const formattedCommand = '/' + command.name
-
     // Track command selection with Matomo
     trackMatomoEvent({
       category: 'ai',
@@ -196,14 +199,11 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       value: `command_selected_${command.name}`,
       isClick: true
     })
-
-    // If user has already typed something after the initial "/", preserve it
-    const spaceIndex = input.indexOf(' ')
-    const existingArgs = spaceIndex > -1 ? input.substring(spaceIndex).trim() : ''
-
-    setInput(existingArgs ? formattedCommand + existingArgs + ': ': formattedCommand + ': ')
+    
+    const lastSpaceSlash = input.lastIndexOf(' /')
+    const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : input.startsWith('/') ? 0 : input.length
+    setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
     setShowAutocomplete(false)
-    // Focus back on textarea
     textareaRef?.current?.focus()
   }, [input, setInput])
 
@@ -279,6 +279,17 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     document.addEventListener('mousedown', handleOutsideClick)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [activeShortcut])
+
+  useEffect(() => {
+    if (!showAutocomplete) return
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (promptAreaRef.current && !promptAreaRef.current.contains(e.target as Node)) {
+        setShowAutocomplete(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [showAutocomplete])
 
   // The composer has three resting states:
   //   1. ready              → normal send/stop affordance
@@ -411,7 +422,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         {showAutocomplete && (
           <AutocompletePanel
             isVisible={showAutocomplete}
-            searchTerm={input}
+            searchTerm={getSlashWord(input) ?? '/'}
             onSelect={handleCommandSelect}
             position={undefined}
             themeTracker={themeTracker}
