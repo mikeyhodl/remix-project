@@ -25,7 +25,7 @@ const SHORTCUT_CATEGORIES = [
     label: 'Code',
     prompts: [
       'Write a Solidity ERC20 token with mint and burn functions',
-      'Add an ownable access control to this contract',
+      'Add an ownable access control to a contract',
       '/compile: fix any errors in the active file',
     ],
   },
@@ -153,9 +153,18 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   // Handle autocomplete visibility
   useEffect(() => {
-    setShowAutocomplete(!!getSlashWord(input) && !isStreaming)
+    // Don't show autocomplete if input ends with ": " (completed command)
+    const endsWithCommandColon = input.trimEnd().endsWith(':')
+    const hasSlashWord = !!getSlashWord(input)
+    const shouldShow = hasSlashWord && !isStreaming && !endsWithCommandColon
+
+    setShowAutocomplete(shouldShow)
+    // Reset selected index when hiding or showing the panel
+    if (!shouldShow || (shouldShow && !showAutocomplete)) {
+      setSelectedCommandIndex(0)
+    }
     if (input.length > 0) setActiveShortcut(null)
-  }, [input, isStreaming])
+  }, [input, isStreaming, showAutocomplete])
 
   const actionCommands: Command[] = useMemo(() => {
     const cmds: Command[] = [
@@ -173,7 +182,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
     if (handleLoadAuditChecklist) {
       cmds.push({
-        name: 'Start Security Audit',
+        name: 'Load Security Audit checklist',
         description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan',
         category: 'Tools',
         action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
@@ -186,12 +195,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   // Handle command selection
   const handleCommandSelect = useCallback((command: Command) => {
-    if (command.action) {
-      setShowAutocomplete(false)
-      setTimeout(() => command.action!(), 0)
-      return
-    }
-
+    setShowAutocomplete(false)
     // Track command selection with Matomo
     trackMatomoEvent({
       category: 'ai',
@@ -199,13 +203,17 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       value: `command_selected_${command.name}`,
       isClick: true
     })
-    
-    const lastSpaceSlash = input.lastIndexOf(' /')
-    const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : input.startsWith('/') ? 0 : input.length
-    setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
-    setShowAutocomplete(false)
+
+    if (command.action) {
+      setInput('')
+      setTimeout(() => command.action!(), 0)
+    } else {
+      const lastSpaceSlash = input.lastIndexOf(' /')
+      const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : input.startsWith('/') ? 0 : input.length
+      setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
+    }
     textareaRef?.current?.focus()
-  }, [input, setInput])
+  }, [input, setInput, setShowAutocomplete])
 
   const handleShortcutSelect = useCallback((prompt: string) => {
     setInput(prompt)
@@ -249,25 +257,29 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
     // Handle Enter key
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
+      e.preventDefault()
+
       // Check if input has content after the slash command format (e.g., "/command: content")
       const hasCommandContent = input.includes(':') && input.split(':')[1]?.trim().length > 0
 
       if (showAutocomplete && !hasCommandContent) {
         // If autocomplete is showing and no command content yet, select the highlighted command
-        e.preventDefault()
         const buttons = document.querySelectorAll('[data-id^="autocomplete-item-"]')
         if (buttons[selectedCommandIndex]) {
           (buttons[selectedCommandIndex] as HTMLButtonElement).click()
         }
+        // Immediately hide the panel after selection
+        setShowAutocomplete(false)
+        return // Exit early to prevent sending
       } else {
         // Send the message if:
         // 1. Autocomplete is not showing, OR
         // 2. User has already typed command content after the colon
-        e.preventDefault()
+        setShowAutocomplete(false) // Ensure panel is hidden when sending
         handleSend()
       }
     }
-  }, [showAutocomplete, selectedCommandIndex, isStreaming, aiRouteReady, handleSend, setInput])
+  }, [showAutocomplete, selectedCommandIndex, isStreaming, aiRouteReady, handleSend, setInput, setShowAutocomplete])
 
   useEffect(() => {
     if (!activeShortcut) return
