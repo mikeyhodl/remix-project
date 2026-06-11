@@ -6,6 +6,7 @@ import { appActionTypes, AppContext, useAuth } from '@remix-ui/app'
 import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { FormattedMessage } from 'react-intl'
+import { uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
 
 export interface RemixUiHomeTabProps {
   plugin: any
@@ -200,7 +201,7 @@ contract HelloWorld {
                 onChange={async (e) => {
                   e.stopPropagation()
                   await plugin.call('menuicons', 'select', 'filePanel')
-                  uploadFile(e.target)
+                  await uploadFolderExcludingRootFolder(e.target, '/')
                 }}
               />
               <div className="ht-action-grid">
