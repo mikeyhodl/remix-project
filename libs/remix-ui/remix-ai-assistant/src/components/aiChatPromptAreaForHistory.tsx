@@ -9,6 +9,8 @@ interface AiChatPromptAreaForHistoryProps {
       handleOllamaModelSelection: Dispatch<any>
       selectedOllamaModel: unknown
       ollamaModels: any
+      ollamaModelOpt?: { top: number, left: number }
+      ollamaMenuRef?: React.RefObject<HTMLDivElement>
       themeTracker: any
       showHistorySidebar: boolean
       isMaximized: boolean
@@ -49,11 +51,16 @@ interface AiChatPromptAreaForHistoryProps {
       setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>
       messages: ChatMessage[]
       handleLoadSkills?: () => void
+      handleOpenSettings?: () => void
+      handleLoadAuditChecklist?: () => void
+      handleGasOptimisationAudit?: () => void
       usingOwnApiKey?: boolean
       aiRoute?: 'initializing' | 'agent' | 'tools' | 'chat'
       aiRouteReady?: boolean
       isAuthenticated?: boolean
       onSignIn?: () => void
+      hasAuditorPermission?: boolean
+      hasSkillsPermission?: boolean
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
@@ -136,21 +143,28 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
       )}
       {props.showOllamaModelSelector && props.selectedModel.provider === 'ollama' && (
         <div
-          className="pt-2 mb-2 z-3 bg-light border border-text w-75 position-absolute"
-          style={{ borderRadius: '8px' }}
+          className="pt-2 mb-2 z-3 bg-light border border-text position-fixed"
+          style={{ borderRadius: '8px', top: props.ollamaModelOpt?.top, left: props.ollamaModelOpt?.left, zIndex: 2000, minWidth: '280px', maxWidth: '400px' }}
+          ref={props.ollamaMenuRef}
         >
-          <div className="text-uppercase ml-2 mb-2 small">Ollama Model</div>
+          <div className="text-uppercase ms-2 mb-2 small">Ollama Model</div>
           <GroupListMenu
             setChoice={props.handleOllamaModelSelection}
             setShowOptions={props.setShowOllamaModelSelector}
             choice={props.selectedOllamaModel}
-            groupList={props.ollamaModels.map((model: any) => ({
-              label: model,
-              bodyText: `Use ${model} model`,
-              icon: 'fa-solid fa-check',
-              stateValue: model,
-              dataId: `ollama-model-${model.replace(/[^a-zA-Z0-9]/g, '-')}`
-            }))}
+            groupList={props.ollamaModels.map((model: any) => {
+              const name = typeof model === 'string' ? model : model.name
+              const supported = typeof model === 'string' ? true : model.supported
+              return {
+                label: name,
+                bodyText: '',
+                icon: 'fa-solid fa-check',
+                stateValue: name,
+                dataId: `ollama-model-${name.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                disabled: !supported,
+                disabledReason: 'No tool support'
+              }
+            })}
           />
         </div>
       )}
@@ -184,6 +198,12 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
         aiRouteReady={props.aiRouteReady}
         isAuthenticated={props.isAuthenticated}
         onSignIn={props.onSignIn}
+        isNewChat={props.messages.length === 0}
+        handleOpenSettings={props.handleOpenSettings}
+        handleLoadAuditChecklist={props.handleLoadAuditChecklist}
+        handleGasOptimisationAudit={props.handleGasOptimisationAudit}
+        hasAuditorPermission={props.hasAuditorPermission}
+        hasSkillsPermission={props.hasSkillsPermission}
       />
       <span className="mb-2 mx-4 small w-100 text-dark">RemixAI can make mistakes. Always check important info.</span>
     </section>
