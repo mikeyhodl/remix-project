@@ -39,9 +39,15 @@ const profile = {
     'chatMessageSent', 'chatPipeRequested',
     'codeExplainRequested', 'errorExplainRequested', 'vulnerabilityCheckRequested',
     'codeCompletionUsed', 'workspaceGenerated',
-    'mcpEnabled', 'mcpDisabled',
+    'mcpEnabled', 'mcpDisabled', 'mcpServersLoaded',
     'apiKeyModeChanged', 'onApiKeyError',
-    'routeStatusChanged'
+    'routeStatusChanged',
+    // DeepAgent streaming events
+    'onStreamResult', 'onStreamComplete', 'onThinking',
+    'onToolCall', 'onSubagentStart', 'onSubagentComplete',
+    'onTaskStart', 'onTaskComplete', 'onTodoUpdate',
+    'onTodoError', 'onAgentError', 'onApiError',
+    'onToolApprovalRequired', 'ollamaModelDiscovered'
   ],
   icon: 'assets/img/remix-logo-blue.png',
   description: 'RemixAI provides AI services to Remix IDE.',
@@ -474,6 +480,8 @@ export class RemixAIPlugin extends Plugin {
           remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
         }
 
+        // Don't use remote fallback for Ollama - user explicitly chose local models
+        const fallbackInferencer = this.selectedModel.provider === 'ollama' ? null : this.remoteInferencer
         this.deepAgentInferencer = new DeepAgentInferencer(
           this,
           this.remixMCPServer.tools,
@@ -483,9 +491,9 @@ export class RemixAIPlugin extends Plugin {
             enablePlanning: true,
             userApiKeys
           },
-          this.remoteInferencer,
+          fallbackInferencer,
           this.mcpInferencer, // Pass MCPInferencer to gather external MCP client tools
-          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot', modelId: this.selectedModelId } // Pass selected model
+          { provider: this.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama', modelId: this.selectedModelId } // Pass selected model
         )
         await this.deepAgentInferencer.initialize()
         // Set up DeepAgent event listeners for streaming (once only)
@@ -995,7 +1003,7 @@ export class RemixAIPlugin extends Plugin {
     return []
   }
 
-  async getOllamaModels(): Promise<string[]> {
+  async getOllamaModels(): Promise<{ name: string; supported: boolean }[]> {
     return this.modelManager.getOllamaModels()
   }
 

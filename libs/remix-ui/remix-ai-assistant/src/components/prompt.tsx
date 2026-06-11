@@ -108,6 +108,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   stopRequest,
   setShowOllamaModelSelector,
   showOllamaModelSelector,
+  selectedOllamaModel,
   modelSelectorBtnRef,
   autoModeEnabled,
   usingOwnApiKey,
@@ -480,12 +481,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 <button
                   onClick={() => setShowOllamaModelSelector(prev => !prev)}
                   className="btn btn-text btn-sm small font-weight-light text-secondary align-self-end border border-text rounded ms-2"
+                  style={{ whiteSpace: 'nowrap', minWidth: 'fit-content' }}
                   ref={modelSelectorBtnRef}
                   data-id="ollama-model-selector"
                   data-assist-btn="assistant-selector-btn"
                 >
                   <div className="d-flex flex-row flex-nowrap align-items-center justify-content-center">
-                    <span>{selectedModel?.displayName || 'Select Model'}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>{selectedOllamaModel || 'Select Ollama Model'}</span>
                     <span className={showOllamaModelSelector ? "fa fa-caret-up ms-1" : "fa fa-caret-down ms-1"}></span>
                   </div>
                 </button>
