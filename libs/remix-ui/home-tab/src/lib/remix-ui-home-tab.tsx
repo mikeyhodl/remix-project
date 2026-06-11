@@ -155,7 +155,6 @@ contract HelloWorld {
                   <span style={{ color: 'var(--ht-accent)' }}><FormattedMessage id="home.projectTemplates2" /></span>
                 </span>
               </a>
-              <a href='https://remix-ide.readthedocs.io/en/latest/' target='_blank' rel="noreferrer">Documentation</a>
             </div>
 
             {/* Start */}
