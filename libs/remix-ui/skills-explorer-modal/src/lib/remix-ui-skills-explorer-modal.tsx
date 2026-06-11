@@ -283,7 +283,6 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
 
   // Filter skills based on search term and permission level
   const filteredSkills = skills.filter(skill => {
-    console.log(`[SkillsExplorer] Checking skill "${skill.name}" against search term "${searchTerm}" and permissions (basic: ${hasBasicSkills}, advanced: ${hasAdvancedSkills})`)
     // First check search term match
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description.toLowerCase().includes(searchTerm.toLowerCase())
