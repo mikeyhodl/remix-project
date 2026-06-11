@@ -27,8 +27,14 @@
 
 .ht-header {
   display: flex;
-  flex-direction: column;
   justify-content: space-between;
+  align-items: end;
+  padding: 0 16px;
+}
+
+.ht-logo-container {
+  display: flex;
+  flex-direction: column;
   padding: 0 16px;
   text-decoration: none;
 }
