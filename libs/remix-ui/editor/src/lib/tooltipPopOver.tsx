@@ -201,7 +201,7 @@ ${contextLines}
 
 Return a JSON response with the following structure:
 {
-  "title": "${keyword}",
+  "title": "Code Analysis",
   "body": "Brief explanation of what "${keyword}" does and any security implications in this context",
   "risk": "high|medium|low",
   "riskLabel": "Short risk description"
@@ -214,7 +214,7 @@ ${contextLines}
 
 Return a JSON response with the following structure:
 {
-  "title": "${keyword}",
+  "title": "Code Analysis",
   "body": "Brief explanation of what "${keyword}" does and any potential issues in this context",
   "risk": "high|medium|low",
   "riskLabel": "Short risk description"
@@ -233,7 +233,7 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
           } else {
             // Fallback if no JSON found
             parsedData = {
-              title: keyword,
+              title: 'Code Analysis',
               body: response || `Information about ${keyword}`,
               risk: 'medium' as const,
               riskLabel: 'Review needed'
@@ -242,19 +242,19 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
         } catch (parseError) {
           // Fallback for parsing errors
           parsedData = {
-            title: keyword,
+            title: 'Code Analysis',
             body: response || `Information about ${keyword}`,
             risk: 'medium' as const,
             riskLabel: 'Review needed'
           }
         }
-        
+
         setData(parsedData)
       } catch (error) {
         console.error('Failed to fetch keyword info:', error)
         // Fallback data
         setData({
-          title: keyword,
+          title: 'Code Analysis',
           body: `Unable to fetch information about ${keyword}`,
           risk: 'medium' as const,
           riskLabel: 'Unknown'
