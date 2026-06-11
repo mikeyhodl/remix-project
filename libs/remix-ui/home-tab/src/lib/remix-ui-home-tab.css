@@ -27,9 +27,14 @@
 
 .ht-header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
   padding: 0 16px;
+  text-decoration: none;
+}
+
+.ht-header:hover {
+  text-decoration: none;
 }
 
 /* ─── Section ─── */

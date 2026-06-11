@@ -7,7 +7,7 @@ function HomeTabTitle() {
   const playRemi = () => remiAudioEl.current.play()
 
   return (
-    <div className="ht-header">
+    <a className="ht-header" href="https://remix.live" target="_blank" rel="noreferrer">
       <div className="ht-logo" onClick={playRemi} style={{ cursor: 'pointer' }}>
         <audio id="remiAudio" muted={false} src="assets/audio/remiGuitar-single-power-chord-A-minor.mp3" ref={remiAudioEl}></audio>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 105 100" style={{ height: '22px' }}>
@@ -21,7 +21,7 @@ function HomeTabTitle() {
         <FormattedMessage id="home.projectTemplates" />{' '}
         <span style={{ color: 'var(--ht-accent)' }}><FormattedMessage id="home.projectTemplates2" /></span>
       </span>
-    </div>
+    </a>
   )
 }
 
