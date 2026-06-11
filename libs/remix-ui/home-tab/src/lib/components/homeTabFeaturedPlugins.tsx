@@ -29,7 +29,7 @@ interface PluginInfo {
 function HomeTabFeaturedPlugins({ plugin }: HomeTabFeaturedPluginsProps) {
   const [activePlugins, setActivePlugins] = useState<string[]>([])
   const [loadingPlugins, setLoadingPlugins] = useState<string[]>([])
-  const [pluginList, setPluginList] = useState<{ caption: string, plugins: PluginInfo[] }>({ caption: '', plugins: [] })
+  const [pluginList, setPluginList] = useState<{ caption: string, plugins: PluginInfo[] }>({ caption: '', plugins: []})
   const [isLoading, setIsLoading] = useState(true)
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
 
