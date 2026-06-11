@@ -828,6 +828,27 @@ export interface UsageReport {
 }
 
 /**
+ * Promotional intro discount attached to a subscription plan (from
+ * /api/products/available `intro_discount`). Used to merchandise launch
+ * offers — e.g. "60% off your first 3 months". Maps to a Paddle discount.
+ */
+export interface IntroDiscount {
+  id: number
+  /** Display name, e.g. "60% OFF LAUNCH OFFER". */
+  name: string
+  /** Discount code applied at checkout, e.g. "60PERCENTOFF". */
+  code: string
+  discountType: 'percentage' | 'flat' | string
+  /** Percentage (e.g. 60) or flat amount, as a number. */
+  amount: number
+  currency: string | null
+  /** Whether the discount recurs on subsequent billing periods. */
+  recur: boolean
+  /** How many billing intervals the discount applies for (null = forever). */
+  maxRecurringIntervals: number | null
+}
+
+/**
  * Subscription plan - recurring monthly credit allocation
  */
 export interface SubscriptionPlan {
@@ -859,6 +880,8 @@ export interface SubscriptionPlan {
    * `price_id` through to `/products/purchase`.
    */
   prices?: AvailableProductPrice[]
+  /** Promotional intro discount, when the plan has a launch offer. */
+  introDiscount?: IntroDiscount | null
 }
 
 /**

@@ -937,15 +937,15 @@ export function selectChatNotice(snap: AssistantSnapshot): ChatNotice | null {
 
   case 'INSUFFICIENT_CREDITS':
     return {
-      severity: 'error',
+      severity: 'info',
       code: '',
-      title: 'Insufficient credits',
-      message: 'You do not have enough credits to perform this action. Please check your billing details or add more credits.',
+      title: 'Insufficient AI credits',
+      message: 'You do not have enough AI credits to perform this action. Please check your billing details or add more AI credits.',
       actionable: false,
       actions: [
         {
           id: 'topup-credits',
-          label: 'Top up credits',
+          label: 'Top up AI credits',
           style: 'primary',
           plugin: 'planManager',
           method: 'open',

@@ -188,7 +188,7 @@ export function updateEndpoints(config: RemixConfig): void {
   if (config.services.mcp) {
     endpointUrls.mcpCorsProxy = `${base}${config.services.mcp}`;
   } // SSO must always point to auth.api.remix.live (separate auth domain)
-  endpointUrls.sso = 'https://auth.api.remix.live/sso';
+  //endpointUrls.sso = 'https://auth.api.remix.live/sso';
  }
 
 /**

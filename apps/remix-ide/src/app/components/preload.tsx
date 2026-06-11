@@ -184,8 +184,9 @@ export const Preload = (props: PreloadProps) => {
     } catch (e) {
       errorPreload('Error detecting mobile device:', e)
     }
+    const STAGING_URL = 'https://tokens.staging.remix.live'
 
-    initEndpoints().then(() => import('../../app'))
+    initEndpoints(STAGING_URL).then(() => import('../../app'))
       .then((AppComponent) => {
         const appComponent = new AppComponent.default()
         appComponent.run().then(() => {

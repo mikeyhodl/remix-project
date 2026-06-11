@@ -31,6 +31,7 @@ import {
   type CheckoutResult,
   type CheckoutResultKind,
   type CheckoutIntent,
+  type CheckoutBreakdown,
   type PlanState,
   type CreditStatus,
   type CreditState,
@@ -707,9 +708,16 @@ export class PlanManagerPlugin extends ViewPlugin {
       }
       const paddleInstance = this.paddle ?? getPaddle()
       if (paddleInstance && transactionId) {
-        // Paddle.js overlay — events come back via the singleton handler.
+        // Paddle.js inline checkout — renders inside .paddle-checkout-container
         openCheckoutWithTransaction(paddleInstance, transactionId, {
-          settings: { displayMode: 'overlay', theme: 'light' }
+          settings: {
+            displayMode: 'inline',
+            theme: 'dark',
+            variant: 'one-page',
+            frameTarget: 'paddle-checkout-container',
+            frameInitialHeight: 700,
+            frameStyle: 'width: 100%; min-width: 312px; min-height: 700px; background-color: transparent; border: none;',
+          }
         })
         this.store.send({ type: 'CHECKOUT_OPENED' })
       } else if (checkoutUrl) {
@@ -735,8 +743,19 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   /** Translate Paddle SDK events into machine events. */
   private handlePaddleEvent(event: PaddleEventData): void {
+    console.debug('[PlanManager] Paddle event', event.name, event.data)
     const transactionId = (event as any)?.data?.transaction_id as string | undefined
     switch (event.name) {
+    // Fired once when the checkout iframe loads, then on every change the
+    // user makes (discount, country/VAT, payment method). Carries the full
+    // financial breakdown Paddle calculated — surface it in our summary.
+    case 'checkout.loaded' as any:
+    case 'checkout.customer.updated' as any:
+    case 'checkout.updated' as any: {
+      const breakdown = this.parseCheckoutBreakdown(event)
+      if (breakdown) this.store.send({ type: 'CHECKOUT_BREAKDOWN', breakdown })
+      break
+    }
     case 'checkout.completed': {
       const pendingIntent = this.store.getSnapshot().pendingCheckout?.intent ?? 'subscription'
       this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
@@ -763,6 +782,44 @@ export class PlanManagerPlugin extends ViewPlugin {
       // Other events (loaded, customer.created, items.updated, etc.) are
       // not interesting for the panel right now.
       break
+    }
+  }
+
+  /**
+   * Pull the financial breakdown out of a Paddle `checkout.loaded` /
+   * `checkout.updated` event. Money values are already in major units
+   * (e.g. dollars) in the event payload. Returns null when the payload
+   * doesn't carry usable totals yet.
+   */
+  private parseCheckoutBreakdown(event: PaddleEventData): CheckoutBreakdown | null {
+    const data = (event as any)?.data
+    const totals = data?.totals
+    if (!data || !totals) return null
+
+    const recurring = data.recurring_totals
+      ? {
+        subtotal: Number(data.recurring_totals.subtotal ?? 0),
+        discount: Number(data.recurring_totals.discount ?? 0),
+        tax: Number(data.recurring_totals.tax ?? 0),
+        total: Number(data.recurring_totals.total ?? 0)
+      }
+      : null
+
+    const firstItem = Array.isArray(data.items) ? data.items[0] : undefined
+    const cycle = firstItem?.billing_cycle
+    const billingCycle = cycle?.interval
+      ? { interval: cycle.interval, frequency: Number(cycle.frequency ?? 1) }
+      : null
+
+    return {
+      currencyCode: data.currency_code ?? 'USD',
+      subtotal: Number(totals.subtotal ?? 0),
+      discount: Number(totals.discount ?? 0),
+      tax: Number(totals.tax ?? 0),
+      total: Number(totals.total ?? 0),
+      discountCode: data.discount?.code ?? null,
+      recurring,
+      billingCycle
     }
   }
 
@@ -830,7 +887,19 @@ export class PlanManagerPlugin extends ViewPlugin {
             featureGroupName: p.feature_group?.name ?? null,
             isPopular: p.is_popular === true,
             providers: mapProviders(topProviders),
-            prices
+            prices,
+            introDiscount: p.intro_discount
+              ? {
+                id: p.intro_discount.id,
+                name: p.intro_discount.name,
+                code: p.intro_discount.code,
+                discountType: p.intro_discount.discount_type,
+                amount: Number(p.intro_discount.amount) || 0,
+                currency: p.intro_discount.currency ?? null,
+                recur: p.intro_discount.recur === true,
+                maxRecurringIntervals: p.intro_discount.max_recurring_intervals ?? null
+              }
+              : null
           }
         })
 
@@ -1088,7 +1157,7 @@ const PlanManagerStub: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) =>
       <i className="fas fa-wallet"></i>
     </div>
     <h5>Plan & Credits</h5>
-    <p>Compare plans, top up credits, and track your AI usage in one place.</p>
+    <p>Compare plans, top up AI credits, and track your AI usage in one place.</p>
     <button
       data-id="planManagerStubOpenButton"
       className="plan-manager-stub-btn"
@@ -1242,7 +1311,13 @@ const PlanManagerOverlay: React.FC<{
           />
         )}
         {!checkoutResult && snap.isAuthenticated && snap.dataState === 'ready'
-          && !requiresEmailVerification && <>
+          && !requiresEmailVerification && (() => {
+          // While the inline Paddle checkout is open we hide all the
+          // surrounding context (hero, alerts, promo, quotas, nav) so the
+          // user can focus on completing payment. The checkout panel
+          // becomes the only thing in the main area.
+          const checkoutActive = !!snap.pendingCheckout && !snap.checkoutResult
+          return <>
 
           {/*
             When the user has no `ui:show-*` features granted we collapse
@@ -1250,13 +1325,13 @@ const PlanManagerOverlay: React.FC<{
             this to confirm sign-in without exposing the (currently
             irrelevant) plans/credits/quotas surface.
           */}
-          {!ui.anyVisible && (
+          {!checkoutActive && !ui.anyVisible && (
             <PlanIdentityCard planCtx={planCtx} />
           )}
 
           {/* Alerts are credit/plan-oriented — only meaningful when
               at least one of those surfaces is visible. */}
-          {ui.anyVisible && activeAlert === 'beta-transition' && (
+          {!checkoutActive && ui.anyVisible && activeAlert === 'beta-transition' && (
             <BetaTransitionAlert
               planCtx={planCtx}
               onUpgrade={() => setActiveSection('plans')}
@@ -1264,7 +1339,7 @@ const PlanManagerOverlay: React.FC<{
             />
           )}
 
-          {ui.anyVisible && activeAlert === 'plan-lifecycle' && (
+          {!checkoutActive && ui.anyVisible && activeAlert === 'plan-lifecycle' && (
             <PlanLifecycleAlert
               planCtx={planCtx}
               onRenew={() => setActiveSection('plans')}
@@ -1272,7 +1347,7 @@ const PlanManagerOverlay: React.FC<{
             />
           )}
 
-          {ui.showCredits && activeAlert === 'credit' && (
+          {!checkoutActive && ui.showCredits && activeAlert === 'credit' && (
             <CreditAlert
               status={status}
               refreshDate={refreshDate}
@@ -1282,7 +1357,7 @@ const PlanManagerOverlay: React.FC<{
             />
           )}
 
-          {ui.showCredits && (
+          {!checkoutActive && ui.showCredits && (
             <Hero
               status={status}
               refreshDate={refreshDate}
@@ -1300,14 +1375,14 @@ const PlanManagerOverlay: React.FC<{
             before the user dives into per-model details. Requires the
             Plans surface — there's nowhere to send the user otherwise.
           */}
-          {ui.showPlans && !activeAlert && canUpgrade && (
+          {!checkoutActive && ui.showPlans && !activeAlert && canUpgrade && (
             <UpgradePromoBanner
               planCtx={planCtx}
               onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
             />
           )}
 
-          {ui.showQuotas && (
+          {!checkoutActive && ui.showQuotas && (
             <QuotasPanel
               quotas={quotas}
               aiModels={snap.permissions?.ai_models}
@@ -1318,7 +1393,7 @@ const PlanManagerOverlay: React.FC<{
             />
           )}
 
-          {(ui.showPlans || ui.showTopUps || ui.showUsage) && (
+          {!checkoutActive && (ui.showPlans || ui.showTopUps || ui.showUsage) && (
             <nav className="pm-nav">
               {([
                 { id: 'plans', label: 'Plans', icon: 'fas fa-layer-group', visible: ui.showPlans },
@@ -1341,7 +1416,159 @@ const PlanManagerOverlay: React.FC<{
           )}
 
           <main className="pm-main">
-            {ui.showPlans && activeSection === 'plans' && (
+            {/* Inline Paddle checkout container — visible while checkout is in progress */}
+            {snap.pendingCheckout && !snap.checkoutResult && (() => {
+              const pending = snap.pendingCheckout
+              const plan = pending.intent !== 'topup'
+                ? snap.catalogPlans.find(p => p.id === pending.productId)
+                : null
+              const pkg = pending.intent === 'topup'
+                ? snap.catalogPackages.find(p => p.id === pending.productId)
+                : null
+              const productName = plan?.name ?? pkg?.name ?? pending.itemLabel ?? 'Your order'
+              const priceCents = plan?.priceUsd ?? pkg?.priceUsd ?? 0
+              const priceFormatted = `$${(priceCents / 100).toFixed(2)}`
+              const billingLabel = plan
+                ? `per ${plan.billingInterval === 'year' ? 'year' : 'month'}`
+                : 'one-time'
+              const features = plan?.features ?? []
+              const credits = plan?.creditsPerMonth ?? pkg?.credits ?? null
+
+              // Intro launch-offer banner — the same promo merchandised on
+              // the plan cards, reinforced here so the user sees why their
+              // "due today" is lower than the headline price.
+              const introDiscount = plan?.introDiscount ?? null
+              let introOfferLabel: string | null = null
+              let discountedPriceFormatted: string | null = null
+              if (introDiscount && priceCents > 0) {
+                const isPct = introDiscount.discountType === 'percentage'
+                const discountedCents = isPct
+                  ? Math.max(0, Math.round(priceCents * (1 - introDiscount.amount / 100)))
+                  : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
+                if (discountedCents < priceCents) {
+                  discountedPriceFormatted = `$${(discountedCents / 100).toFixed(2)}`
+                }
+                const unit = plan?.billingInterval === 'year' ? 'year' : 'month'
+                const intervals = introDiscount.maxRecurringIntervals
+                const duration = !introDiscount.recur || !intervals || intervals === 1
+                  ? `first ${unit}`
+                  : `first ${intervals} ${unit}s`
+                introOfferLabel = isPct
+                  ? `${Math.round(introDiscount.amount)}% off ${duration}`
+                  : `$${introDiscount.amount.toFixed(2)} off ${duration}`
+              }
+
+              // Live breakdown from Paddle (totals are already in major units).
+              const bd = snap.checkoutBreakdown
+              const fmtMoney = (amount: number, currency = bd?.currencyCode ?? 'USD') => {
+                try {
+                  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount)
+                } catch {
+                  return `${currency} ${amount.toFixed(2)}`
+                }
+              }
+              const cadenceLabel = (cycle: CheckoutBreakdown['billingCycle']) => {
+                if (!cycle) return ''
+                const unit = cycle.interval
+                return cycle.frequency === 1
+                  ? `per ${unit}`
+                  : `every ${cycle.frequency} ${unit}s`
+              }
+
+              return (
+                <div className="pm-inline-checkout">
+                  <div className="pm-inline-checkout__header">
+                    <button
+                      className="pm-inline-checkout__back"
+                      onClick={() => plugin.store.send({ type: 'CHECKOUT_CLOSED' })}
+                    >
+                      <i className="fas fa-arrow-left"></i>
+                      <span>Back to plans</span>
+                    </button>
+                  </div>
+                  <div className="pm-inline-checkout__body">
+                    {/* Order summary side */}
+                    <aside className="pm-inline-checkout__summary">
+                      <h3 className="pm-inline-checkout__product-name">{productName}</h3>
+                      <div className="pm-inline-checkout__price">
+                        {discountedPriceFormatted && (
+                          <span className="pm-inline-checkout__price-was">{priceFormatted}</span>
+                        )}
+                        <span className="pm-inline-checkout__price-amount">{discountedPriceFormatted ?? priceFormatted}</span>
+                        <span className="pm-inline-checkout__price-period">{billingLabel}</span>
+                      </div>
+                      {credits !== null && (
+                        <div className="pm-inline-checkout__credits">
+                          <i className="fas fa-bolt"></i>
+                          <span>{credits.toLocaleString()} credits{plan ? ' / month' : ''}</span>
+                        </div>
+                      )}
+
+                      {introOfferLabel && (
+                        <div className="pm-inline-checkout__intro-offer" title={introDiscount?.name ?? undefined}>
+                          <i className="fas fa-tags" aria-hidden></i>
+                          <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+                        </div>
+                      )}
+
+                      {/* Live price breakdown from Paddle — appears once the
+                          checkout iframe loads and updates as the user enters
+                          country/VAT or applies a discount. */}
+                      {bd ? (
+                        <div className="pm-inline-checkout__breakdown">
+                          <div className="pm-inline-checkout__line">
+                            <span>Subtotal</span>
+                            <span>{fmtMoney(bd.subtotal)}</span>
+                          </div>
+                          {bd.discount > 0 && (
+                            <div className="pm-inline-checkout__line pm-inline-checkout__line--discount">
+                              <span>
+                                Discount
+                                {bd.discountCode ? ` (${bd.discountCode})` : ''}
+                              </span>
+                              <span>-{fmtMoney(bd.discount)}</span>
+                            </div>
+                          )}
+                          {bd.tax > 0 && (
+                            <div className="pm-inline-checkout__line">
+                              <span>VAT / Tax</span>
+                              <span>{fmtMoney(bd.tax)}</span>
+                            </div>
+                          )}
+                          <div className="pm-inline-checkout__line pm-inline-checkout__line--total">
+                            <span>Due today</span>
+                            <span>{fmtMoney(bd.total)}</span>
+                          </div>
+                          {bd.recurring && bd.billingCycle && (
+                            <div className="pm-inline-checkout__renews">
+                              Then {fmtMoney(bd.recurring.total)} {cadenceLabel(bd.billingCycle)}
+                            </div>
+                          )}
+                        </div>
+                      ) : features.length > 0 && (
+                        <ul className="pm-inline-checkout__features">
+                          {features.map((f, i) => (
+                            <li key={i}>
+                              <i className="fas fa-check"></i>
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="pm-inline-checkout__secure">
+                        <i className="fas fa-lock"></i>
+                        <span>Secure checkout powered by Paddle</span>
+                      </div>
+                    </aside>
+                    {/* Paddle inline frame */}
+                    <div className="pm-inline-checkout__frame">
+                      <div className="paddle-checkout-container" />
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+            {!(snap.pendingCheckout && !snap.checkoutResult) && ui.showPlans && activeSection === 'plans' && (
               <PlansSection
                 plans={visiblePlans}
                 currentPlanId={planCtx.planId}
@@ -1354,7 +1581,7 @@ const PlanManagerOverlay: React.FC<{
                 cancelledNotice={planCtx.kind === 'paid' && planCtx.isCancelled ? { expiresOn: planCtx.expiresOn } : null}
               />
             )}
-            {ui.showTopUps && activeSection === 'topup' && (
+            {!(snap.pendingCheckout && !snap.checkoutResult) && ui.showTopUps && activeSection === 'topup' && (
               <TopUpSection
                 packages={visiblePackages}
                 purchasingId={purchasingProductId}
@@ -1364,7 +1591,8 @@ const PlanManagerOverlay: React.FC<{
             {ui.showUsage && activeSection === 'usage' && <UsageSection plugin={plugin} />}
           </main>
 
-        </>}
+        </>
+          })()}
 
         <footer className="pm-footer">
           <div className="pm-footer__legal">
@@ -1729,11 +1957,11 @@ const Hero: React.FC<{
   return (
     <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
       <div className="pm-hero__left">
-        <div className="pm-hero__eyebrow">Paid credit balance</div>
+        <div className="pm-hero__eyebrow">Paid AI credit balance</div>
         <div className="pm-hero__balance-row">
           <div className="pm-hero__amount">
             <span className="pm-hero__num">{paidRemaining.toLocaleString()}</span>
-            <span className="pm-hero__unit">paid credits</span>
+            <span className="pm-hero__unit">paid AI credits</span>
           </div>
           {showIncluded && (
             <div className="pm-hero__included" aria-label="Included AI credits remaining">
@@ -2006,6 +2234,34 @@ const PlanCard: React.FC<{
     ? 'forever'
     : selectedInterval === 'year' ? 'per year' : 'per month'
   const isFree = selectedPriceCents === 0
+
+  // Intro discount — launch promo (e.g. "60% off your first 3 months").
+  // We compute the discounted headline price to entice, and surface the
+  // offer name as a badge. The actual discount is applied by Paddle at
+  // checkout via the prefilled discount code.
+  const introDiscount = plan.introDiscount ?? null
+  let discountedPriceLabel: string | null = null
+  let introOfferLabel: string | null = null
+  if (introDiscount && !isFree && selectedPriceCents > 0) {
+    const isPct = introDiscount.discountType === 'percentage'
+    const discountedCents = isPct
+      ? Math.max(0, Math.round(selectedPriceCents * (1 - introDiscount.amount / 100)))
+      : Math.max(0, selectedPriceCents - Math.round(introDiscount.amount * 100))
+    if (discountedCents < selectedPriceCents) {
+      discountedPriceLabel = `$${(discountedCents / 100).toFixed(2)}`
+      const intervals = introDiscount.maxRecurringIntervals
+      const unit = selectedInterval === 'year' ? 'year' : 'month'
+      const duration = !introDiscount.recur || !intervals
+        ? `first ${unit}`
+        : intervals === 1
+          ? `first ${unit}`
+          : `first ${intervals} ${unit}s`
+      introOfferLabel = isPct
+        ? `${Math.round(introDiscount.amount)}% off ${duration}`
+        : `${discountedPriceLabel} off ${duration}`
+    }
+  }
+
   const isAccessActive = accessGroup !== null
   const isSubscriptionAccess = isAccessActive && accessGroup.source_type === 'subscription'
   const showUnifiedCurrent = isSubscriptionCurrent && isSubscriptionAccess
@@ -2068,9 +2324,25 @@ const PlanCard: React.FC<{
       )}
 
       <div className="pm-plan__price">
-        <span className="pm-plan__price-num">{priceLabel}</span>
-        <span className="pm-plan__price-cad">{cadenceLabel}</span>
+        {discountedPriceLabel ? (
+          <>
+            <span className="pm-plan__price-was">{priceLabel}</span>
+            <span className="pm-plan__price-num">{discountedPriceLabel}</span>
+            <span className="pm-plan__price-cad">{cadenceLabel}</span>
+          </>
+        ) : (
+          <>
+            <span className="pm-plan__price-num">{priceLabel}</span>
+            <span className="pm-plan__price-cad">{cadenceLabel}</span>
+          </>
+        )}
       </div>
+      {introOfferLabel && (
+        <div className="pm-plan__intro-offer" title={introDiscount?.name ?? undefined}>
+          <i className="fas fa-tags" aria-hidden></i>
+          <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+        </div>
+      )}
       {savingsBadge && (
         <div className="pm-plan__savings" title="Compared to paying month-to-month">
           <i className="fas fa-sparkles" aria-hidden></i>
@@ -2566,7 +2838,7 @@ const CreditAlert: React.FC<{
           </button>
         )}
         <button className="pm-alert__btn pm-alert__btn--solid" onClick={onTopUp}>
-          <i className="fas fa-bolt"></i> Buy credits
+          <i className="fas fa-bolt"></i> Buy AI credits
         </button>
       </div>
     </section>
@@ -2687,7 +2959,7 @@ const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active' | 'trial'>, {
       `The free beta wraps up ${days <= 1 ? 'tomorrow' : `in ${days} days`}${expiresOn ? ` (${formatDate(expiresOn)})` : ''}. Your feedback got us here — now it's time to pick a plan that fits how you build.`,
     body: 'Pick any paid tier before your beta ends and your projects, history, and AI credits keep flowing without a hiccup. As a thank-you, your first month carries over a bonus credit pack.',
     primary: 'See paid plans',
-    secondary: 'Top up credits'
+    secondary: 'Top up AIcredits'
   },
   expired: {
     eyebrow: 'Beta has ended',
@@ -2696,7 +2968,7 @@ const BETA_ALERT_COPY: Record<Exclude<PlanLifecycle, 'active' | 'trial'>, {
       `The beta ended ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago${expiresOn ? ` (${formatDate(expiresOn)})` : ''}. AI features are paused while you choose a plan — your workspaces and history are safe and waiting.`,
     body: 'Pick a paid plan to switch everything back on. Beta testers get a one-time bonus credit pack on their first paid month — our way of saying thanks for being early.',
     primary: 'Choose a plan',
-    secondary: 'Top up credits'
+    secondary: 'Top up AI credits'
   }
 }
 

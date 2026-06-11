@@ -66,6 +66,33 @@ export interface CheckoutResult {
   meta?: Record<string, string>
 }
 
+/**
+ * Live financial breakdown for the open checkout, derived from Paddle's
+ * `checkout.loaded` / `checkout.updated` events. All money values are in
+ * major currency units (e.g. dollars), matching Paddle's event payload.
+ * Updated on every change the user makes inside the inline checkout
+ * (discount applied, country/VAT entered, payment method switched).
+ */
+export interface CheckoutBreakdown {
+  currencyCode: string
+  /** Amount due today. */
+  subtotal: number
+  discount: number
+  tax: number
+  total: number
+  /** Discount code, when one is applied. */
+  discountCode: string | null
+  /** Recurring charge for subscriptions (null for one-time top-ups). */
+  recurring: {
+    subtotal: number
+    discount: number
+    tax: number
+    total: number
+  } | null
+  /** Billing cadence for subscriptions, e.g. { interval: 'month', frequency: 3 }. */
+  billingCycle: { interval: 'day' | 'week' | 'month' | 'year'; frequency: number } | null
+}
+
 /** Snapshot the UI consumes — purely derived, never mutated outside the machine. */
 export interface PlanManagerSnapshot {
   isAuthenticated: boolean
@@ -81,6 +108,8 @@ export interface PlanManagerSnapshot {
   checkoutResult: CheckoutResult | null
   /** Set while a Paddle checkout is being prepared/open (no result yet). */
   pendingCheckout: CheckoutIntentRecord | null
+  /** Live price breakdown from Paddle while the inline checkout is open. */
+  checkoutBreakdown: CheckoutBreakdown | null
   errorMessage: string | null
   /**
    * Why the panel was opened. Set on the most recent OPEN_OVERLAY when a
@@ -188,6 +217,7 @@ interface MachineContext {
   // checkout
   pendingCheckout: CheckoutIntentRecord | null
   checkoutResult: CheckoutResult | null
+  checkoutBreakdown: CheckoutBreakdown | null
   // overlay routing
   openIntent: OpenIntent | null
   // confirm dialog
@@ -211,6 +241,7 @@ export type PlanManagerEvent =
   // checkout
   | { type: 'CHECKOUT_INTENT'; intent: CheckoutIntent; itemLabel?: string; productId?: string }
   | { type: 'CHECKOUT_OPENED' }
+  | { type: 'CHECKOUT_BREAKDOWN'; breakdown: CheckoutBreakdown }
   | { type: 'CHECKOUT_COMPLETED'; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_CLOSED' }
   | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string; meta?: Record<string, string> }
@@ -242,6 +273,7 @@ const initialContext: MachineContext = {
   catalogPackages: [],
   pendingCheckout: null,
   checkoutResult: null,
+  checkoutBreakdown: null,
   openIntent: null,
   confirmDialog: null,
   lastError: null
@@ -303,6 +335,12 @@ export const planManagerMachine = setup({
         itemLabel: event.itemLabel,
         productId: event.productId
       }
+      // A fresh checkout starts with no breakdown until Paddle loads it.
+      context.checkoutBreakdown = null
+    },
+    setCheckoutBreakdown: ({ context, event }) => {
+      if (event.type !== 'CHECKOUT_BREAKDOWN') return
+      context.checkoutBreakdown = event.breakdown
     },
     setCheckoutProcessing: ({ context, event }) => {
       if (event.type !== 'CHECKOUT_COMPLETED') return
@@ -323,12 +361,14 @@ export const planManagerMachine = setup({
       // Clear the in-flight intent so per-card "Opening…" / disabled states
       // reset (selectPurchasingProductId reads from pendingCheckout).
       context.pendingCheckout = null
+      context.checkoutBreakdown = null
     },
     setCheckoutClosed: ({ context }) => {
       const intent = context.pendingCheckout?.intent ?? 'subscription'
       const itemLabel = context.pendingCheckout?.itemLabel
       context.checkoutResult = { kind: 'closed', intent, itemLabel }
       context.pendingCheckout = null
+      context.checkoutBreakdown = null
     },
     setCheckoutError: ({ context, event }) => {
       if (event.type !== 'CHECKOUT_ERROR') return
@@ -343,6 +383,7 @@ export const planManagerMachine = setup({
         meta: event.meta
       }
       context.pendingCheckout = null
+      context.checkoutBreakdown = null
     },
     clearCheckoutResult: ({ context }) => {
       context.checkoutResult = null
@@ -484,6 +525,9 @@ export const planManagerMachine = setup({
         inProgress: {
           on: {
             CHECKOUT_OPENED: {},
+            CHECKOUT_BREAKDOWN: {
+              actions: ['setCheckoutBreakdown']
+            },
             CHECKOUT_COMPLETED: {
               target: 'result',
               actions: ['setCheckoutProcessing']
@@ -581,6 +625,7 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     catalogPackages: ctx.catalogPackages,
     checkoutResult: ctx.checkoutResult,
     pendingCheckout: ctx.pendingCheckout,
+    checkoutBreakdown: ctx.checkoutBreakdown,
     errorMessage: ctx.lastError,
     isTrialEligible: ctx.isTrialEligible,
     openIntent: ctx.openIntent,
