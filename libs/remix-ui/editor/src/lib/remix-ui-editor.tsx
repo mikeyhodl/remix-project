@@ -3,7 +3,7 @@ import { FormattedMessage, useIntl } from 'react-intl'
 import { diffLines } from 'diff'
 import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
-import { AppContext, AppModal } from '@remix-ui/app'
+import { AppContext, AppModal, useAuth } from '@remix-ui/app'
 import { MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
@@ -189,6 +189,8 @@ export const EditorUI = (props: EditorUIProps) => {
   const trackMatomoEvent = <T extends MatomoEvent = EditorEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
   }
+  const { features } = useAuth()
+  const hasContextualEditorFeature = features['ai:contextual-editor']?.is_enabled === true
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const currentBreakpointsRef = useRef<Record<string, Record<number, any>>>({})
@@ -1962,7 +1964,7 @@ export const EditorUI = (props: EditorUIProps) => {
       )}
       
       {/* Web3 Keyword Tooltip */}
-      {tooltipData && (
+      {tooltipData && hasContextualEditorFeature && (
         <TooltipPopOver
           keyword={tooltipData.keyword}
           position={tooltipData.position}
