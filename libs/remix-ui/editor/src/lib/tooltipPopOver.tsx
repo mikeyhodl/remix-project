@@ -37,6 +37,22 @@ export const disablePopoverForSession = (): void => {
   isPopoverDisabledFlag = true
 }
 
+// Helper function to detect language from filename
+const getLanguageFromFilename = (filename: string): { label: string; code: string } => {
+  if (!filename) return { label: 'code', code: '' }
+
+  if (filename.endsWith('.sol')) return { label: 'Solidity', code: 'solidity' }
+  if (filename.endsWith('.js')) return { label: 'JavaScript', code: 'javascript' }
+  if (filename.endsWith('.ts') || filename.endsWith('.tsx')) return { label: 'TypeScript', code: 'typescript' }
+  if (filename.endsWith('.py')) return { label: 'Python', code: 'python' }
+  if (filename.endsWith('.vy')) return { label: 'Vyper', code: 'vyper' }
+  if (filename.endsWith('.cairo')) return { label: 'Cairo', code: 'cairo' }
+  if (filename.endsWith('.rs')) return { label: 'Rust', code: 'rust' }
+  if (filename.endsWith('.move')) return { label: 'Move', code: 'move' }
+
+  return { label: 'code', code: '' }
+}
+
 export const openContextualTooltip = (
   position: IPosition,
   editorRef: any,
@@ -143,6 +159,7 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
         // Get current file to determine language context
         const currentFile = await plugin.call('fileManager', 'getCurrentFile')
         const isSolidityFile = currentFile?.endsWith('.sol')
+        const { label: fileLanguage } = getLanguageFromFilename(currentFile)
 
         // Determine if we have context (single word selection) or not (multi-word selection)
         const hasContext = contextLines && contextLines.length > 0
@@ -163,7 +180,7 @@ Return a JSON response with the following structure:
 }
 
 Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 50 words.`
-            : `Analyze this code snippet:
+            : `Analyze this ${fileLanguage} code snippet:
 
 ${keyword}
 
@@ -175,7 +192,7 @@ Return a JSON response with the following structure:
   "riskLabel": "Short risk description"
 }
 
-Focus on code quality, potential issues, and best practices. The body should contain max 50 words.`
+Focus on code quality, potential issues, and best practices for ${fileLanguage}. The body should contain max 50 words.`
           : // Single word selection - analyze with context lines
             isSolidityFile
             ? `Analyze this Web3/Solidity code snippet focusing on the keyword "${keyword}":
@@ -191,7 +208,7 @@ Return a JSON response with the following structure:
 }
 
 Focus on security implications and provide practical guidance for smart contract developers. The body should contain max 40 words. Consider the surrounding code context.`
-            : `Analyze this code snippet focusing on the keyword "${keyword}":
+            : `Analyze this ${fileLanguage} code snippet focusing on the keyword "${keyword}":
 
 ${contextLines}
 
@@ -203,7 +220,7 @@ Return a JSON response with the following structure:
   "riskLabel": "Short risk description"
 }
 
-Focus on code quality, potential issues, and best practices. The body should contain max 40 words. Consider the surrounding code context.`
+Focus on code quality, potential issues, and best practices for ${fileLanguage}. The body should contain max 40 words. Consider the surrounding code context.`
         const response = await plugin.call('remixAI', 'basic_prompt', prompt)
         
         // Parse the JSON response
@@ -400,23 +417,7 @@ Focus on code quality, potential issues, and best practices. The body should con
                         // Get current file to determine language
                         const currentFile = await plugin.call('fileManager', 'getCurrentFile')
                         const isSolidityFile = currentFile?.endsWith('.sol')
-
-                        // Detect language from file extension
-                        const getLanguage = (filename: string) => {
-                          if (!filename) return ''
-                          if (filename.endsWith('.sol')) return 'solidity'
-                          if (filename.endsWith('.js')) return 'javascript'
-                          if (filename.endsWith('.ts')) return 'typescript'
-                          if (filename.endsWith('.py')) return 'python'
-                          if (filename.endsWith('.vy')) return 'vyper'
-                          if (filename.endsWith('.cairo')) return 'cairo'
-                          if (filename.endsWith('.rs')) return 'rust'
-                          if (filename.endsWith('.move')) return 'move'
-                          return ''
-                        }
-
-                        const language = getLanguage(currentFile)
-                        const languageLabel = language ? language : 'code'
+                        const { label: languageLabel, code: language } = getLanguageFromFilename(currentFile)
 
                         // Use contextLines if available (single word selection), otherwise use keyword (multi-word selection)
                         const codeToAnalyze = contextLines || keyword
