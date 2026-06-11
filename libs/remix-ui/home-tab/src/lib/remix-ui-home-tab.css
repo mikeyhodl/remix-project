@@ -152,6 +152,14 @@
 
 /* ─── Secondary CTA ─── */
 
+a.ht-cta-secondary {
+  text-decoration: none;
+}
+
+a.ht-cta-secondary:hover {
+  text-decoration: none;
+}
+
 .ht-cta-secondary {
   display: flex;
   align-items: center;
@@ -202,59 +210,6 @@
   color: var(--bs-secondary-color);
 }
 
-/* ─── DesktopDownload override ─── */
-
-.ht-panel .desktop-download.compact .btn {
-  background: transparent;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 8px;
-  color: var(--bs-emphasis-color);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 12px;
-  width: 100%;
-  justify-content: flex-start;
-  gap: 12px;
-  box-shadow: none;
-  transform: none !important;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.ht-panel .desktop-download.compact .btn:hover,
-.ht-panel .desktop-download.compact .btn:active,
-.ht-panel .desktop-download.compact .btn:focus {
-  background: var(--ht-hover-bg);
-  border-color: rgba(var(--bs-body-color-rgb), 0.2);
-  color: var(--bs-emphasis-color);
-  box-shadow: none;
-  transform: none !important;
-}
-
-.ht-panel .desktop-download.compact .btn i {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  font-size: 13px;
-  background: rgba(var(--bs-body-color-rgb), 0.06);
-  color: var(--bs-emphasis-color);
-}
-
-.ht-panel .desktop-download.compact .text-muted {
-  text-align: left;
-}
-
-.ht-panel .desktop-download.compact .text-muted small a {
-  font-size: 11px;
-  color: var(--ht-accent) !important;
-}
-
-.ht-panel .desktop-download.compact .text-muted small a:hover {
-  text-decoration: underline;
-}
 
 /* ─── Action grid (Open section) ─── */
 
