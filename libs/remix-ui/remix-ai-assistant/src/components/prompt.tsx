@@ -25,7 +25,7 @@ const SHORTCUT_CATEGORIES = [
     label: 'Code',
     prompts: [
       'Write a Solidity ERC20 token with mint and burn functions',
-      'Add an ownable access control to this contract',
+      'Add an ownable access control to a contract',
       '/compile: fix any errors in the active file',
     ],
   },
@@ -173,7 +173,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
     if (handleLoadAuditChecklist) {
       cmds.push({
-        name: 'Start Security Audit',
+        name: 'Load Security Audit checklist',
         description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan',
         category: 'Tools',
         action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,

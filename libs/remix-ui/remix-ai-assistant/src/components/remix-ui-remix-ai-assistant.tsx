@@ -2271,7 +2271,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     } catch {
       // skill endpoint unavailable — proceed without it
     }
-    props.plugin.chatPipe('Start gas optimization checks on the active contract.')
+    props.plugin.chatPipe('Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.', true)
   }, [props.plugin])
 
   const handleGenerateWorkspace = useCallback(async () => {
