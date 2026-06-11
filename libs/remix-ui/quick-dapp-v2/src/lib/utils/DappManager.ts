@@ -770,7 +770,9 @@ export class DappManager {
         config.workspaceName = workspaceName;
 
         try {
-          const previewContent = await this.plugin.call('fileManager', 'readFile', 'preview.png');
+          const isInline = config.mode === 'inline';
+          const previewPath = isInline ? 'frontend/preview.png' : 'preview.png';
+          const previewContent = await this.plugin.call('fileManager', 'readFile', previewPath);
           if (previewContent) {
             config.thumbnailPath = previewContent;
           }
