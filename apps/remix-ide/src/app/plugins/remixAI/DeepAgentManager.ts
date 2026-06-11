@@ -280,6 +280,12 @@ export class DeepAgentManager {
     const plugin = this.deps.plugin
     const hasSelectedModel = !!(plugin.selectedModel && plugin.selectedModelId)
 
+    ;(plugin as any).traceDeepAgentLifecycle?.('manager.reinitialize:enter', 'reinitialize() entered — evaluating prereqs', {
+      hasRemixMCPServer: !!plugin.remixMCPServer,
+      hasSelectedModel,
+      willProceed: !!(plugin.remixMCPServer && hasSelectedModel)
+    })
+
     if (plugin.remixMCPServer && hasSelectedModel) {
       try {
         remixAILogger.log('[RemixAI Plugin] Reinitializing DeepAgent after MCP server reset...')
