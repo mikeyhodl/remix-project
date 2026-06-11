@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect, useContext } from 'react'
-import { RISK_CONFIG } from './web3Keywords'
 import { AIEvent } from '@remix-api'
 import type { IPosition } from 'monaco-editor'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
+
+// Risk configuration for code analysis badges
+const RISK_CONFIG = {
+  high: { badge: "danger", icon: "fas fa-exclamation-triangle" },
+  medium: { badge: "warning", icon: "fas fa-exclamation-circle" },
+  low: { badge: "info", icon: "fas fa-info-circle" },
+}
 
 export interface TooltipPopOverProps {
   keyword: string
