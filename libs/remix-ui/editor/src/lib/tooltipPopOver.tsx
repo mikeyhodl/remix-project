@@ -172,7 +172,7 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
 
         const prompt = isSelectedText && !hasContext
           ? // Multi-word/multi-line selection - analyze the code snippet directly
-            isSolidityFile
+          isSolidityFile
             ? `Analyze this Web3/Solidity code snippet:
 
 ${keyword}
@@ -200,7 +200,7 @@ Return a JSON response with the following structure:
 
 Focus on code quality, potential issues, and best practices for ${fileLanguage}. The body should contain max 50 words.`
           : // Single word selection - analyze with context lines
-            isSolidityFile
+          isSolidityFile
             ? `Analyze this Web3/Solidity code snippet focusing on the keyword "${keyword}":
 
 ${contextLines}
@@ -228,7 +228,7 @@ Return a JSON response with the following structure:
 
 Focus on code quality, potential issues, and best practices for ${fileLanguage}. The body should contain max 40 words. Consider the surrounding code context.`
         const response = await plugin.call('remixAI', 'basic_prompt', prompt)
-        
+
         // Parse the JSON response
         let parsedData: KeywordData
         try {
@@ -296,7 +296,7 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
     // Adjust vertical position if popup would overflow
     // Position above the cursor to avoid mouse leave issues
     y = position.y - rect.height - 10 // Position above cursor with small offset
-    
+
     // If positioning above would go off screen, position below but closer to cursor
     if (y < margin) {
       y = position.y + 25 // Position closer below cursor
@@ -348,163 +348,163 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
         }
       }}
     >
-        <div className="web3-tooltip-inner" style={{ position: 'relative' }}>
-          {loading ? (
-            <div className="d-flex align-items-center gap-2">
-              <div className="spinner-border spinner-border-sm" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              <span style={{ fontSize: "0.8rem" }}>
-                Analyzing <b>"{isSelectedText && keyword.length > 20
-                  ? `${keyword.substring(0, 20)}...`
-                  : keyword
-                }"</b>
-              </span>
+      <div className="web3-tooltip-inner" style={{ position: 'relative' }}>
+        {loading ? (
+          <div className="d-flex align-items-center gap-2">
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
             </div>
-          ) : data ? (
-            <>
-              {/* Close button - only shown when data is loaded */}
-              <button
-                className="web3-tooltip-close"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClose()
-                }}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-              <div className="mb-2" style={{ paddingRight: '16px' }}>
-                <div className="d-flex align-items-center justify-content-between">
-                  <code className="web3-tooltip-title" style={{
-                    maxWidth: isSelectedText ? '200px' : 'auto',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {isSelectedText && data.title && data.title.length > 30
-                      ? `${data.title.substring(0, 30)}...`
-                      : data.title
-                    }
-                  </code>
-                </div>
-                {risk && data.riskLabel && (
-                  <div className="mt-1">
-                    <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
-                      style={{ fontSize: "0.65rem", fontWeight: 600, width: 'fit-content' }}>
-                      <i className={`${risk.icon}`} style={{ fontSize: "0.6rem" }}></i>
-                      {data.riskLabel}
-                    </span>
-                  </div>
-                )}
+            <span style={{ fontSize: "0.8rem" }}>
+                Analyzing <b>"{isSelectedText && keyword.length > 20
+                ? `${keyword.substring(0, 20)}...`
+                : keyword
+              }"</b>
+            </span>
+          </div>
+        ) : data ? (
+          <>
+            {/* Close button - only shown when data is loaded */}
+            <button
+              className="web3-tooltip-close"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            <div className="mb-2" style={{ paddingRight: '16px' }}>
+              <div className="d-flex align-items-center justify-content-between">
+                <code className="web3-tooltip-title" style={{
+                  maxWidth: isSelectedText ? '200px' : 'auto',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {isSelectedText && data.title && data.title.length > 30
+                    ? `${data.title.substring(0, 30)}...`
+                    : data.title
+                  }
+                </code>
               </div>
-              <p className="web3-tooltip-body mb-2">{data.body}</p>
-              <div className="d-flex flex-column gap-2">
-                <button
-                  className="btn btn-link p-0 text-start"
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "var(--bs-primary)",
-                    textDecoration: "none",
-                    pointerEvents: "auto" // Enable pointer events for this button
-                  }}
-                  onClick={async (e) => {
-                    e.stopPropagation()
-                    if (plugin && data) {
-                      try {
-                        // Track button click
-                        trackMatomoEvent({
-                          category: 'ai',
-                          action: 'remixAI',
-                          name: 'contextual_popup_open_remixai_clicked',
-                          isClick: true,
-                          value: keyword
-                        })
+              {risk && data.riskLabel && (
+                <div className="mt-1">
+                  <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
+                    style={{ fontSize: "0.65rem", fontWeight: 600, width: 'fit-content' }}>
+                    <i className={`${risk.icon}`} style={{ fontSize: "0.6rem" }}></i>
+                    {data.riskLabel}
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="web3-tooltip-body mb-2">{data.body}</p>
+            <div className="d-flex flex-column gap-2">
+              <button
+                className="btn btn-link p-0 text-start"
+                style={{
+                  fontSize: "0.7rem",
+                  color: "var(--bs-primary)",
+                  textDecoration: "none",
+                  pointerEvents: "auto" // Enable pointer events for this button
+                }}
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  if (plugin && data) {
+                    try {
+                      // Track button click
+                      trackMatomoEvent({
+                        category: 'ai',
+                        action: 'remixAI',
+                        name: 'contextual_popup_open_remixai_clicked',
+                        isClick: true,
+                        value: keyword
+                      })
 
-                        // Get current file to determine language
-                        const currentFile = await plugin.call('fileManager', 'getCurrentFile')
-                        const isSolidityFile = currentFile?.endsWith('.sol')
-                        const { label: languageLabel, code: language } = getLanguageFromFilename(currentFile)
+                      // Get current file to determine language
+                      const currentFile = await plugin.call('fileManager', 'getCurrentFile')
+                      const isSolidityFile = currentFile?.endsWith('.sol')
+                      const { label: languageLabel, code: language } = getLanguageFromFilename(currentFile)
 
-                        // Use contextLines if available (single word selection), otherwise use keyword (multi-word selection)
-                        const codeToAnalyze = contextLines || keyword
-                        const analysisContext = contextLines
-                          ? `focusing on the keyword "${keyword}"`
-                          : ''
+                      // Use contextLines if available (single word selection), otherwise use keyword (multi-word selection)
+                      const codeToAnalyze = contextLines || keyword
+                      const analysisContext = contextLines
+                        ? `focusing on the keyword "${keyword}"`
+                        : ''
 
-                        const deeperPrompt = isSolidityFile
-                          ? `Analyse this code snippet ${analysisContext} for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
+                      const deeperPrompt = isSolidityFile
+                        ? `Analyse this code snippet ${analysisContext} for security implications, and its safer use in smart contract development. If applicable, provide best practices and common pitfalls to avoid.
 
 \`\`\`solidity
 ${codeToAnalyze}
 \`\`\``
-                          : `Analyse this ${languageLabel} code snippet ${analysisContext} for potential issues, best practices, and code quality improvements. If applicable, highlight any security concerns or common pitfalls to avoid.
+                        : `Analyse this ${languageLabel} code snippet ${analysisContext} for potential issues, best practices, and code quality improvements. If applicable, highlight any security concerns or common pitfalls to avoid.
 
 \`\`\`${language}
 ${codeToAnalyze}
 \`\`\``
 
-                        // Clear the selection in the editor to prevent popover from re-appearing
-                        if (onClearSelection) {
-                          onClearSelection()
-                        }
-
-                        await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
-                        await plugin.call('menuicons', 'select', 'remixaiassistant')
-                        await plugin.call('remixaiassistant', 'newConversation')
-
-                        // Small delay to ensure panel is open
-                        setTimeout(async () => {
-                          // Call RemixAI with editor code analysis flag
-                          await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true)
-                        }, 500)
-
-                        // Close the tooltip
-                        onClose()
-                      } catch (error) {
-                        console.error('Failed to open RemixAI:', error)
+                      // Clear the selection in the editor to prevent popover from re-appearing
+                      if (onClearSelection) {
+                        onClearSelection()
                       }
+
+                      await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
+                      await plugin.call('menuicons', 'select', 'remixaiassistant')
+                      await plugin.call('remixaiassistant', 'newConversation')
+
+                      // Small delay to ensure panel is open
+                      setTimeout(async () => {
+                        // Call RemixAI with editor code analysis flag
+                        await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true)
+                      }, 500)
+
+                      // Close the tooltip
+                      onClose()
+                    } catch (error) {
+                      console.error('Failed to open RemixAI:', error)
                     }
-                  }}
-                >
-                  <i className="fas fa-external-link-alt me-1" style={{ fontSize: "0.65rem" }}></i>
+                  }
+                }}
+              >
+                <i className="fas fa-external-link-alt me-1" style={{ fontSize: "0.65rem" }}></i>
                   Open in RemixAI
-                </button>
-                <button
-                  className="btn btn-link p-0 text-start"
-                  style={{
-                    fontSize: "0.65rem",
-                    color: "var(--bs-body-color)",
-                    textDecoration: "none",
-                    pointerEvents: "auto",
-                    opacity: 0.7
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // Track button click
-                    trackMatomoEvent({
-                      category: 'ai',
-                      action: 'remixAI',
-                      name: 'contextual_popup_hide_for_session_clicked',
-                      isClick: true,
-                      value: keyword
-                    })
-                    // Disable popover for this session
-                    disablePopoverForSession()
-                    // Close the tooltip
-                    onClose()
-                  }}
-                >
-                  <i className="fas fa-eye-slash me-1" style={{ fontSize: "0.6rem" }}></i>
+              </button>
+              <button
+                className="btn btn-link p-0 text-start"
+                style={{
+                  fontSize: "0.65rem",
+                  color: "var(--bs-body-color)",
+                  textDecoration: "none",
+                  pointerEvents: "auto",
+                  opacity: 0.7
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Track button click
+                  trackMatomoEvent({
+                    category: 'ai',
+                    action: 'remixAI',
+                    name: 'contextual_popup_hide_for_session_clicked',
+                    isClick: true,
+                    value: keyword
+                  })
+                  // Disable popover for this session
+                  disablePopoverForSession()
+                  // Close the tooltip
+                  onClose()
+                }}
+              >
+                <i className="fas fa-eye-slash me-1" style={{ fontSize: "0.6rem" }}></i>
                   Do not show analysis for this session
-                </button>
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: "0.8rem", color: "var(--bs-secondary)" }}>
-              Failed to load information for {keyword}
+              </button>
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div style={{ fontSize: "0.8rem", color: "var(--bs-secondary)" }}>
+              Failed to load information for {keyword}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

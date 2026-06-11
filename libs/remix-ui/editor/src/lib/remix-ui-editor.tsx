@@ -482,7 +482,7 @@ export const EditorUI = (props: EditorUIProps) => {
 
   useEffect(() => {
     if (!(editorRef.current || diffEditorRef.current ) || !props.currentFile) return
-    
+
     // Clear tooltip when file changes
     setTooltipData(null)
     if (hoverTimeoutRef.current) {
@@ -490,7 +490,7 @@ export const EditorUI = (props: EditorUIProps) => {
       hoverTimeoutRef.current = null
     }
     lastHoverPositionRef.current = null
-    
+
     currentFileRef.current = props.currentFile
     props.plugin.call('fileManager', 'getUrlFromPath', currentFileRef.current).then((url) => (currentUrlRef.current = url.file))
 
@@ -1001,8 +1001,8 @@ export const EditorUI = (props: EditorUIProps) => {
       const position = e.target?.position
       if (position) {
         // Check if position changed
-        const positionChanged = !lastHoverPositionRef.current || 
-          lastHoverPositionRef.current.lineNumber !== position.lineNumber || 
+        const positionChanged = !lastHoverPositionRef.current ||
+          lastHoverPositionRef.current.lineNumber !== position.lineNumber ||
           lastHoverPositionRef.current.column !== position.column
 
         if (positionChanged) {
@@ -1011,7 +1011,7 @@ export const EditorUI = (props: EditorUIProps) => {
             hoverTimeoutRef.current = null
           }
           lastHoverPositionRef.current = position
-          
+
           // Start new timeout for this position
           hoverTimeoutRef.current = setTimeout(() => {
             openContextualTooltip(position, editorRef, monacoRef, setTooltipData, trackMatomoEvent)
@@ -1020,7 +1020,6 @@ export const EditorUI = (props: EditorUIProps) => {
       }
     })
 
-
     // Clear timeout when mouse leaves the editor (with delay to allow tooltip interaction)
     editor.onMouseLeave(() => {
       // Add a longer delay to allow moving mouse to tooltip
@@ -1028,11 +1027,11 @@ export const EditorUI = (props: EditorUIProps) => {
         // Check if mouse is over tooltip before closing
         const tooltipElement = document.querySelector('.web3-tooltip-popup')
         const isMouseOverTooltip = tooltipElement && tooltipElement.matches(':hover')
-        
+
         // Check if there's currently selected text (don't close tooltip for selected text)
         const selection = editor.getSelection()
         const hasSelectedText = selection && !selection.isEmpty()
-        
+
         if (!isMouseOverTooltip && !hasSelectedText) {
           if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current)
@@ -1457,7 +1456,6 @@ export const EditorUI = (props: EditorUIProps) => {
     loadedElement.setAttribute('data-id', 'editorloaded')
     document.body.appendChild(loadedElement)
   }
-
 
   const closeTooltip = () => {
     setTooltipData(null)
@@ -1962,7 +1960,7 @@ export const EditorUI = (props: EditorUIProps) => {
           />
         </span>
       )}
-      
+
       {/* Web3 Keyword Tooltip */}
       {tooltipData && hasContextualEditorFeature && (
         <TooltipPopOver

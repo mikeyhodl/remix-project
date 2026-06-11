@@ -157,7 +157,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     const endsWithCommandColon = input.trimEnd().endsWith(':')
     const hasSlashWord = !!getSlashWord(input)
     const shouldShow = hasSlashWord && !isStreaming && !endsWithCommandColon
-    
+
     setShowAutocomplete(shouldShow)
     // Reset selected index when hiding or showing the panel
     if (!shouldShow || (shouldShow && !showAutocomplete)) {
@@ -206,7 +206,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
     if (command.action) {
       setInput('')
-      setTimeout(() => command.action!(), 0)      
+      setTimeout(() => command.action!(), 0)
     } else {
       const lastSpaceSlash = input.lastIndexOf(' /')
       const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : input.startsWith('/') ? 0 : input.length
@@ -258,7 +258,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     // Handle Enter key
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
       e.preventDefault()
-      
+
       // Check if input has content after the slash command format (e.g., "/command: content")
       const hasCommandContent = input.includes(':') && input.split(':')[1]?.trim().length > 0
 
