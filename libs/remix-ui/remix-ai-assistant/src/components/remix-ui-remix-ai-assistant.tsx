@@ -28,7 +28,7 @@ import { ToolApprovalModal } from './ToolApprovalModal'
 export interface RemixUiRemixAiAssistantProps {
   plugin: RemixAIAssistant
   isInitializing?: boolean
-  queuedMessage: { text: string; timestamp: number } | null
+  queuedMessage: { text: string; isEditorCodeAnalysis?: boolean; timestamp: number } | null
   initialMessages?: ChatMessage[]
   onMessagesChange?: (msgs: ChatMessage[]) => void
   /** optional callback whenever the user or AI does something */
@@ -50,7 +50,7 @@ export interface RemixUiRemixAiAssistantProps {
 }
 export interface RemixUiRemixAiAssistantHandle {
   /** Programmatically send a prompt to the chat (returns after processing starts) */
-  sendChat: (prompt: string) => Promise<void>
+  sendChat: (prompt: string, isEditorCodeAnalysis?: boolean) => Promise<void>
   /** Clears local chat history (parent receives onMessagesChange([])) */
   clearChat: () => void
   /** Returns current chat history array */
@@ -1455,10 +1455,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Push a queued message (if any) into history once props update
   useEffect(() => {
     if (props.queuedMessage) {
-      const { text, timestamp } = props.queuedMessage
+      const { text, isEditorCodeAnalysis, timestamp } = props.queuedMessage
       setMessages(prev => [
         ...prev,
-        { id: crypto.randomUUID(), role: 'user', content: text, timestamp }
+        {
+          id: crypto.randomUUID(),
+          role: isEditorCodeAnalysis ? 'editor_code_analysis' : 'user',
+          content: text,
+          timestamp
+        }
       ])
     }
   }, [props.queuedMessage])
@@ -1571,7 +1576,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   // reusable sender (used by both UI button and imperative ref)
   const sendPrompt = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, isEditorCodeAnalysis: boolean = false) => {
       const trimmed = prompt.trim()
       if (!trimmed || isStreaming) return
 
@@ -1603,7 +1608,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       // optimistic user message
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
-        role: 'user',
+        role: isEditorCodeAnalysis ? 'editor_code_analysis' : 'user',
         content: trimmed,
         timestamp: Date.now()
       }
@@ -2266,7 +2271,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     } catch {
       // skill endpoint unavailable — proceed without it
     }
-    props.plugin.chatPipe('Start gas optimization checks on the active contract.')
+    props.plugin.chatPipe('Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.', true)
   }, [props.plugin])
 
   const handleGenerateWorkspace = useCallback(async () => {
@@ -2301,8 +2306,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      sendChat: async (prompt: string) => {
-        await sendPrompt(prompt)
+      sendChat: async (prompt: string, isEditorCodeAnalysis?: boolean) => {
+        await sendPrompt(prompt, isEditorCodeAnalysis)
       },
       clearChat: () => {
         setMessages([])

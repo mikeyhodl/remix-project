@@ -6,7 +6,7 @@ import { appActionTypes, AppContext, useAuth } from '@remix-ui/app'
 import { HomeTabEvent, MatomoEvent } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { FormattedMessage } from 'react-intl'
-import { uploadFolderExcludingRootFolder } from 'libs/remix-ui/workspace/src/lib/actions/workspace'
+import { uploadFolderExcludingRootFolder } from '@remix-ui/workspace'
 
 export interface RemixUiHomeTabProps {
   plugin: any
@@ -124,14 +124,12 @@ contract HelloWorld {
     await plugin.call('menuicons', 'select', 'remixaiassistant')
     await plugin.call('remixaiassistant', 'newConversation')
     try {
-      await plugin.call('notification', 'toast', 'Loading Gas optimization techniques skills')
       await plugin.call('skillsexplorermodal', 'loadSkill', 'coding-solidity-gas-optimization')
-      plugin.call('notification', 'toast', 'Gas optimization techniques skills loaded')
     } catch (e: any) {
       plugin.call('notification', 'toast', `Error loading Gas optimization skills ${e.message}`)
     }
     setTimeout(() => {
-      plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. I am going to give you the actual file name.`)
+      plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.`, true)
     })
   }
 
