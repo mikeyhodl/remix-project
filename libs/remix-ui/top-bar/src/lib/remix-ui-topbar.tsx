@@ -786,6 +786,13 @@ export function RemixUiTopbar() {
             className="d-flex align-items-center flex-nowrap"
             style={{ minWidth: 0, width: '100%', justifyContent: isNonMaximizedWindow ? 'flex-start' : 'center' }}
           >
+            {showCloudToggle && (
+              <CloudToggle
+                className="me-2"
+                onEnableCloud={() => enableCloud()}
+                onDisableCloud={() => disableCloud()}
+                theme={currentTheme?.quality}
+              />)}
             <WorkspacesDropdown
               menuItems={menuItems}
               toggleDropdown={toggleDropdown}
