@@ -411,6 +411,18 @@ export class RemixAIPlugin extends Plugin {
       this.deepAgentManager.respondToToolApproval(response)
     })
 
+    // Listen for Stop requests forwarded by the assistant UI as engine events.
+    // Same reason as toolApprovalResponse above: the UI cannot use plugin.call()
+    // because remixAI's request queue is busy with the in-flight answer() call.
+    // We deliberately do NOT await cancelRequest() here — the synchronous abort
+    // inside it (currentAbortController.abort()) runs immediately during event
+    // dispatch, which lets the queued answer() unwind and drain the queue; the
+    // subsequent reinitialize() runs detached and the next turn gates on
+    // DeepAgentManager.awaitReady().
+    this.on('remixaiassistant' as any, 'stopRequested', (historyMessages?: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+      void this.cancelRequest(historyMessages)
+    })
+
     await this.initialize()
     this.completionAgent = new CodeCompletionAgent(this)
     this.securityAgent = new SecurityAgent(this)
