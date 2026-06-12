@@ -191,7 +191,14 @@ export class DappManager {
 
           if (!content) continue;
 
-          const config = JSON.parse(content);
+          let config;
+          try {
+            config = JSON.parse(content);
+          } catch (e) {
+            console.warn(`[DappManager] Invalid JSON in config for workspace ${workspaceName}`, e, content);
+            config = {}
+          }
+
           config.workspaceName = workspaceName;
 
           const isInline = config.mode === 'inline';
