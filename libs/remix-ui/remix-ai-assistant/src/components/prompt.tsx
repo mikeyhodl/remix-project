@@ -192,13 +192,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     if (handleLoadAuditChecklist) {
       cmds.push({
         name: 'Load Security Audit checklist',
-        description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan',
+        description: hasAuditorPermission ? 'Load audit checklist' : 'Coming soon',
         category: 'Tools',
         action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
         disabled: !hasAuditorPermission
       })
     }
-    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Upgrade to a paid plan', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
+    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Coming soon', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
     return cmds
   }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission])
 

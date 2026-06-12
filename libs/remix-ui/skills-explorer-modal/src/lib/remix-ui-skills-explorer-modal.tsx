@@ -445,7 +445,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
             {!hasAdvancedSkills ? (
               <CustomTooltip
                 placement="top"
-                tooltipText="Upgrade to a paid plan to enable the upload feature."
+                tooltipText="Coming soon"
                 tooltipClasses="text-nowrap"
                 tooltipId="skills-upload-disabled-tooltip"
               >
@@ -507,8 +507,8 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                         <div className="alert alert-info mb-3" role="alert">
                           <i className="fa-solid fa-info-circle me-2"></i>
                           {hasBasicSkills
-                            ? "You have access to basic skills. Upgrade to a paid plan to access all premium skills."
-                            : "Basic skills are available to all users. Upgrade to a paid plan to access more skills."}
+                            ? "You have access to basic skills. More skills coming soon."
+                            : "Basic skills are available to all users. More skills coming soon."}
                         </div>
                       )}
 
