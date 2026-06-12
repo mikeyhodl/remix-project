@@ -2039,10 +2039,10 @@ const UpgradePromoBanner: React.FC<{
 }> = ({ planCtx, onUpgrade }) => {
   const isFree = planCtx.kind === 'no_subscription'
   const headline = isFree
-    ? 'Unlock more credits and advanced models'
+    ? 'Unlock more AI chat time, advanced models and features with Remix AI Pro and Top Up credits.'
     : `Get more from Remix AI — upgrade from ${planCtx.planName}`
   const sub = isFree
-    ? 'Higher daily caps, full model lineup, and paid credits that never expire.'
+    ? 'Full model lineup, Opus and Sonnet, MCP access, and more.'
     : 'Bigger included quotas across every model, plus priority access on new releases.'
 
   return (
