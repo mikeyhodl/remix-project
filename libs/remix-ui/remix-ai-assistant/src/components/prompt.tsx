@@ -10,13 +10,22 @@ import { PromptDefault } from "./promptDefault";
 import { AutocompletePanel, Command } from './AutocompletePanel'
 
 const getSlashWord = (text: string): string | null => {
+  // Only detect slash commands at the beginning or after a space
   const lastSpaceSlash = text.lastIndexOf(' /')
   const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
   if (slashStart === -1) return null
+
   const afterSlash = text.slice(slashStart)
+
+  // If there's already a colon, the command is complete
+  if (afterSlash.includes(':')) return null
+
+  // Extract the word after the slash (until space or end)
   const nextSpace = afterSlash.indexOf(' ')
   const word = nextSpace === -1 ? afterSlash : afterSlash.slice(0, nextSpace)
-  return word.includes(':') ? null : word
+
+  // Return the word to show autocomplete
+  return word
 }
 
 const SHORTCUT_CATEGORIES = [
@@ -183,13 +192,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     if (handleLoadAuditChecklist) {
       cmds.push({
         name: 'Load Security Audit checklist',
-        description: hasAuditorPermission ? 'Load audit checklist' : 'Upgrade to a paid plan',
+        description: hasAuditorPermission ? 'Load audit checklist' : 'Coming soon',
         category: 'Tools',
         action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
         disabled: !hasAuditorPermission
       })
     }
-    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Upgrade to a paid plan', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
+    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Coming soon', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
     return cmds
   }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission])
 
@@ -242,7 +251,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         return
       } else if (e.key === 'Tab') {
         e.preventDefault()
-        // Find the selected button and click it programmatically
+        // Tab key selects the highlighted command from autocomplete
         const buttons = document.querySelectorAll('[data-id^="autocomplete-item-"]')
         if (buttons[selectedCommandIndex]) {
           (buttons[selectedCommandIndex] as HTMLButtonElement).click()
@@ -259,23 +268,20 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
       e.preventDefault()
 
-      // Check if input has content after the slash command format (e.g., "/command: content")
-      const hasCommandContent = input.includes(':') && input.split(':')[1]?.trim().length > 0
-
-      if (showAutocomplete && !hasCommandContent) {
-        // If autocomplete is showing and no command content yet, select the highlighted command
+      // If autocomplete panel is visible, select the highlighted command
+      if (showAutocomplete) {
         const buttons = document.querySelectorAll('[data-id^="autocomplete-item-"]')
-        if (buttons[selectedCommandIndex]) {
+        if (buttons.length > 0 && buttons[selectedCommandIndex]) {
+          // Click the selected command button
           (buttons[selectedCommandIndex] as HTMLButtonElement).click()
+          // The click handler will hide the panel and update the input
+          return
         }
-        // Immediately hide the panel after selection
+        // If no commands in panel (shouldn't happen), hide panel and send
         setShowAutocomplete(false)
-        return // Exit early to prevent sending
+        handleSend()
       } else {
-        // Send the message if:
-        // 1. Autocomplete is not showing, OR
-        // 2. User has already typed command content after the colon
-        setShowAutocomplete(false) // Ensure panel is hidden when sending
+        // No autocomplete panel visible, just send the message
         handleSend()
       }
     }
