@@ -14,16 +14,16 @@ const getSlashWord = (text: string): string | null => {
   const lastSpaceSlash = text.lastIndexOf(' /')
   const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
   if (slashStart === -1) return null
-  
+
   const afterSlash = text.slice(slashStart)
-  
+
   // If there's already a colon, the command is complete
   if (afterSlash.includes(':')) return null
-  
+
   // Extract the word after the slash (until space or end)
   const nextSpace = afterSlash.indexOf(' ')
   const word = nextSpace === -1 ? afterSlash : afterSlash.slice(0, nextSpace)
-  
+
   // Return the word to show autocomplete
   return word
 }
@@ -267,7 +267,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     // Handle Enter key
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
       e.preventDefault()
-      
+
       // If autocomplete panel is visible, select the highlighted command
       if (showAutocomplete) {
         const buttons = document.querySelectorAll('[data-id^="autocomplete-item-"]')
