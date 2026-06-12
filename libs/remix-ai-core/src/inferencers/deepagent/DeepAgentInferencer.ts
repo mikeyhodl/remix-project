@@ -69,6 +69,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   // TEMP GC PROBE — remove after investigation.
   // Tracks how many instances are alive vs. finalized so we can see whether
   // old instances are actually reclaimed after enable()/reinitialize() swaps.
+  // Set to true to enable [DeepAgent-GC] console lines (instance lifecycle tracing).
+  static __gcLogging = false
+
   private static __instanceSeq = 0
   private static __liveCount = 0
   private static __finalizedCount = 0
@@ -79,7 +82,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         DeepAgentInferencer.__finalizedCount++
         DeepAgentInferencer.__liveCount--
         // eslint-disable-next-line no-console
-        console.log(
+        if (DeepAgentInferencer.__gcLogging) console.log(
           `[DeepAgent-GC] ♻️ FINALIZED ${label} | live=${DeepAgentInferencer.__liveCount} finalized=${DeepAgentInferencer.__finalizedCount}`
         )
       })
@@ -97,14 +100,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
   }
 
-  // TEMP GC PROBE — expose stats on the global so you can poll from DevTools:
-  //   __deepAgentGcStats()
-  private static readonly __exposeStats = (() => {
-    try {
-      (globalThis as any).__deepAgentGcStats = () => DeepAgentInferencer.__gcStats()
-    } catch { /* non-browser env — ignore */ }
-    return true
-  })()
+  // To inspect GC stats from DevTools, run:
+  //   import('@remix/remix-ai-core').then(m => m.DeepAgentInferencer.__gcStats())
+  // or temporarily set DeepAgentInferencer.__gcLogging = true in the console.
 
   private resetSessionThread(): void {
     const oldId = this.sessionThreadId
@@ -208,7 +206,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     DeepAgentInferencer.__liveCount++
     DeepAgentInferencer.__finalizationRegistry?.register(this, label, this)
     // eslint-disable-next-line no-console
-    console.log(`[DeepAgent-GC] 🆕 CREATED ${label} | live=${DeepAgentInferencer.__liveCount} created=${DeepAgentInferencer.__instanceSeq}`)
+    if (DeepAgentInferencer.__gcLogging) console.log(`[DeepAgent-GC] 🆕 CREATED ${label} | live=${DeepAgentInferencer.__liveCount} created=${DeepAgentInferencer.__instanceSeq}`)
   }
 
   async initialize(): Promise<void> {
@@ -992,7 +990,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     // DevTools), something is still retaining the instance.
     this.__closed = true
     // eslint-disable-next-line no-console
-    console.log(`[DeepAgent-GC] 🛑 CLOSE #${this.__instanceId} thread=${this.sessionThreadId} | live=${DeepAgentInferencer.__liveCount}`)
+    if (DeepAgentInferencer.__gcLogging) console.log(`[DeepAgent-GC] 🛑 CLOSE #${this.__instanceId} thread=${this.sessionThreadId} | live=${DeepAgentInferencer.__liveCount}`)
 
     if (this.memoryBackend) {
       this.memoryBackend.close()
