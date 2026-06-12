@@ -1277,11 +1277,10 @@ const PlanManagerOverlay: React.FC<{
   plugin: PlanManagerPlugin
   snap: PlanManagerSnapshot
 }> = ({ plugin, snap }) => {
-  // null = no expanded section (Plans / Top up / Usage all collapsed). The
-  // panel landing view is intentionally quiet: hero + a summary of included
-  // quotas + (when relevant) an upgrade promo. Tabs only expand on demand
-  // OR when another plugin opens us with a routing intent (see effect below).
-  const [activeSection, setActiveSection] = React.useState<'plans' | 'topup' | 'usage' | null>(null)
+  // 'credits' = default landing view (hero + quotas). Other tabs expand
+  // their own section and collapse the credits view. null means no tab is
+  // active (used internally when a feature is hidden by permissions).
+  const [activeSection, setActiveSection] = React.useState<'credits' | 'plans' | 'topup' | 'usage' | null>('credits')
 
   // When a non-UI plugin opens us with an intent, follow its routing
   // hint. We track the intent identity (reference) so a fresh OPEN_OVERLAY
@@ -1331,10 +1330,11 @@ const PlanManagerOverlay: React.FC<{
   // intent) selected a tab the backend has since hidden, drop the
   // selection so we don't render a section without its nav entry.
   useEffect(() => {
-    if (activeSection === 'plans' && !ui.showPlans) setActiveSection(null)
+    if (activeSection === 'credits' && !ui.showCredits) setActiveSection(null)
+    else if (activeSection === 'plans' && !ui.showPlans) setActiveSection(null)
     else if (activeSection === 'topup' && !ui.showTopUps) setActiveSection(null)
     else if (activeSection === 'usage' && !ui.showUsage) setActiveSection(null)
-  }, [activeSection, ui.showPlans, ui.showTopUps, ui.showUsage])
+  }, [activeSection, ui.showCredits, ui.showPlans, ui.showTopUps, ui.showUsage])
 
   const refreshDate = formatDate(status.refreshDate)
 
@@ -1416,8 +1416,13 @@ const PlanManagerOverlay: React.FC<{
           // While the inline Paddle checkout is open we hide all the
           // surrounding context (hero, alerts, promo, quotas, nav) so the
           // user can focus on completing payment. The checkout panel
-          // becomes the only thing in the main area.
-          const checkoutActive = !!snap.pendingCheckout && !snap.checkoutResult
+          // becomes the only thing in the main area. Same for the cart
+          // upsell step — no need to show hero/alerts/nav behind it.
+          const checkoutActive = (!!snap.pendingCheckout && !snap.checkoutResult)
+            || (snap.cartItems.length > 0 && !snap.checkoutResult)
+          // A nav section is open → collapse the landing content so the
+          // selected section gets all the space.
+          const sectionActive = activeSection !== null
           return <>
 
           {/*
@@ -1431,7 +1436,8 @@ const PlanManagerOverlay: React.FC<{
           )}
 
           {/* Alerts are credit/plan-oriented — only meaningful when
-              at least one of those surfaces is visible. */}
+              at least one of those surfaces is visible. Shown above nav
+              so urgent warnings are never buried. */}
           {!checkoutActive && ui.anyVisible && activeAlert === 'beta-transition' && (
             <BetaTransitionAlert
               planCtx={planCtx}
@@ -1458,45 +1464,13 @@ const PlanManagerOverlay: React.FC<{
             />
           )}
 
-          {!checkoutActive && ui.showCredits && (
-            <Hero
-              status={status}
-              refreshDate={refreshDate}
-              planCtx={planCtx}
-              heroCompact={activeAlert === 'beta-transition' || activeAlert === 'plan-lifecycle'}
-              onTopUp={ui.showTopUps ? (() => setActiveSection('topup')) : undefined}
-            />
-          )}
-
-          {/*
-            Upgrade promo. Surfaced when the user has headroom in the
-            catalog (free / starter-tier paid / etc.) and no higher-priority
-            alert is showing — alerts already drive their own CTA, no
-            point doubling up. Sits above the quotas so it gets attention
-            before the user dives into per-model details. Requires the
-            Plans surface — there's nowhere to send the user otherwise.
-          */}
-          {!checkoutActive && ui.showPlans && !activeAlert && canUpgrade && (
-            <UpgradePromoBanner
-              planCtx={planCtx}
-              onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
-            />
-          )}
-
-          {!checkoutActive && ui.showQuotas && (
-            <QuotasPanel
-              quotas={quotas}
-              aiModels={snap.permissions?.ai_models}
-              paidCredits={snap.credits?.paid_credits ?? 0}
-              canUpgrade={canUpgrade && ui.showPlans}
-              onUpgrade={() => setActiveSection('plans')}
-              onTopUp={() => setActiveSection('topup')}
-            />
-          )}
-
-          {!checkoutActive && (ui.showPlans || ui.showTopUps || ui.showUsage) && (
+          {/* Nav tabs — placed right after alerts so they sit at a
+              predictable position. Credits is always the first tab and
+              shows the default landing view (hero + quotas). */}
+          {!checkoutActive && (ui.showCredits || ui.showPlans || ui.showTopUps || ui.showUsage) && (
             <nav className="pm-nav">
               {([
+                { id: 'credits', label: 'Credits', icon: 'fas fa-coins', visible: ui.showCredits },
                 { id: 'plans', label: 'Plans', icon: 'fas fa-layer-group', visible: ui.showPlans },
                 { id: 'topup', label: 'Top up', icon: 'fas fa-bolt', visible: ui.showTopUps },
                 { id: 'usage', label: 'Usage breakdown', icon: 'fas fa-chart-bar', visible: ui.showUsage }
@@ -1514,6 +1488,39 @@ const PlanManagerOverlay: React.FC<{
                 </button>
               ))}
             </nav>
+          )}
+
+          {/* Credits view — shown when the Credits tab is active. */}
+          {!checkoutActive && activeSection === 'credits' && ui.showCredits && (
+            <Hero
+              status={status}
+              refreshDate={refreshDate}
+              planCtx={planCtx}
+              heroCompact={activeAlert === 'beta-transition' || activeAlert === 'plan-lifecycle'}
+              onTopUp={ui.showTopUps ? (() => setActiveSection('topup')) : undefined}
+            />
+          )}
+
+          {/*
+            Upgrade promo — only on the credits view, no alert already
+            showing its own CTA.
+          */}
+          {!checkoutActive && activeSection === 'credits' && ui.showPlans && !activeAlert && canUpgrade && (
+            <UpgradePromoBanner
+              planCtx={planCtx}
+              onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
+            />
+          )}
+
+          {!checkoutActive && activeSection === 'credits' && ui.showQuotas && (
+            <QuotasPanel
+              quotas={quotas}
+              aiModels={snap.permissions?.ai_models}
+              paidCredits={snap.credits?.paid_credits ?? 0}
+              canUpgrade={canUpgrade && ui.showPlans}
+              onUpgrade={() => setActiveSection('plans')}
+              onTopUp={() => setActiveSection('topup')}
+            />
           )}
 
           <main className="pm-main">
