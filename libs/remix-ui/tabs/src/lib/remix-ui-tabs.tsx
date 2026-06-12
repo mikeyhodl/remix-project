@@ -746,11 +746,22 @@ export const TabsUI = (props: TabsUIProps) => {
         `I currently have "${currentFileName}" open at path "${filePath}", but no contracts are deployed yet.`,
         ``,
         `Please help me through the full process:`,
-        `1. Compile "${filePath}"`,
-        `2. Deploy the compiled contract`,
-        `3. Then generate a DApp frontend for it`,
         ``,
-        `Start by compiling the contract.`
+        `STEP 1 - ASK FOR LOCATION CHOICE:`,
+        `Ask me: "Where should I create your DApp?"`,
+        `- Inline: In /frontend folder of current workspace`,
+        `- Workspace: In a new dedicated workspace`,
+        ``,
+        `STEP 2 - COMPILE AND DEPLOY:`,
+        `After I answer, compile "${filePath}" and deploy the compiled contract.`,
+        ``,
+        `STEP 3 - IF I CHOSE INLINE:`,
+        `Check if /frontend exists with content. If yes, ask: "The /frontend folder already has files. Overwrite them?"`,
+        ``,
+        `STEP 4 - GENERATE DAPP:`,
+        `After deployment, call generate_dapp with the deployed contract details and my location choice.`,
+        ``,
+        `Start by asking me where I want to create the DApp.`
       )
     }
 
