@@ -19,8 +19,8 @@ const profile = {
   version: packageJson.version,
   maintainedBy: 'Remix',
   permission: true,
-  events: ['toolApprovalResponse'],
-  methods: ['chatPipe', 'handleExternalMessage', 'getProfile', 'deleteConversation','loadConversations', 'newConversation', 'archiveConversation', 'respondToToolApproval']
+  events: ['toolApprovalResponse', 'stopRequested'],
+  methods: ['chatPipe', 'handleExternalMessage', 'getProfile', 'deleteConversation','loadConversations', 'newConversation', 'archiveConversation', 'respondToToolApproval', 'stopRequest']
 }
 
 export class RemixAIAssistant extends ViewPlugin {
@@ -335,6 +335,19 @@ export class RemixAIAssistant extends ViewPlugin {
    */
   respondToToolApproval(response: { requestId: string; approved: boolean; modifiedArgs?: Record<string, any>; timedOut?: boolean }): void {
     this.emit('toolApprovalResponse', response)
+  }
+
+  /**
+   * Forward a Stop request from the chat UI to the RemixAIPlugin via an engine
+   * event. Done as an event (not a `call`) because the remixAI plugin's
+   * incoming-request queue is busy with the still-running `answer()` call that
+   * we are trying to cancel — issuing `call('remixAI', 'cancelRequest')` here
+   * would queue behind that answer() and never run, since answer() only
+   * finishes once this very cancel aborts its stream (circular wait → deadlock).
+   * Engine events bypass the per-plugin request queue and run synchronously.
+   */
+  stopRequest(historyMessages?: Array<{ role: 'user' | 'assistant'; content: string }>): void {
+    this.emit('stopRequested', historyMessages)
   }
 
   async autoArchiveCheck() {
