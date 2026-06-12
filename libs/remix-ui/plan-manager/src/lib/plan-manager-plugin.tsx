@@ -1521,6 +1521,7 @@ const PlanManagerOverlay: React.FC<{
           {!checkoutActive && activeSection === 'credits' && ui.showPlans && !activeAlert && canUpgrade && (
             <UpgradePromoBanner
               planCtx={planCtx}
+              plans={visiblePlans}
               onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
             />
           )}
@@ -2029,35 +2030,113 @@ const QuotasPanel: React.FC<{
    ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * Lightweight "you can move up" banner. Shown when `selectCanUpgrade` is
- * true and no higher-priority alert is on screen. Copy adapts to the
- * user's current plan kind so we don't tell a paid user about "starting".
+ * Upgrade promo banner. Shown when `selectCanUpgrade` is true.
+ * Derives real pricing, discount, and free-credits data from the highest
+ * (most expensive) plan in the catalogue so the copy always reflects what
+ * the backend actually offers — no hardcoded strings.
  */
 const UpgradePromoBanner: React.FC<{
   planCtx: ReturnType<typeof selectPlanState>
+  plans: ReturnType<typeof selectVisiblePlans>
   onUpgrade: () => void
-}> = ({ planCtx, onUpgrade }) => {
+}> = ({ planCtx, plans, onUpgrade }) => {
+  // Pick the top-tier plan (highest monthly price).
+  const topPlan = React.useMemo(() => {
+    if (!plans || plans.length === 0) return null
+    return [...plans].sort((a, b) => b.priceUsd - a.priceUsd)[0]
+  }, [plans])
+
+  // ── Pricing ──────────────────────────────────────────────────────────
+  const priceCents = topPlan?.priceUsd ?? 0
+  const introDiscount = (topPlan?.introDiscounts ?? [])[0] ?? null
+  let discountedCents: number | null = null
+  let introOfferLabel: string | null = null
+  if (introDiscount && priceCents > 0) {
+    const isPct = introDiscount.discountType === 'percentage'
+    const dc = isPct
+      ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
+      : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
+    if (dc < priceCents) discountedCents = dc
+    const unit = topPlan?.billingInterval === 'year' ? 'year' : 'month'
+    const intervals = introDiscount.maxRecurringIntervals
+    const duration = !introDiscount.recur || !intervals || intervals === 1
+      ? `first ${unit}`
+      : `first ${intervals} ${unit}s`
+    introOfferLabel = isPct
+      ? `${Math.round(introDiscount.amount)}% off ${duration}`
+      : `$${introDiscount.amount.toFixed(2)} off ${duration}`
+  }
+  const fullPriceLabel = priceCents > 0 ? `$${(priceCents / 100).toFixed(2)}` : null
+  const discountedPriceLabel = discountedCents != null ? `$${(discountedCents / 100).toFixed(2)}` : null
+  const cadence = topPlan?.billingInterval === 'year' ? 'per year' : 'per month'
+
+  // ── Free credits ─────────────────────────────────────────────────────
+  // Sum intro credit packages (free gifts bundled at sign-up).
+  const introPkgs = topPlan?.introCreditPackages ?? []
+  const freeCreditsTotal = introPkgs.reduce((sum, cp: any) => sum + (cp.credits ?? 0) * (cp.quantity ?? 1), 0)
+
+  // ── Feature pills ────────────────────────────────────────────────────
+  const features: string[] = topPlan?.features ?? []
+
+  // ── Headlines ────────────────────────────────────────────────────────
+  const planName = topPlan?.name ?? 'Pro'
   const isFree = planCtx.kind === 'no_subscription'
   const headline = isFree
-    ? 'Unlock more AI chat time, advanced models and features with Remix AI Pro and Top Up credits.'
-    : `Get more from Remix AI — upgrade from ${planCtx.planName}`
-  const sub = isFree
-    ? 'Full model lineup, Opus and Sonnet, MCP access, and more.'
-    : 'Bigger included quotas across every model, plus priority access on new releases.'
+    ? `Unlock ${planName} — more models, more credits, more power`
+    : `Get more from Remix AI — upgrade from ${planCtx.planName} to ${planName}`
 
   return (
     <section className="pm-promo" aria-label="Upgrade your plan">
       <div className="pm-promo__glow" aria-hidden />
+
       <div className="pm-promo__body">
         <div className="pm-promo__eyebrow">
           <i className="fas fa-arrow-up-right-dots"></i>
           <span>Upgrade</span>
         </div>
+
         <h3 className="pm-promo__title">{headline}</h3>
-        <p className="pm-promo__sub">{sub}</p>
+
+        {/* Pricing row */}
+        {fullPriceLabel && (
+          <div className="pm-promo__price-row">
+            {discountedPriceLabel ? (
+              <>
+                <span className="pm-promo__price-strike">{fullPriceLabel}</span>
+                <span className="pm-promo__price-current">{discountedPriceLabel}</span>
+              </>
+            ) : (
+              <span className="pm-promo__price-current">{fullPriceLabel}</span>
+            )}
+            <span className="pm-promo__price-cadence">{cadence}</span>
+          </div>
+        )}
+
+        {/* Promo pills */}
+        <div className="pm-promo__pills">
+          {introOfferLabel && (
+            <span className="pm-promo__pill pm-promo__pill--offer">
+              <i className="fas fa-tag"></i>
+              {introOfferLabel}
+            </span>
+          )}
+          {freeCreditsTotal > 0 && (
+            <span className="pm-promo__pill pm-promo__pill--credits">
+              <i className="fas fa-gift"></i>
+              {freeCreditsTotal.toLocaleString()} free AI credits
+            </span>
+          )}
+          {features.slice(0, 3).map((f, i) => (
+            <span key={i} className="pm-promo__pill pm-promo__pill--feature">
+              <i className="fas fa-check"></i>
+              {f}
+            </span>
+          ))}
+        </div>
       </div>
+
       <button type="button" className="pm-promo__cta" onClick={onUpgrade}>
-        See plans
+        See {planName} plans
         <i className="fas fa-arrow-right"></i>
       </button>
     </section>

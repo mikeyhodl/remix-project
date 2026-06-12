@@ -3452,6 +3452,69 @@
   }
 }
 
+/* Pricing row */
+.pm-promo__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 4px;
+  flex-wrap: wrap;
+}
+.pm-promo__price-strike {
+  font-size: 14px;
+  color: var(--pm-text-mute);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.pm-promo__price-current {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.pm-promo__price-cadence {
+  font-size: 12px;
+  color: var(--pm-text-mute);
+  text-transform: lowercase;
+}
+
+/* Promo pills */
+.pm-promo__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pm-promo__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.pm-promo__pill i {
+  font-size: 10px;
+}
+.pm-promo__pill--offer {
+  background: rgba(80, 220, 120, 0.15);
+  border: 1px solid rgba(80, 220, 120, 0.35);
+  color: rgb(100, 230, 140);
+}
+.pm-promo__pill--credits {
+  background: rgba(140, 110, 255, 0.15);
+  border: 1px solid rgba(140, 110, 255, 0.35);
+  color: rgba(200, 180, 255, 0.95);
+}
+.pm-promo__pill--feature {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--pm-text-mute);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Cart upsell step — intermediate step between plan selection and
    checkout. Bundles credit packages with the subscription.
