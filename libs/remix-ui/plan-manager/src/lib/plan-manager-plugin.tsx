@@ -202,6 +202,16 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   close(): void {
+    // If Paddle checkout is in-progress, clear it before closing — otherwise
+    // re-opening the panel shows an empty checkout frame with no iframe.
+    // Also clear any pending cart so the upsell step doesn't linger on re-open.
+    const snap = this.store.getSnapshot()
+    if (snap.pendingCheckout && !snap.checkoutResult) {
+      this.store.send({ type: 'CHECKOUT_CLOSED' })
+    }
+    if (snap.cartItems.length > 0 && !snap.checkoutResult) {
+      this.store.send({ type: 'CART_CLEAR' })
+    }
     this.store.send({ type: 'CLOSE_OVERLAY' })
   }
 
@@ -1028,11 +1038,11 @@ export class PlanManagerPlugin extends ViewPlugin {
    * webhook has been processed. Per the brief: every 2s for the first 15s,
    * then every 5s up to a 60s soft cap. Hard ceiling at 5 minutes total.
    *
-   * For subscriptions we poll `GET /billing/subscription` for
-   * `hasActiveSubscription === true`. For credit packages (which never appear
-   * in /billing/subscription) we poll `GET /billing/transaction/:txnId` and
-   * stop on a terminal status. The 404 + `{ status: 'pending' }` body is the
-   * documented "keep polling" signal — *not* an error.
+   * When a `transactionId` is available (all normal Paddle flows) we poll
+   * `GET /billing/transaction/:txnId` for a terminal status — this works for
+   * both credit topups and subscription purchases and confirms payment without
+   * waiting for the subscription webhook to propagate. We fall back to
+   * `GET /billing/subscription` only when there is no transactionId.
    *
    * On terminal failure (failed/canceled/refunded/disputed) we surface a
    * CHECKOUT_ERROR; on a soft-timeout we leave the result in 'processing' so
@@ -1057,10 +1067,13 @@ export class PlanManagerPlugin extends ViewPlugin {
     const HARD_CAP_MS = 300_000
     const intervalAt = (elapsed: number) => (elapsed < 15_000 ? 2_000 : 5_000)
 
-    // Subscriptions are confirmed via /billing/subscription. Credit topups
-    // *require* the transactionId since they never appear there.
-    const useTransactionPoll = intent === 'topup'
-    if (useTransactionPoll && !transactionId) {
+    // Use the transaction endpoint whenever we have a transactionId — it gives
+    // a direct payment-confirmed signal for both topups and subscriptions,
+    // without depending on the subscription webhook propagating first.
+    // Only fall back to subscription polling when there's no transactionId
+    // (shouldn't happen for normal Paddle flows).
+    const useTransactionPoll = !!transactionId
+    if (!useTransactionPoll && intent === 'topup') {
       planManagerLogger.warn(tag('topup poll without transactionId — single refresh fallback'))
       await this.completePurchaseRefresh()
       return
@@ -2074,13 +2087,14 @@ const Hero: React.FC<{
   // to a calmer copy that doesn't imply a quota the user can hit.
   const renderRenewal = (): React.ReactNode => {
     if (planCtx.kind === 'paid') {
+      const planName = planCtx.planName
       if (planCtx.isCancelled && refreshDate) {
-        return <>Ends <em>{refreshDate}</em> · won't renew</>
+        return <><em>{planName}</em> ends <em>{refreshDate}</em> · won't renew</>
       }
       if (refreshDate && total > 0) {
-        return <>Renews <em>{refreshDate}</em> · <em>+{total.toLocaleString()}</em> credits</>
+        return <><em>{planName}</em> renews <em>{refreshDate}</em></>
       }
-      if (refreshDate) return <>Renews <em>{refreshDate}</em></>
+      if (refreshDate) return <><em>{planName}</em> renews <em>{refreshDate}</em></>
     }
     if (planCtx.kind === 'beta') {
       return planCtx.expiresOn
@@ -2101,7 +2115,6 @@ const Hero: React.FC<{
         <div className="pm-hero__balance-row">
           <div className="pm-hero__amount">
             <span className="pm-hero__num">{paidRemaining.toLocaleString()}</span>
-            <span className="pm-hero__unit">paid AI credits</span>
           </div>
           {showIncluded && (
             <div className="pm-hero__included pm-hero__included--free" aria-label="Free included AI credits">
