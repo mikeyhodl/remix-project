@@ -619,6 +619,29 @@ export interface AvailableProductsResponse {
 }
 
 /**
+ * Request body for POST /products/checkout — multi-item checkout.
+ * Bundles a subscription + credit packages into one Paddle transaction.
+ */
+export interface MultiItemCheckoutRequest {
+  items: Array<{ slug: string; price_id?: number }>
+  provider: 'paddle' | 'crypto'
+  returnUrl?: string
+}
+
+export interface MultiItemCheckoutResponse {
+  checkoutUrl: string
+  transactionId: string
+  provider: string
+  items: Array<{
+    id: number
+    slug: string
+    name: string
+    product_type: 'subscription_plan' | 'credit_package'
+    price_cents: number
+  }>
+}
+
+/**
  * Request body for POST /products/purchase — the unified purchase
  * endpoint for plans, packages, and free-tier grants.
  */
@@ -849,6 +872,20 @@ export interface IntroDiscount {
 }
 
 /**
+ * Intro credit package bundled with a subscription plan as a sign-up
+ * incentive (e.g. "20,000 Free AI Credits"). Auto-added to the checkout
+ * transaction by the backend.
+ */
+export interface IntroCreditPackage {
+  id: number
+  slug: string
+  name: string
+  credits: number
+  /** How many of this package are included (usually 1). */
+  quantity: number
+}
+
+/**
  * Subscription plan - recurring monthly credit allocation
  */
 export interface SubscriptionPlan {
@@ -880,8 +917,11 @@ export interface SubscriptionPlan {
    * `price_id` through to `/products/purchase`.
    */
   prices?: AvailableProductPrice[]
-  /** Promotional intro discount, when the plan has a launch offer. */
-  introDiscount?: IntroDiscount | null
+  /** Promotional intro discounts (launch offers). An array — multiple
+   *  discounts may apply (e.g. percentage + flat combined). */
+  introDiscounts?: IntroDiscount[]
+  /** Free/bonus credit packages included with sign-up (intro gift). */
+  introCreditPackages?: IntroCreditPackage[]
 }
 
 /**

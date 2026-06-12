@@ -32,6 +32,7 @@ import {
   type CheckoutResultKind,
   type CheckoutIntent,
   type CheckoutBreakdown,
+  type CartItem,
   type PlanState,
   type CreditStatus,
   type CreditState,
@@ -184,8 +185,12 @@ export class PlanManagerPlugin extends ViewPlugin {
    * screen. Pass an `intent` to pre-select a section and/or surface the
    * feature key that triggered the open.
    */
-  async open(intent?: OpenIntent): Promise<void> {
-    this.store.send({ type: 'OPEN_OVERLAY', intent })
+  async open(intent?: OpenIntent | string): Promise<void> {
+    // Support string shortcut from nudge targets: 'topup' → { initialSection: 'topup' }
+    const resolved: OpenIntent | undefined = typeof intent === 'string'
+      ? { initialSection: intent as OpenIntent['initialSection'] }
+      : intent
+    this.store.send({ type: 'OPEN_OVERLAY', intent: resolved })
     // Refresh on every open — catalog (plans/packages) and, when signed
     // in, account-scoped data (credits/quotas, subscription, permissions).
     // This keeps the panel consistent with the API instead of relying on
@@ -335,29 +340,87 @@ export class PlanManagerPlugin extends ViewPlugin {
       return
     }
 
-    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
+    // Free plan → straight to checkout (no upsell opportunity).
+    if (targetIsFree) {
+      this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
+      await this.runCheckout('subscription', itemLabel, async () => {
+        const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
+        if (!productsApi) return { ok: false, error: 'Products API unavailable' }
+        const req: any = { slug: planId, provider: 'paddle' }
+        if (typeof resolvedPriceId === 'number') req.price_id = resolvedPriceId
+        const resp = await productsApi.purchaseProduct(req)
+        if (!resp?.ok) return { ok: false, error: resp?.error || 'Could not start purchase.' }
+        const data: any = resp.data
+        if (data?.immediate === true) {
+          return { ok: true, data: { immediate: true, message: data.message } as any }
+        }
+        return { ok: true, data: { transactionId: data?.transactionId, checkoutUrl: data?.checkoutUrl } }
+      })
+      return
+    }
+
+    // Paid plan → seed the cart with this plan and show the upsell step.
+    // The user can then add credit packages before proceeding to checkout.
+    this.store.send({ type: 'CART_CLEAR' })
+    this.store.send({
+      type: 'CART_ADD',
+      item: {
+        slug: planId,
+        name: itemLabel,
+        productType: 'subscription_plan',
+        priceCents: plan?.priceUsd ?? 0,
+        priceId: resolvedPriceId,
+        billingInterval: plan?.billingInterval ?? 'month'
+      }
+    })
+  }
+
+  /**
+   * Multi-item checkout — bundles a subscription plan + optional credit
+   * packages into a single Paddle transaction via POST /products/checkout.
+   * The cart is built up by the upsell UI; this fires when the user hits
+   * "Proceed to checkout" from the cart step.
+   */
+  async checkoutCart(): Promise<void> {
+    const snap = this.store.getSnapshot()
+    const cart = snap.cartItems
+    if (cart.length === 0) return
+
+    // Build a label from all items for the pending-checkout indicator.
+    const planItem = cart.find(i => i.productType === 'subscription_plan')
+    const itemLabel = planItem
+      ? `${planItem.name} + ${cart.length - 1} add-on${cart.length - 1 !== 1 ? 's' : ''}`
+      : cart.map(i => i.name).join(' + ')
+    const productId = planItem?.slug ?? cart[0].slug
+
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId })
+
     await this.runCheckout('subscription', itemLabel, async () => {
       const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
       if (!productsApi) return { ok: false, error: 'Products API unavailable' }
-      const req: any = { slug: planId, provider: 'paddle' }
-      if (typeof resolvedPriceId === 'number') req.price_id = resolvedPriceId
-      const resp = await productsApi.purchaseProduct(req)
+
+      const items = cart.map(item => {
+        const entry: { slug: string; price_id?: number } = { slug: item.slug }
+        if (typeof item.priceId === 'number') entry.price_id = item.priceId
+        return entry
+      })
+
+      const resp = await productsApi.checkoutProducts({
+        items,
+        provider: 'paddle'
+      })
+
       if (!resp?.ok) {
         const err = (resp?.data as any)?.error || resp?.error
         if (err === 'ALREADY_SUBSCRIBED') {
-          // Defensive fallback — the pre-flight above should normally have
-          // routed us already, but the user's local snapshot might be stale.
-          void this.changePlan(planId, resolvedPriceId)
-          return { ok: false, error: 'You already have an active paid subscription. Switching to the change-plan flow…' }
+          // Fall back to single-plan change flow for the subscription item.
+          if (planItem) void this.changePlan(planItem.slug, planItem.priceId)
+          return { ok: false, error: 'You already have an active subscription. Switching to change-plan flow…' }
         }
-        return { ok: false, error: resp?.error || 'Could not start purchase.' }
+        return { ok: false, error: resp?.error || 'Could not start checkout.' }
       }
+
       const data: any = resp.data
-      // Free / immediate-grant path — no checkout, just refresh.
-      if (data?.immediate === true) {
-        return { ok: true, data: { immediate: true, message: data.message } as any }
-      }
-      // Paid path — standard checkout payload.
       return { ok: true, data: { transactionId: data?.transactionId, checkoutUrl: data?.checkoutUrl } }
     })
   }
@@ -888,18 +951,27 @@ export class PlanManagerPlugin extends ViewPlugin {
             isPopular: p.is_popular === true,
             providers: mapProviders(topProviders),
             prices,
-            introDiscount: p.intro_discount
-              ? {
-                id: p.intro_discount.id,
-                name: p.intro_discount.name,
-                code: p.intro_discount.code,
-                discountType: p.intro_discount.discount_type,
-                amount: Number(p.intro_discount.amount) || 0,
-                currency: p.intro_discount.currency ?? null,
-                recur: p.intro_discount.recur === true,
-                maxRecurringIntervals: p.intro_discount.max_recurring_intervals ?? null
-              }
-              : null
+            introDiscounts: Array.isArray(p.intro_discounts) && p.intro_discounts.length > 0
+              ? p.intro_discounts.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                code: d.code,
+                discountType: d.discount_type,
+                amount: Number(d.amount) || 0,
+                currency: d.currency ?? null,
+                recur: d.recur === true,
+                maxRecurringIntervals: d.max_recurring_intervals ?? null
+              }))
+              : [],
+            introCreditPackages: Array.isArray(p.intro_credit_packages) && p.intro_credit_packages.length > 0
+              ? p.intro_credit_packages.map((cp: any) => ({
+                id: cp.id,
+                slug: cp.slug,
+                name: cp.name,
+                credits: Number(cp.credits) || 0,
+                quantity: Number(cp.quantity) || 1
+              }))
+              : []
           }
         })
 
@@ -1433,17 +1505,21 @@ const PlanManagerOverlay: React.FC<{
                 : 'one-time'
               const features = plan?.features ?? []
               const credits = plan?.creditsPerMonth ?? pkg?.credits ?? null
+              // Extra items in cart (credit add-ons bundled with the plan).
+              const cartAddons = snap.cartItems.filter(i => i.productType === 'credit_package')
+              // Intro credit packages auto-added by the backend (free gifts).
+              const introCreditPkgs = plan?.introCreditPackages ?? []
 
               // Intro launch-offer banner — the same promo merchandised on
               // the plan cards, reinforced here so the user sees why their
               // "due today" is lower than the headline price.
-              const introDiscount = plan?.introDiscount ?? null
+              const introDiscount = (plan?.introDiscounts ?? [])[0] ?? null
               let introOfferLabel: string | null = null
               let discountedPriceFormatted: string | null = null
               if (introDiscount && priceCents > 0) {
                 const isPct = introDiscount.discountType === 'percentage'
                 const discountedCents = isPct
-                  ? Math.max(0, Math.round(priceCents * (1 - introDiscount.amount / 100)))
+                  ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
                   : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
                 if (discountedCents < priceCents) {
                   discountedPriceFormatted = `$${(discountedCents / 100).toFixed(2)}`
@@ -1497,7 +1573,7 @@ const PlanManagerOverlay: React.FC<{
                         <span className="pm-inline-checkout__price-amount">{discountedPriceFormatted ?? priceFormatted}</span>
                         <span className="pm-inline-checkout__price-period">{billingLabel}</span>
                       </div>
-                      {credits !== null && (
+                      {credits !== null && credits > 0 && (
                         <div className="pm-inline-checkout__credits">
                           <i className="fas fa-bolt"></i>
                           <span>{credits.toLocaleString()} credits{plan ? ' / month' : ''}</span>
@@ -1508,6 +1584,25 @@ const PlanManagerOverlay: React.FC<{
                         <div className="pm-inline-checkout__intro-offer" title={introDiscount?.name ?? undefined}>
                           <i className="fas fa-tags" aria-hidden></i>
                           <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+                        </div>
+                      )}
+
+                      {/* Bundled credit add-ons from multi-item cart */}
+                      {(cartAddons.length > 0 || introCreditPkgs.length > 0) && (
+                        <div className="pm-inline-checkout__addons">
+                          <div className="pm-inline-checkout__addons-label">Also in this order:</div>
+                          {introCreditPkgs.map((cp: any) => (
+                            <div key={cp.slug} className="pm-inline-checkout__addon-row pm-inline-checkout__addon-row--gift">
+                              <span><i className="fas fa-gift"></i> {cp.name || `${(cp.credits * (cp.quantity || 1)).toLocaleString()} free AI credits`}</span>
+                              <span className="pm-inline-checkout__addon-free">FREE</span>
+                            </div>
+                          ))}
+                          {cartAddons.map(addon => (
+                            <div key={addon.slug} className="pm-inline-checkout__addon-row">
+                              <span><i className="fas fa-bolt"></i> {addon.name}</span>
+                              <span>${(addon.priceCents / 100).toFixed(2)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
 
@@ -1568,7 +1663,15 @@ const PlanManagerOverlay: React.FC<{
                 </div>
               )
             })()}
-            {!(snap.pendingCheckout && !snap.checkoutResult) && ui.showPlans && activeSection === 'plans' && (
+            {!(snap.pendingCheckout && !snap.checkoutResult) && snap.cartItems.length > 0 && !snap.checkoutResult && (
+              <CartUpsellStep
+                cart={snap.cartItems}
+                packages={visiblePackages}
+                plans={visiblePlans}
+                plugin={plugin}
+              />
+            )}
+            {!(snap.pendingCheckout && !snap.checkoutResult) && snap.cartItems.length === 0 && ui.showPlans && activeSection === 'plans' && (
               <PlansSection
                 plans={visiblePlans}
                 currentPlanId={planCtx.planId}
@@ -1581,7 +1684,7 @@ const PlanManagerOverlay: React.FC<{
                 cancelledNotice={planCtx.kind === 'paid' && planCtx.isCancelled ? { expiresOn: planCtx.expiresOn } : null}
               />
             )}
-            {!(snap.pendingCheckout && !snap.checkoutResult) && ui.showTopUps && activeSection === 'topup' && (
+            {!(snap.pendingCheckout && !snap.checkoutResult) && snap.cartItems.length === 0 && ui.showTopUps && activeSection === 'topup' && (
               <TopUpSection
                 packages={visiblePackages}
                 purchasingId={purchasingProductId}
@@ -1600,6 +1703,7 @@ const PlanManagerOverlay: React.FC<{
               ? <>Signed in · billing data live</>
               : <>Catalog only · sign in to manage your subscription</>}
           </div>
+          <div className="pm-footer__vat">All prices exclude VAT/tax where applicable</div>
           <div className="pm-footer__links">
             <a href="https://remix-ide.readthedocs.io/" target="_blank" rel="noreferrer">Docs</a>
             <a href="https://discord.gg/TWfKkZVwJW" target="_blank" rel="noreferrer">Support</a>
@@ -1964,15 +2068,16 @@ const Hero: React.FC<{
             <span className="pm-hero__unit">paid AI credits</span>
           </div>
           {showIncluded && (
-            <div className="pm-hero__included" aria-label="Included AI credits remaining">
-              <span className="pm-hero__included-kicker">Included AI</span>
+            <div className="pm-hero__included pm-hero__included--free" aria-label="Free included AI credits">
+              <span className="pm-hero__included-kicker">Free included AI</span>
               {hasUnlimitedIncluded ? (
                 <span className="pm-hero__included-value">Unlimited</span>
               ) : (
                 <span className="pm-hero__included-value">
                   {includedRemaining.toLocaleString()}
-                  <span>/</span>
-                  {includedTotal.toLocaleString()}
+                  {includedRemaining !== includedTotal && (
+                    <><span>/</span>{includedTotal.toLocaleString()}</>
+                  )}
                 </span>
               )}
               <span className="pm-hero__included-label">credits</span>
@@ -2239,13 +2344,13 @@ const PlanCard: React.FC<{
   // We compute the discounted headline price to entice, and surface the
   // offer name as a badge. The actual discount is applied by Paddle at
   // checkout via the prefilled discount code.
-  const introDiscount = plan.introDiscount ?? null
+  const introDiscount = (plan.introDiscounts ?? [])[0] ?? null
   let discountedPriceLabel: string | null = null
   let introOfferLabel: string | null = null
   if (introDiscount && !isFree && selectedPriceCents > 0) {
     const isPct = introDiscount.discountType === 'percentage'
     const discountedCents = isPct
-      ? Math.max(0, Math.round(selectedPriceCents * (1 - introDiscount.amount / 100)))
+      ? Math.max(0, Math.floor(selectedPriceCents * (1 - introDiscount.amount / 100)))
       : Math.max(0, selectedPriceCents - Math.round(introDiscount.amount * 100))
     if (discountedCents < selectedPriceCents) {
       discountedPriceLabel = `$${(discountedCents / 100).toFixed(2)}`
@@ -2343,6 +2448,16 @@ const PlanCard: React.FC<{
           <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
         </div>
       )}
+      {(plan.introCreditPackages ?? []).length > 0 && (
+        <div className="pm-plan__intro-credits">
+          <i className="fas fa-gift" aria-hidden></i>
+          <span>
+            {(plan.introCreditPackages ?? []).map((cp: any) =>
+              `${(cp.credits * (cp.quantity || 1)).toLocaleString()} free AI credits`
+            ).join(' + ')}
+          </span>
+        </div>
+      )}
       {savingsBadge && (
         <div className="pm-plan__savings" title="Compared to paying month-to-month">
           <i className="fas fa-sparkles" aria-hidden></i>
@@ -2397,6 +2512,167 @@ const PlanCard: React.FC<{
         </>
       )}
     </article>
+  )
+}
+
+// ─── Cart upsell step ───────────────────────────────────────────────
+// Shown after the user picks a paid plan. Offers credit packages to
+// bundle into a single Paddle transaction (multi-item checkout).
+const CartUpsellStep: React.FC<{
+  cart: CartItem[]
+  packages: any[]
+  plans: any[]
+  plugin: PlanManagerPlugin
+}> = ({ cart, packages, plans, plugin }) => {
+  const planItem = cart.find(i => i.productType === 'subscription_plan')
+  const addedSlugs = new Set(cart.filter(i => i.productType === 'credit_package').map(i => i.slug))
+  const cartTotal = cart.reduce((sum, item) => sum + item.priceCents, 0)
+
+  // Look up intro discount from the plan catalog to show promo banner.
+  const planObj = planItem ? plans.find((p: any) => p.id === planItem.slug) : null
+  const introDiscount = (planObj?.introDiscounts ?? [])[0] ?? null
+
+  const addPackage = (pkg: any) => {
+    plugin.store.send({
+      type: 'CART_ADD',
+      item: {
+        slug: pkg.id,
+        name: pkg.name,
+        productType: 'credit_package',
+        priceCents: pkg.priceUsd ?? 0,
+        credits: pkg.credits
+      }
+    })
+  }
+
+  const removePackage = (slug: string) => {
+    plugin.store.send({ type: 'CART_REMOVE', slug })
+  }
+
+  const goBack = () => {
+    plugin.store.send({ type: 'CART_CLEAR' })
+  }
+
+  const proceed = () => {
+    void plugin.checkoutCart()
+  }
+
+  return (
+    <div className="pm-cart-upsell">
+      <div className="pm-cart-upsell__header">
+        <button className="pm-cart-upsell__back" onClick={goBack}>
+          <i className="fas fa-arrow-left"></i>
+          <span>Back to plans</span>
+        </button>
+      </div>
+
+      {/* Discount notice — tell the user that a promo will be applied */}
+      {introDiscount && (
+        <div className="pm-cart-upsell__discount-notice">
+          <i className="fas fa-tags"></i>
+          <div>
+            <strong>{introDiscount.name}</strong>
+            <span>
+              {introDiscount.discountType === 'percentage'
+                ? ` — ${Math.round(introDiscount.amount)}% off`
+                : ` — $${introDiscount.amount.toFixed(2)} off`}
+              {' '}will be applied at checkout
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Intro credit packages — free AI credits included with sign-up */}
+      {(planObj?.introCreditPackages ?? []).length > 0 && (
+        <div className="pm-cart-upsell__bonus-notice">
+          <i className="fas fa-gift"></i>
+          <div>
+            <strong>Bonus included</strong>
+            <span>
+              {' — '}
+              {(planObj.introCreditPackages ?? []).map((cp: any) =>
+                `${(cp.credits * (cp.quantity || 1)).toLocaleString()} free AI credits`
+              ).join(' + ')}
+              {' '}added to your account on sign-up
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Current cart summary */}
+      <div className="pm-cart-upsell__summary">
+        <h3 className="pm-cart-upsell__title">Your order</h3>
+        <ul className="pm-cart-upsell__items">
+          {cart.map(item => (
+            <li key={item.slug} className="pm-cart-upsell__item">
+              <div className="pm-cart-upsell__item-info">
+                <span className="pm-cart-upsell__item-name">{item.name}</span>
+                <span className="pm-cart-upsell__item-price">${(item.priceCents / 100).toFixed(2)}</span>
+              </div>
+              {item.productType === 'credit_package' && (
+                <button
+                  className="pm-cart-upsell__item-remove"
+                  onClick={() => removePackage(item.slug)}
+                  title="Remove from cart"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="pm-cart-upsell__total">
+          <span>Total</span>
+          <span>${(cartTotal / 100).toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Upsell: available credit packages */}
+      {packages.length > 0 && (
+        <div className="pm-cart-upsell__addons">
+          <h4 className="pm-cart-upsell__addons-title">
+            <i className="fas fa-bolt"></i>
+            Add AI credits to your order
+          </h4>
+          <p className="pm-cart-upsell__addons-desc">
+            Bundle AI credits with your subscription — one checkout, no extra transaction fees.
+          </p>
+          <div className="pm-cart-upsell__addons-grid">
+            {packages.map((pkg: any) => {
+              const isAdded = addedSlugs.has(pkg.id)
+              return (
+                <button
+                  key={pkg.id}
+                  className={`pm-cart-upsell__addon ${isAdded ? 'is-added' : ''}`}
+                  onClick={() => isAdded ? removePackage(pkg.id) : addPackage(pkg)}
+                >
+                  <span className="pm-cart-upsell__addon-credits">
+                    {(pkg.credits ?? 0).toLocaleString()}
+                  </span>
+                  <span className="pm-cart-upsell__addon-label">AI credits</span>
+                  <span className="pm-cart-upsell__addon-price">
+                    ${((pkg.priceUsd ?? 0) / 100).toFixed(2)}
+                  </span>
+                  <span className="pm-cart-upsell__addon-action">
+                    {isAdded ? <><i className="fas fa-check"></i> Added</> : <><i className="fas fa-plus"></i> Add</>}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Proceed to checkout */}
+      <button className="pm-cart-upsell__checkout-btn" onClick={proceed}>
+        <i className="fas fa-lock"></i>
+        <span>Proceed to checkout — ${(cartTotal / 100).toFixed(2)}</span>
+      </button>
+      <div className="pm-cart-upsell__note">
+        <i className="fas fa-info-circle"></i>
+        <span>You'll complete payment securely via Paddle</span>
+      </div>
+    </div>
   )
 }
 

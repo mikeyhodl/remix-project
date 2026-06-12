@@ -221,9 +221,13 @@ export class NudgePlugin extends Plugin {
       this.engine_.fire('file:saved')
     })
 
-    // Credits updated
-    this.on('auth' as any, 'creditsUpdated', () => {
+    // Credits updated — check if balance is low and nudge to top up
+    this.on('auth' as any, 'creditsUpdated', (credits: any) => {
       this.engine_.fire('user:credits_updated')
+      const balance = typeof credits?.balance === 'number' ? credits.balance : (credits ?? 0)
+      if (balance <= 20000) {
+        this.engine_.fire('user:credits_low')
+      }
     })
   }
 
@@ -527,6 +531,25 @@ export class NudgePlugin extends Plugin {
       },
       showOnce: 'session',
       priority: 8
+    })
+
+    /* ─── Credits low — encourage top-up ─── */
+
+    this.engine_.addRule({
+      id: 'credits-low-topup',
+      condition: 'user:credits_low',
+      action: {
+        type: 'widget',
+        title: 'Running Low on AI Credits',
+        message: 'Your credit balance is getting low. Top up now to keep using AI features without interruption.',
+        actionLabel: 'Top Up Credits',
+        actionTarget: 'planManager::open::topup',
+        icon: 'fas fa-bolt',
+        widgetColor: '#f59e0b',
+        widgetBg: 'rgba(245, 158, 11, 0.1)'
+      },
+      showOnce: 'session',
+      priority: 14
     })
 
     /* ─── Unauthenticated AI nudges — show login prompt after AI engagement ─── */

@@ -45,6 +45,8 @@ import {
   AvailableProductsResponse,
   PurchaseProductRequest,
   PurchaseProductResponse,
+  MultiItemCheckoutRequest,
+  MultiItemCheckoutResponse,
   PreviewSubscriptionChangeRequest,
   PreviewSubscriptionChangeResponse,
   ChangeSubscriptionRequest,
@@ -942,6 +944,15 @@ export class ProductsApiService {
    */
   async purchaseProduct(request: PurchaseProductRequest): Promise<ApiResponse<PurchaseProductResponse>> {
     return this.apiClient.post<PurchaseProductResponse>('/purchase', request)
+  }
+
+  /**
+   * Multi-item checkout — bundles multiple products (e.g. subscription +
+   * credit packages) into a single Paddle transaction.
+   * POST /products/checkout
+   */
+  async checkoutProducts(request: MultiItemCheckoutRequest): Promise<ApiResponse<MultiItemCheckoutResponse>> {
+    return this.apiClient.post<MultiItemCheckoutResponse>('/checkout', request)
   }
 }
 

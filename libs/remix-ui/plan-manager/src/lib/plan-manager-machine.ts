@@ -110,6 +110,8 @@ export interface PlanManagerSnapshot {
   pendingCheckout: CheckoutIntentRecord | null
   /** Live price breakdown from Paddle while the inline checkout is open. */
   checkoutBreakdown: CheckoutBreakdown | null
+  /** Multi-item checkout cart (subscription + credit add-ons). */
+  cartItems: CartItem[]
   errorMessage: string | null
   /**
    * Why the panel was opened. Set on the most recent OPEN_OVERLAY when a
@@ -201,6 +203,17 @@ interface CheckoutIntentRecord {
   productId?: string
 }
 
+/** A single item in the checkout cart (subscription + credit top-ups). */
+export interface CartItem {
+  slug: string
+  name: string
+  productType: 'subscription_plan' | 'credit_package'
+  priceCents: number
+  credits?: number
+  priceId?: number
+  billingInterval?: 'month' | 'year'
+}
+
 interface MachineContext {
   // auth
   token: string | null
@@ -218,6 +231,8 @@ interface MachineContext {
   pendingCheckout: CheckoutIntentRecord | null
   checkoutResult: CheckoutResult | null
   checkoutBreakdown: CheckoutBreakdown | null
+  /** Multi-item checkout cart — subscription + optional credit add-ons. */
+  cartItems: CartItem[]
   // overlay routing
   openIntent: OpenIntent | null
   // confirm dialog
@@ -246,6 +261,10 @@ export type PlanManagerEvent =
   | { type: 'CHECKOUT_CLOSED' }
   | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_RESULT_DISMISS' }
+  // Cart
+  | { type: 'CART_ADD'; item: CartItem }
+  | { type: 'CART_REMOVE'; slug: string }
+  | { type: 'CART_CLEAR' }
   // Plugin-side signal: backend confirmed the purchase + we just refreshed
   // permissions/credits/sub. Promotes 'processing' → 'success' regardless of
   // current data substate (DATA_LOADED alone only fires inside `refreshing`).
@@ -274,6 +293,7 @@ const initialContext: MachineContext = {
   pendingCheckout: null,
   checkoutResult: null,
   checkoutBreakdown: null,
+  cartItems: [],
   openIntent: null,
   confirmDialog: null,
   lastError: null
@@ -362,6 +382,7 @@ export const planManagerMachine = setup({
       // reset (selectPurchasingProductId reads from pendingCheckout).
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.cartItems = []
     },
     setCheckoutClosed: ({ context }) => {
       const intent = context.pendingCheckout?.intent ?? 'subscription'
@@ -369,6 +390,7 @@ export const planManagerMachine = setup({
       context.checkoutResult = { kind: 'closed', intent, itemLabel }
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.cartItems = []
     },
     setCheckoutError: ({ context, event }) => {
       if (event.type !== 'CHECKOUT_ERROR') return
@@ -384,9 +406,24 @@ export const planManagerMachine = setup({
       }
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.cartItems = []
     },
     clearCheckoutResult: ({ context }) => {
       context.checkoutResult = null
+    },
+    cartAdd: ({ context, event }) => {
+      if (event.type !== 'CART_ADD') return
+      // Prevent duplicates by slug — idempotent add.
+      if (!context.cartItems.some(i => i.slug === event.item.slug)) {
+        context.cartItems = [...context.cartItems, event.item]
+      }
+    },
+    cartRemove: ({ context, event }) => {
+      if (event.type !== 'CART_REMOVE') return
+      context.cartItems = context.cartItems.filter(i => i.slug !== event.slug)
+    },
+    cartClear: ({ context }) => {
+      context.cartItems = []
     },
     setOpenIntent: ({ context, event }) => {
       if (event.type !== 'OPEN_OVERLAY' && event.type !== 'TOGGLE_OVERLAY') return
@@ -513,6 +550,12 @@ export const planManagerMachine = setup({
     },
     checkout: {
       initial: 'idle',
+      on: {
+        // Cart events — available in any checkout sub-state.
+        CART_ADD: { actions: ['cartAdd'] },
+        CART_REMOVE: { actions: ['cartRemove'] },
+        CART_CLEAR: { actions: ['cartClear'] }
+      },
       states: {
         idle: {
           on: {
@@ -626,6 +669,7 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     checkoutResult: ctx.checkoutResult,
     pendingCheckout: ctx.pendingCheckout,
     checkoutBreakdown: ctx.checkoutBreakdown,
+    cartItems: ctx.cartItems,
     errorMessage: ctx.lastError,
     isTrialEligible: ctx.isTrialEligible,
     openIntent: ctx.openIntent,
