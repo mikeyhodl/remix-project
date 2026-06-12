@@ -289,7 +289,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
-    props.plugin.call('remixAI', 'cancelRequest').catch(() => { /* best-effort */ })
+    // Use the assistant plugin's stopRequest (engine event) rather than
+    // call('remixAI', 'cancelRequest') so it bypasses remixAI's busy request
+    // queue and aborts the in-flight answer() synchronously.
+    ;(props.plugin as any).stopRequest()
 
     // 3. Stop the spinner so the new conversation starts clean
     setIsStreaming(false)
@@ -1495,13 +1498,18 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       })
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-    // Fire-and-forget so the Stop button stays instant. The plugin-side
-    // cancelRequest is async (rebuilds DeepAgent), but the next prompt
-    // dispatch is gated in remixAIPlugin.answer/code_generation/code_explaining
-    // via DeepAgentManager.awaitReady(), not here.
-    props.plugin.call('remixAI', 'cancelRequest', historyMessages).catch((err) => {
-      remixAILogger.warn('[RemixAI Assistant] cancelRequest failed:', err)
-    })
+    // Fire-and-forget so the Stop button stays instant. Emitted as an engine
+    // event via the assistant plugin (stopRequest) instead of
+    // call('remixAI', 'cancelRequest') so it bypasses remixAI's serialized
+    // request queue — otherwise it would deadlock behind the still-running
+    // answer() it is trying to cancel. The next prompt dispatch is gated in
+    // remixAIPlugin.answer/code_generation/code_explaining via
+    // DeepAgentManager.awaitReady(), not here.
+    try {
+      ;(props.plugin as any).stopRequest(historyMessages)
+    } catch (err) {
+      remixAILogger.warn('[RemixAI Assistant] stopRequest failed:', err)
+    }
 
     // Always stop streaming state
     setIsStreaming(false)
