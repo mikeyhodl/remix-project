@@ -1152,6 +1152,7 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   private async loadAccountData(): Promise<void> {
+    console.debug('[PlanManager] Loading account data')
     try {
       const [credits, subResp, permissions] = await Promise.all([
         this.call('auth', 'getCredits').catch(() => null) as Promise<any>,
@@ -1177,6 +1178,34 @@ export class PlanManagerPlugin extends ViewPlugin {
         // to false when absent so the UI doesn't promise a trial we can't grant.
         isTrialEligible: !!subResp?.isTrialEligible
       })
+
+      // Auto-open the panel to prompt email verification when:
+      //   • the `ai:verified_accounts` feature is enabled (so the gate exists)
+      //   • the user hasn't verified their email (or hasn't added one yet)
+      //   • the panel isn't already open (avoid interrupting an active session)
+      const gateEnabled = !!permissions && hasFeature(permissions, 'ai:verified_accounts')
+      const emailMissing = permissions?.has_email === false
+      const emailUnverified = permissions?.email_verified === false
+      const panelAlreadyOpen = this.store.getSnapshot().isOpen
+      planManagerLogger.log('[PlanManager:email-gate]', {
+        gateEnabled,
+        has_email: permissions?.has_email,
+        email_verified: permissions?.email_verified,
+        emailMissing,
+        emailUnverified,
+        panelAlreadyOpen,
+        willAutoOpen: gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen
+      })
+      if (gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen) {
+        planManagerLogger.log('[PlanManager:email-gate] auto-opening panel → email-unverified')
+        this.store.send({
+          type: 'OPEN_OVERLAY',
+          intent: { reason: 'email-unverified' }
+        })
+        // Focus the side panel tab so the user actually sees it — same as
+        // calling open() from the menu icon or the "Manage" button.
+        this.call('menuicons', 'select', 'planManager').catch(() => { /* noop */ })
+      }
     } catch (err: any) {
       this.store.send({ type: 'DATA_FAILED', message: err?.message ?? 'Failed to load account data' })
     }
