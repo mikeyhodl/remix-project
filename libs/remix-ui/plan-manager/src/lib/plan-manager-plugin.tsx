@@ -86,6 +86,9 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   // Memo to detect repeated AUTH events (auth-plugin re-emits a lot).
   private lastAuthSig = ''
+  // Prevent the free-plan welcome nudge from firing more than once per session
+  // (it fires on every loadAccountData otherwise).
+  private freePlanAutoOpenFired = false
   // Paddle wiring is owned by the plugin so the panel can drive checkout
   // end-to-end without a host shell. The Paddle singleton lives in
   // ./paddle-singleton (formerly @remix-ui/billing).
@@ -196,6 +199,17 @@ export class PlanManagerPlugin extends ViewPlugin {
     // This keeps the panel consistent with the API instead of relying on
     // whatever was loaded at login.
     this.refreshOnOpen()
+    try {
+      // If the side panel is collapsed (d-none), un-hide it first.
+      // showContent alone doesn't remove d-none when isHidden===true &&
+      // the saved panelState also has isHidden===true — the sidePanel handler
+      // deliberately keeps it hidden in that code path.
+      const panelHidden = await this.call('sidePanel' as any, 'isPanelHidden').catch(() => false)
+      if (panelHidden) {
+        await this.call('sidePanel' as any, 'togglePanel').catch(() => {})
+      }
+      await this.call('sidePanel' as any, 'showContent', 'planManager').catch(() => {})
+    } catch { /* noop */ }
     try {
       await this.call('menuicons', 'select', 'planManager')
     } catch { /* noop */ }
@@ -1217,6 +1231,33 @@ export class PlanManagerPlugin extends ViewPlugin {
         })
         // Focus the side panel tab so the user actually sees it — same as
         // calling open() from the menu icon or the "Manage" button.
+        this.call('menuicons', 'select', 'planManager').catch(() => { /* noop */ })
+        return
+      }
+
+      // Auto-open to the Plans section for free-plan users so they see what's
+      // available and are motivated to upgrade or top up. Only fires once per
+      // session (not on every data refresh) and only when the plans surface is
+      // enabled by the backend.
+      const canShowPlans = hasFeature(permissions, 'ui:show-plans')
+      const snap = this.store.getSnapshot()
+      const planState = selectPlanState(snap)
+      const isFreePlan = planState.kind === 'no_subscription'
+      planManagerLogger.log('[PlanManager:free-plan-gate]', {
+        canShowPlans,
+        planKind: planState.kind,
+        isFreePlan,
+        alreadyFired: this.freePlanAutoOpenFired,
+        panelAlreadyOpen,
+        willAutoOpen: canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen
+      })
+      if (canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen) {
+        this.freePlanAutoOpenFired = true
+        planManagerLogger.log('[PlanManager:free-plan-gate] auto-opening panel → free plan')
+        this.store.send({
+          type: 'OPEN_OVERLAY',
+          intent: { initialSection: 'plans', reason: 'feature-required' }
+        })
         this.call('menuicons', 'select', 'planManager').catch(() => { /* noop */ })
       }
     } catch (err: any) {
