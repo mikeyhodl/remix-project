@@ -140,7 +140,8 @@ let requiredModules = [
   'nudgePlugin',
   'helpPlugin',
   'planManager',
-  'assistantState'
+  'assistantState',
+  'thegraph'
 ]
 
 // dependentModules shouldn't be manually activated (e.g hardhat is activated by remixd)
@@ -219,7 +220,8 @@ export function isNative(name) {
     'udappTransactions',
     'txRunner',
     'lifecycle',
-    'skillsexplorermodal'
+    'skillsexplorermodal',
+    'thegraph'
   ]
   return nativePlugins.includes(name) || requiredModules.includes(name) || isInjectedProvider(name) || isVM(name) || isScriptRunner(name)
 }

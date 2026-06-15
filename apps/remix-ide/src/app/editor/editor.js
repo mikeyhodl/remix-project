@@ -14,7 +14,7 @@ const profile = {
   name: 'editor',
   description: 'service - editor',
   version: packageJson.version,
-  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText', 'getPositionAt', 'openReadOnly', 'showCustomDiff', 'hasUnacceptedChanges', 'clearAllBreakpoints', 'acceptDiff', 'discardDiff', 'getDiffSessions', 'setActiveDiff', 'closeDiffSession'],
+  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText', 'getPositionAt', 'openReadOnly', 'showCustomDiff', 'hasUnacceptedChanges', 'clearAllBreakpoints', 'acceptDiff', 'discardDiff', 'getDiffSessions', 'setActiveDiff', 'closeDiffSession', 'openSplitView', 'closeSplitView'],
 }
 
 export default class Editor extends Plugin {
@@ -42,6 +42,10 @@ export default class Editor extends Plugin {
     this.diffSessions = {}  // Store multiple diff sessions: { diffId: { originalPath, modifiedPath, originalContent, modifiedContent, path } }
     this.activeDiffId = null  // Currently active diff session
     this.diffCounter = 0  // Counter for generating unique diff IDs
+
+    // Split view session (for showing two different files side by side)
+    this.splitViewSession = null
+
     this.modes = {
       sol: 'sol',
       yul: 'sol',
@@ -66,7 +70,8 @@ export default class Editor extends Plugin {
       html: 'html',
       css: 'css',
       sql: 'sql',
-      md: 'md'
+      md: 'md',
+      subgraph: 'subgraph'
     }
 
     this.activated = false
@@ -547,6 +552,93 @@ export default class Editor extends Plugin {
 
   hasUnacceptedChanges () {
     return this.api.hasUnacceptedChanges()
+  }
+
+  /**
+   * Open a split view showing two files side by side
+   * @param {string} leftPath - Path of the file to show on the left
+   * @param {string} rightPath - Path of the file to show on the right
+   * @param {string} rightContent - Content for the right side (will be saved to rightPath)
+   */
+  async openSplitView (leftPath, rightPath, rightContent) {
+    try {
+      // Make sure the left file is opened
+      const openedfiles = await this.call('fileManager', 'getOpenedFiles')
+      if (!openedfiles[leftPath]) {
+        await this.call('fileManager', 'openFile', leftPath)
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+
+      // Read left content
+      const leftContent = await this.call('fileManager', 'readFile', leftPath)
+
+      // Create a unique ID for this split view
+      const splitId = `split_${Date.now()}`
+      const leftSessionPath = leftPath + '_split_left_' + splitId
+      const rightSessionPath = rightPath + '_split_right_' + splitId
+
+      // Create sessions for both sides (both read-only for split view)
+      const leftSession = await this._createSession(leftSessionPath, leftContent, this._getMode(leftPath), true)
+      const rightSession = await this._createSession(rightSessionPath, rightContent, this._getMode(rightPath), true)
+
+      // Store both sessions
+      this.sessions[leftSessionPath] = leftSession
+      this.sessions[rightSessionPath] = rightSession
+
+      // Wait for models to be created
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      // Store split view info
+      this.splitViewSession = {
+        id: splitId,
+        leftPath: leftSessionPath,
+        rightPath: rightSessionPath,
+        originalLeftPath: leftPath,
+        originalRightPath: rightPath
+      }
+
+      // Use the diff view infrastructure to show side by side
+      this.setIsDiff(true, leftSessionPath, rightSessionPath)
+      this._switchSession(rightSessionPath)
+
+      return splitId
+    } catch (err) {
+      console.error('[editor] openSplitView failed:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Close the split view and return to normal editing
+   * @param {string} returnToPath - Optional path to switch to after closing split view
+   */
+  async closeSplitView (returnToPath = null) {
+    if (this.splitViewSession) {
+      const originalLeftPath = this.splitViewSession.originalLeftPath
+
+      // Dispose models and clean up sessions
+      if (this.sessions[this.splitViewSession.leftPath]) {
+        this.emit('disposeModel', this.splitViewSession.leftPath)
+        delete this.sessions[this.splitViewSession.leftPath]
+      }
+      if (this.sessions[this.splitViewSession.rightPath]) {
+        this.emit('disposeModel', this.splitViewSession.rightPath)
+        delete this.sessions[this.splitViewSession.rightPath]
+      }
+      this.splitViewSession = null
+
+      // Exit diff view
+      this.setIsDiff(false)
+
+      // Switch to the specified path or the original left file
+      const pathToOpen = returnToPath || originalLeftPath
+      if (pathToOpen && this.sessions[pathToOpen]) {
+        this._switchSession(pathToOpen)
+      }
+    } else {
+      this.setIsDiff(false)
+    }
+    this.renderComponent()
   }
 
   setIsDiff (isDiff, currentDiffFile = null, hashedPathModified = null) {

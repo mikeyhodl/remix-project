@@ -29,6 +29,7 @@ import './remix-ui-editor.css'
 import { circomLanguageConfig, circomTokensProvider } from './syntaxes/circom'
 import { noirLanguageConfig, noirTokensProvider } from './syntaxes/noir'
 import { sqlLanguageConfig, sqlTokensProvider } from './syntaxes/sql'
+import { subgraphLanguageConfig, subgraphTokensProvider } from './syntaxes/subgraph'
 import type { IPosition, IRange } from 'monaco-editor'
 import { GenerationParams } from '@remix/remix-ai-core';
 import { RemixInLineCompletionProvider } from './providers/inlineCompletionProvider'
@@ -1497,6 +1498,7 @@ export const EditorUI = (props: EditorUIProps) => {
     monacoRef.current.languages.register({ id: 'remix-toml' })
     monacoRef.current.languages.register({ id: 'remix-noir' })
     monacoRef.current.languages.register({ id: 'remix-sql' })
+    monacoRef.current.languages.register({ id: 'remix-subgraph' })
 
     // Allow JSON schema requests
     monacoRef.current.languages.json.jsonDefaults.setDiagnosticsOptions({ enableSchemaRequest: true })
@@ -1583,6 +1585,9 @@ export const EditorUI = (props: EditorUIProps) => {
 
     monacoRef.current.languages.setMonarchTokensProvider('remix-sql', sqlTokensProvider as any)
     monacoRef.current.languages.setLanguageConfiguration('remix-sql', sqlLanguageConfig as any)
+
+    monacoRef.current.languages.setMonarchTokensProvider('remix-subgraph', subgraphTokensProvider as any)
+    monacoRef.current.languages.setLanguageConfiguration('remix-subgraph', subgraphLanguageConfig as any)
 
     monacoRef.current.languages.registerDefinitionProvider('remix-solidity', new RemixDefinitionProvider(props, monaco))
     monacoRef.current.languages.registerDocumentHighlightProvider('remix-solidity', new RemixHighLightProvider(props, monaco))
