@@ -617,10 +617,19 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
               </div>
               {risk && data.riskLabel && (
                 <div className="mt-1">
-                  <span className={`badge bg-${risk.badge} d-flex align-items-center gap-1`}
-                    style={{ fontSize: "0.65rem", fontWeight: 600, width: 'fit-content' }}>
-                    <i className={`${risk.icon}`} style={{ fontSize: "0.6rem" }}></i>
-                    {data.riskLabel}
+                  <span className={`badge bg-${risk.badge} d-flex align-items-start gap-1`}
+                    style={{
+                      fontSize: "0.65rem",
+                      fontWeight: 600,
+                      width: 'fit-content',
+                      maxWidth: '100%',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word'
+                    }}>
+                    <i className={`${risk.icon}`} style={{ fontSize: "0.6rem", flexShrink: 0, marginTop: '1px' }}></i>
+                    <span>
+                      {data.riskLabel}
+                    </span>
                   </span>
                 </div>
               )}
