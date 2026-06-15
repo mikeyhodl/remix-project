@@ -171,6 +171,8 @@ export interface EditorUIProps {
   currentFile: string
   currentDiffFile: string
   isDiff: boolean
+  splitViewFile: string
+  splitViewContent: string
   events: {
     onBreakPointAdded: (file: string, line: number) => void
     onBreakPointCleared: (file: string, line: number) => void
@@ -524,6 +526,8 @@ export const EditorUI = (props: EditorUIProps) => {
       monacoRef.current.editor.setModelLanguage(file.model, 'remix-noir')
     } else if (file.language === 'sql') {
       monacoRef.current.editor.setModelLanguage(file.model, 'remix-sql')
+    } else if (file.language === 'subgraph') {
+      monacoRef.current.editor.setModelLanguage(file.model, 'remix-subgraph')
     } else if (file.language === 'md') {
       monacoRef.current.editor.setModelLanguage(file.model, 'markdown')
     }
@@ -1484,6 +1488,9 @@ export const EditorUI = (props: EditorUIProps) => {
     monacoRef.current = monaco
     props.setMonaco(monaco)
 
+    // Define and set the theme for this editor instance
+    defineAndSetTheme(monaco)
+
     // Initialize the inline completion provider
     // By creating the provider instance before registering it, Monaco now has a proper object to work with instead of null,
     // preventing the WeakMap error when processing keystrokes.
@@ -1934,9 +1941,57 @@ export const EditorUI = (props: EditorUIProps) => {
         className={props.isDiff ? "d-block" : "d-none"}
         data-id="diffEditor"
       />
+      {/* Split View - shown when splitViewFile is set */}
+      {props.splitViewFile && !props.isDiff && (
+        <div className="d-flex flex-row w-100 h-100">
+          {/* Left editor */}
+          <div style={{ width: '50%', height: '100%' }}>
+            <Editor
+              width="100%"
+              height="100%"
+              path={props.currentFile}
+              language={editorModelsState[props.currentFile] ? editorModelsState[props.currentFile].language : 'text'}
+              onMount={handleEditorDidMount}
+              beforeMount={handleEditorWillMount}
+              options={{
+                glyphMargin: true,
+                readOnly: editorModelsState[props.currentFile]?.readOnly,
+                inlineSuggest: { enabled: true },
+                minimap: { enabled: false }
+              }}
+              defaultValue={defaultEditorValue}
+            />
+          </div>
+          {/* Right panel */}
+          <div style={{ width: '50%', height: '100%', borderLeft: '1px solid var(--secondary)' }} className="d-flex flex-column">
+            {/* Header */}
+            <div className="d-flex justify-content-between align-items-center px-2 py-1 border-bottom" style={{ backgroundColor: 'var(--secondary)', minHeight: '32px' }}>
+              <span className="small" style={{ color: 'var(--text)' }}>Query Results</span>
+            </div>
+            {/* Results editor */}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <Editor
+                width="100%"
+                height="100%"
+                path={props.splitViewFile}
+                language={props.splitViewFile?.endsWith('.json') ? 'json' : 'text'}
+                value={props.splitViewContent}
+                beforeMount={handleEditorWillMount}
+                options={{
+                  glyphMargin: false,
+                  readOnly: false,
+                  inlineSuggest: { enabled: false },
+                  minimap: { enabled: false }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Regular single editor - shown when NOT in split view */}
       <Editor
         width="100%"
-        height={props.isDiff ? '0%' : '100%'}
+        height={(props.isDiff || props.splitViewFile) ? '0%' : '100%'}
         path={props.currentFile}
         language={editorModelsState[props.currentFile] ? editorModelsState[props.currentFile].language : 'text'}
         onMount={handleEditorDidMount}
@@ -1944,15 +1999,11 @@ export const EditorUI = (props: EditorUIProps) => {
         options={{
           glyphMargin: true,
           readOnly: (!editorRef.current || !props.currentFile) && editorModelsState[props.currentFile]?.readOnly,
-          inlineSuggest: {
-            enabled: true
-          },
-          minimap: {
-            enabled: false
-          }
+          inlineSuggest: { enabled: true },
+          minimap: { enabled: false }
         }}
         defaultValue={defaultEditorValue}
-        className={props.isDiff ? "d-none" : "d-block"}
+        className={(props.isDiff || props.splitViewFile) ? "d-none" : "d-block"}
       />
       {editorModelsState[props.currentFile]?.readOnly && (
         <span className="ps-4 h6 mb-0 w-100 alert-info position-absolute bottom-0 end-0">
