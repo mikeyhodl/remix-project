@@ -146,13 +146,46 @@ export class TheGraphPlugin extends Plugin {
   }
 
   /**
+   * Get the API key from settings and format the endpoint URL if needed
+   */
+  private async getFormattedEndpoint(endpoint: string): Promise<string> {
+    // Check if this is a gateway.thegraph.com URL that needs an API key
+    const gatewayPattern = /^https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\/(.+)$/
+    const match = endpoint.match(gatewayPattern)
+
+    if (match) {
+      // This is a gateway URL without an API key in the path
+      try {
+        const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
+        if (apiKey) {
+          // Insert the API key into the URL: /api/API_KEY/subgraphs/id/...
+          const subgraphId = match[1]
+          return `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${subgraphId}`
+        } else {
+          await this.call('terminal', 'log', {
+            type: 'warn',
+            value: '[TheGraph] No API key configured. Please add your API key in Settings > Connected Services > The Graph API Key.'
+          })
+        }
+      } catch (e) {
+        console.warn('[TheGraph] Failed to get API key from settings:', e)
+      }
+    }
+
+    return endpoint
+  }
+
+  /**
    * Execute a GraphQL query against an endpoint
    */
   async executeQuery(endpoint: string, query: string, variables?: Record<string, any>): Promise<QueryResult> {
     const startTime = Date.now()
 
     try {
-      const response = await fetch(endpoint, {
+      // Format the endpoint with API key if needed
+      const formattedEndpoint = await this.getFormattedEndpoint(endpoint)
+
+      const response = await fetch(formattedEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
