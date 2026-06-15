@@ -43,6 +43,203 @@ export const disablePopoverForSession = (): void => {
   isPopoverDisabledFlag = true
 }
 
+// ===== RESPONSE CACHING IMPLEMENTATION =====
+
+interface CacheEntry {
+  data: KeywordData
+  timestamp: number
+  accessCount: number
+  lastAccessed: number
+}
+
+interface CacheStats {
+  hits: number
+  misses: number
+  size: number
+  evictions: number
+}
+
+// In-memory cache for analysis results
+const analysisCache = new Map<string, CacheEntry>()
+
+// Cache configuration
+const CACHE_CONFIG = {
+  MAX_SIZE: 100,              // Maximum number of cached entries
+  MAX_AGE_MS: 30 * 60 * 1000, // 30 minutes cache TTL
+  CLEANUP_INTERVAL: 5 * 60 * 1000 // Clean up stale entries every 5 minutes
+}
+
+// Cache statistics
+const cacheStats: CacheStats = {
+  hits: 0,
+  misses: 0,
+  size: 0,
+  evictions: 0
+}
+
+/**
+ * Generate a unique cache key based on keyword, context, and file type
+ * Case-sensitive to distinguish between different code elements (e.g., Transfer vs transfer)
+ */
+const getCacheKey = (keyword: string, contextLines: string | undefined, fileType: string): string => {
+  const normalizedKeyword = keyword.trim()
+  const normalizedContext = contextLines?.trim() || ''
+  // Create a hash-like key to keep it concise
+  return `${fileType}::${normalizedKeyword}::${normalizedContext}`
+}
+
+/**
+ * Get cached analysis result if available and not expired
+ */
+const getCachedAnalysis = (cacheKey: string): KeywordData | null => {
+  const entry = analysisCache.get(cacheKey)
+
+  if (!entry) {
+    cacheStats.misses++
+    return null
+  }
+
+  // Check if entry has expired
+  const now = Date.now()
+  const age = now - entry.timestamp
+
+  if (age > CACHE_CONFIG.MAX_AGE_MS) {
+    // Entry expired, remove it
+    analysisCache.delete(cacheKey)
+    cacheStats.misses++
+    cacheStats.evictions++
+    cacheStats.size = analysisCache.size
+    return null
+  }
+
+  // Update access metadata
+  entry.accessCount++
+  entry.lastAccessed = now
+
+  cacheStats.hits++
+  return entry.data
+}
+
+/**
+ * Store analysis result in cache with LRU eviction if needed
+ */
+const setCachedAnalysis = (cacheKey: string, data: KeywordData): void => {
+  // Check if we need to evict entries (LRU-based)
+  if (analysisCache.size >= CACHE_CONFIG.MAX_SIZE && !analysisCache.has(cacheKey)) {
+    // Find least recently used entry
+    let lruKey: string | null = null
+    let lruTime = Infinity
+
+    for (const [key, entry] of analysisCache.entries()) {
+      if (entry.lastAccessed < lruTime) {
+        lruTime = entry.lastAccessed
+        lruKey = key
+      }
+    }
+
+    if (lruKey) {
+      analysisCache.delete(lruKey)
+      cacheStats.evictions++
+    }
+  }
+
+  // Store new entry
+  const now = Date.now()
+  analysisCache.set(cacheKey, {
+    data,
+    timestamp: now,
+    lastAccessed: now,
+    accessCount: 1
+  })
+
+  cacheStats.size = analysisCache.size
+}
+
+/**
+ * Clear all cached entries
+ */
+export const clearAnalysisCache = (): void => {
+  analysisCache.clear()
+  cacheStats.size = 0
+  console.log('[TooltipCache] Cache cleared')
+}
+
+/**
+ * Get cache statistics for debugging
+ */
+export const getCacheStats = (): CacheStats & { hitRate: string } => {
+  const total = cacheStats.hits + cacheStats.misses
+  const hitRate = total > 0 ? ((cacheStats.hits / total) * 100).toFixed(2) : '0.00'
+
+  return {
+    ...cacheStats,
+    hitRate: `${hitRate}%`
+  }
+}
+
+/**
+ * Periodic cleanup of expired cache entries
+ */
+let cleanupInterval: NodeJS.Timeout | null = null
+
+const startCacheCleanup = () => {
+  if (cleanupInterval) return // Already running
+
+  cleanupInterval = setInterval(() => {
+    const now = Date.now()
+    let removedCount = 0
+
+    for (const [key, entry] of analysisCache.entries()) {
+      const age = now - entry.timestamp
+      if (age > CACHE_CONFIG.MAX_AGE_MS) {
+        analysisCache.delete(key)
+        removedCount++
+      }
+    }
+
+    if (removedCount > 0) {
+      cacheStats.evictions += removedCount
+      cacheStats.size = analysisCache.size
+      console.log(`[TooltipCache] Cleaned up ${removedCount} expired entries`)
+    }
+  }, CACHE_CONFIG.CLEANUP_INTERVAL)
+}
+
+// Start cleanup on module load
+startCacheCleanup()
+
+// Stop cleanup on page unload (good practice)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    if (cleanupInterval) {
+      clearInterval(cleanupInterval)
+      cleanupInterval = null
+    }
+  })
+}
+
+// ===== END RESPONSE CACHING IMPLEMENTATION =====
+
+// Expose cache utilities to window for debugging (development only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  ;(window as any).__remixTooltipCache = {
+    getStats: getCacheStats,
+    clear: clearAnalysisCache,
+    inspect: () => {
+      const entries: any[] = []
+      analysisCache.forEach((entry, key) => {
+        entries.push({
+          key: key.substring(0, 80),
+          accessCount: entry.accessCount,
+          ageMinutes: ((Date.now() - entry.timestamp) / 60000).toFixed(2),
+          lastAccessedMinutes: ((Date.now() - entry.lastAccessed) / 60000).toFixed(2)
+        })
+      })
+      return entries.sort((a, b) => b.accessCount - a.accessCount)
+    }
+  }
+}
+
 // Helper function to detect language from filename
 const getLanguageFromFilename = (filename: string): { label: string; code: string } => {
   if (!filename) return { label: 'code', code: '' }
@@ -154,6 +351,7 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
   const [adjustedPosition, setAdjustedPosition] = useState(position)
   const [data, setData] = useState<KeywordData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fromCache, setFromCache] = useState(false)
   const risk = data ? RISK_CONFIG[data.risk] : null
 
   // Fetch keyword data from remixAI
@@ -166,6 +364,22 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
         const currentFile = await plugin.call('fileManager', 'getCurrentFile')
         const isSolidityFile = currentFile?.endsWith('.sol')
         const { label: fileLanguage } = getLanguageFromFilename(currentFile)
+
+        // Generate cache key
+        const cacheKey = getCacheKey(keyword, contextLines, fileLanguage)
+
+        // Check cache first
+        const cachedResult = getCachedAnalysis(cacheKey)
+        if (cachedResult) {
+          console.log('[TooltipCache] Cache hit for:', keyword.substring(0, 30))
+          setData(cachedResult)
+          setFromCache(true)
+          setLoading(false)
+          return
+        }
+
+        console.log('[TooltipCache] Cache miss for:', keyword.substring(0, 30))
+        setFromCache(false)
 
         // Determine if we have context (single word selection) or not (multi-word selection)
         const hasContext = contextLines && contextLines.length > 0
@@ -255,6 +469,8 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
           }
         }
 
+        // Cache the successful result
+        setCachedAnalysis(cacheKey, parsedData)
         setData(parsedData)
       } catch (error) {
         console.error('Failed to fetch keyword info:', error)
@@ -280,7 +496,6 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
     const popup = popRef.current
     const rect = popup.getBoundingClientRect()
     const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
 
     let { x, y } = position
     const margin = 10
@@ -374,7 +589,7 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
               <i className="fas fa-times"></i>
             </button>
             <div className="mb-2" style={{ paddingRight: '16px' }}>
-              <div className="d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center">
                 <code className="web3-tooltip-title" style={{
                   maxWidth: isSelectedText ? '200px' : 'auto',
                   overflow: 'hidden',
@@ -386,6 +601,19 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
                     : data.title
                   }
                 </code>
+                {fromCache && (
+                  <span
+                    title="Loaded from cache"
+                    style={{
+                      fontSize: '0.7rem',
+                      opacity: 0.6,
+                      marginLeft: '6px',
+                      color: 'var(--bs-warning)'
+                    }}
+                  >
+                    <i className="fas fa-bolt"></i>
+                  </span>
+                )}
               </div>
               {risk && data.riskLabel && (
                 <div className="mt-1">
