@@ -100,16 +100,16 @@ function formatRelativeTime(ts: number): string {
 function getSyncBadgeLabel(status: WorkspaceSyncStatus | undefined): string {
   if (!status) return 'Connected'
   switch (status.status) {
-    case 'loading': return 'Loading…'
-    case 'syncing': return 'Syncing…'
-    case 'pushing': return 'Uploading…'
-    case 'error': return 'Error'
-    default:
-      if (status.pendingChanges > 0) {
-        return `${status.pendingChanges} pending`
-      }
-      if (status.lastSync) return formatRelativeTime(status.lastSync)
-      return 'Connected'
+  case 'loading': return 'Loading…'
+  case 'syncing': return 'Syncing…'
+  case 'pushing': return 'Uploading…'
+  case 'error': return 'Error'
+  default:
+    if (status.pendingChanges > 0) {
+      return `${status.pendingChanges} pending`
+    }
+    if (status.lastSync) return formatRelativeTime(status.lastSync)
+    return 'Connected'
   }
 }
 
