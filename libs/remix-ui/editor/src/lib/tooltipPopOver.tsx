@@ -441,7 +441,32 @@ Return a JSON response with the following structure:
 }
 
 Focus on code quality, potential issues, and best practices for ${fileLanguage}. The body should contain max 40 words. Consider the surrounding code context.`
-        const response = await plugin.call('remixAI', 'basic_prompt', prompt)
+
+        // Wrap API call with timeout to detect if AI is busy
+        const apiCallPromise = plugin.call('remixAI', 'basic_prompt', prompt)
+        const busyTimeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('AI_BUSY')), 3000) // 3 second timeout to detect busy state
+        })
+
+        let response
+        try {
+          response = await Promise.race([apiCallPromise, busyTimeoutPromise])
+        } catch (error: any) {
+          if (error?.message === 'AI_BUSY') {
+            // API is taking too long, likely processing another request
+            console.log('[TooltipCache] RemixAI appears to be busy (timeout)')
+            setFromCache(false)
+            setData({
+              title: 'RemixAI Assistant Busy',
+              body: 'The RemixAI assistant is currently processing another request. Please try again once it becomes available.',
+              risk: 'low' as const,
+              riskLabel: 'Busy'
+            })
+            setLoading(false)
+            return
+          }
+          throw error // Re-throw other errors
+        }
 
         // Parse the JSON response
         let parsedData: KeywordData
@@ -704,7 +729,7 @@ ${codeToAnalyze}
                 }}
               >
                 <i className="fas fa-external-link-alt me-1" style={{ fontSize: "0.65rem" }}></i>
-                  Open in RemixAI
+                  Open in RemixAI Assistant
               </button>
               <button
                 className="btn btn-link p-0 text-start"
