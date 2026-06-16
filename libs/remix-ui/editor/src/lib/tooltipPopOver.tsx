@@ -156,28 +156,6 @@ const setCachedAnalysis = (cacheKey: string, data: KeywordData): void => {
 }
 
 /**
- * Clear all cached entries
- */
-export const clearAnalysisCache = (): void => {
-  analysisCache.clear()
-  cacheStats.size = 0
-  console.log('[TooltipCache] Cache cleared')
-}
-
-/**
- * Get cache statistics for debugging
- */
-export const getCacheStats = (): CacheStats & { hitRate: string } => {
-  const total = cacheStats.hits + cacheStats.misses
-  const hitRate = total > 0 ? ((cacheStats.hits / total) * 100).toFixed(2) : '0.00'
-
-  return {
-    ...cacheStats,
-    hitRate: `${hitRate}%`
-  }
-}
-
-/**
  * Periodic cleanup of expired cache entries
  */
 let cleanupInterval: NodeJS.Timeout | null = null
@@ -200,7 +178,6 @@ const startCacheCleanup = () => {
     if (removedCount > 0) {
       cacheStats.evictions += removedCount
       cacheStats.size = analysisCache.size
-      console.log(`[TooltipCache] Cleaned up ${removedCount} expired entries`)
     }
   }, CACHE_CONFIG.CLEANUP_INTERVAL)
 }
@@ -219,26 +196,6 @@ if (typeof window !== 'undefined') {
 }
 
 // ===== END RESPONSE CACHING IMPLEMENTATION =====
-
-// Expose cache utilities to window for debugging (development only)
-if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-  ;(window as any).__remixTooltipCache = {
-    getStats: getCacheStats,
-    clear: clearAnalysisCache,
-    inspect: () => {
-      const entries: any[] = []
-      analysisCache.forEach((entry, key) => {
-        entries.push({
-          key: key.substring(0, 80),
-          accessCount: entry.accessCount,
-          ageMinutes: ((Date.now() - entry.timestamp) / 60000).toFixed(2),
-          lastAccessedMinutes: ((Date.now() - entry.lastAccessed) / 60000).toFixed(2)
-        })
-      })
-      return entries.sort((a, b) => b.accessCount - a.accessCount)
-    }
-  }
-}
 
 // Helper function to detect language from filename
 const getLanguageFromFilename = (filename: string): { label: string; code: string } => {
@@ -382,14 +339,12 @@ export const TooltipPopOver: React.FC<TooltipPopOverProps> = ({
         // Check cache first
         const cachedResult = getCachedAnalysis(cacheKey)
         if (cachedResult) {
-          console.log('[TooltipCache] Cache hit for:', keyword.substring(0, 30))
           setData(cachedResult)
           setFromCache(true)
           setLoading(false)
           return
         }
 
-        console.log('[TooltipCache] Cache miss for:', keyword.substring(0, 30))
         setFromCache(false)
 
         // Determine if we have context (single word selection) or not (multi-word selection)
@@ -456,7 +411,7 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
         // Wrap API call with timeout to detect if AI is busy
         const apiCallPromise = plugin.call('remixAI', 'basic_prompt', prompt)
         const busyTimeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('AI_BUSY')), 3000) // 3 second timeout to detect busy state
+          setTimeout(() => reject(new Error('AI_BUSY')), 5000) // 5 second timeout to detect busy state
         })
 
         let response
@@ -465,7 +420,6 @@ Focus on code quality, potential issues, and best practices for ${fileLanguage}.
         } catch (error: any) {
           if (error?.message === 'AI_BUSY') {
             // API is taking too long, likely processing another request
-            console.log('[TooltipCache] RemixAI appears to be busy (timeout)')
             setFromCache(false)
             setData({
               title: 'RemixAI Assistant Busy',
