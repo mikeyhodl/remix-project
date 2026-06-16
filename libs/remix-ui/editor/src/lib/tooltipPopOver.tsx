@@ -305,14 +305,25 @@ export const openContextualTooltip = (
   const editorRect = editorElement?.getBoundingClientRect()
 
   if (editorRect && monacoRef.current) {
-    const lineHeight = editorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
-    const selectionStartPos = selection.getStartPosition()
     const selectionEndPos = selection.getEndPosition()
-    const startColumn = (selectionStartPos.column + selectionEndPos.column) / 2
-    const startLine = selectionStartPos.lineNumber
 
-    const x = editorRect.left + (startColumn - 1) * 8
-    const y = editorRect.top + (startLine - 1) * lineHeight + lineHeight
+    // Use Monaco's getScrolledVisiblePosition to get accurate screen coordinates
+    // This accounts for scrolling and gives us the exact position
+    const positionToUse = {
+      lineNumber: selectionEndPos.lineNumber,
+      column: selectionEndPos.column
+    }
+
+    const coordinates = editorRef.current.getScrolledVisiblePosition(positionToUse)
+
+    // If coordinates are not available (e.g., position is scrolled out of view),
+    // don't show tooltip
+    if (!coordinates) {
+      return
+    }
+
+    const x = editorRect.left + coordinates.left
+    const y = editorRect.top + coordinates.top
 
     setTooltipData({
       keyword: selectedExpression,
