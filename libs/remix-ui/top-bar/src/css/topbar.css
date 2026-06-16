@@ -43,12 +43,17 @@
 
 .panel-control-btn.active {
   background-color: rgba(var(--bs-primary-rgb), 0.08);
-  color: var(--bs-primary);
+  color: var(--custom-primary);
 }
 
 .panel-control-btn:hover {
   background-color: rgba(var(--bs-primary-rgb), 0.08);
-  color: var(--bs-primary);
+  color: var(--custom-primary);
+}
+
+.panel-control-btn.active:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.16);
+  color: var(--custom-primary);
 }
 
 .top-bar-dropdownItem {
