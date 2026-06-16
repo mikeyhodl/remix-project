@@ -35,53 +35,23 @@ const EnsRegistrationModal: React.FC<EnsRegistrationModalProps> = ({
 
     let ownerAddress: string;
 
-    if (isElectron()) {
-      // In Electron, check if desktopHost is the selected provider and connected
-      try {
-        const selectedProvider = await (plugin as any).call('udappEnv', 'getSelectedProvider');
-        if (selectedProvider !== 'desktopHost') {
-          setNoWallet(true);
-          return;
-        }
+    try {
+      const currentEnv = await (plugin as any).call('blockchain', 'getProviderObject')
+      const [account] = await currentEnv.provider.request({ method: 'eth_requestAccounts' })
 
-        const isConnected = await (plugin as any).call('desktopHost', 'getIsConnected');
-        if (!isConnected) {
-          setNoWallet(true);
-          return;
-        }
-
-        const selectedAccount = await (plugin as any).call('udappEnv', 'getSelectedAccount');
-        if (!selectedAccount) {
-          setNoWallet(true);
-          return;
-        }
-
-        ownerAddress = selectedAccount;
-      } catch (e: any) {
-        console.error('[ENS Registration] Error getting wallet info in Electron:', e);
-        setNoWallet(true);
-        return;
-      }
-    } else {
-      // In browser, use window.ethereum directly
-      if (typeof window.ethereum === 'undefined') {
+      if (!account || currentEnv?.name?.startsWith('vm-')) {
         setNoWallet(true);
         return;
       }
 
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.send('eth_requestAccounts', []);
-        ownerAddress = accounts[0];
-      } catch (e: any) {
-        setError(parseEnsRegistrationError(e));
-        return;
-      }
+      ownerAddress = account;
+    } catch (e: any) {
+      setError(parseEnsRegistrationError(e));
+      return;
     }
 
     setIsRegistering(true);
     try {
-
       const authToken = typeof localStorage !== 'undefined'
         ? localStorage.getItem('remix_access_token')
         : null;
