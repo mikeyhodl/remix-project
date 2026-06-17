@@ -35,7 +35,6 @@ const darkTheme = EditorView.theme({
 
 export function WorkspaceDetails(props: WorkspaceDetailsProps) {
   const { state, dispatch, facade, theme, generateUniqueWorkspaceName, trackMatomoEvent } = useContext(TemplateExplorerContext)
-  const [showEditWorkspaceName, setShowEditWorkspaceName] = useState(false)
   const [uniqueWorkspaceName, setUniqueWorkspaceName] = useState(state.workspaceName)
   useEffect(() => {
     const run = async () => {
@@ -47,15 +46,18 @@ export function WorkspaceDetails(props: WorkspaceDetailsProps) {
 
   return (
     <section data-id="workspace-details-section" className="d-flex flex-column gap-3 workspace-details-section">
-      <div className="d-flex flex-row align-items-center gap-2 px-3 pt-3">
-        {showEditWorkspaceName
-          ? <input data-id="workspace-name-input" type="text" className="form-control form-control-sm tem-form-input" value={uniqueWorkspaceName} onChange={(e) => {
+      <div className="d-flex flex-column gap-1 px-3 pt-3">
+        <label className="tem-form-label">Workspace name</label>
+        <input
+          data-id="workspace-name-input"
+          type="text"
+          className="form-control form-control-sm tem-form-input"
+          value={uniqueWorkspaceName}
+          onChange={(e) => {
             setUniqueWorkspaceName(e.target.value)
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
-          }} />
-          : <span data-id="default-workspace-name-span" className="text-uppercase small fw-semibold fs-6">{uniqueWorkspaceName}</span>
-        }
-        <i data-id="default-workspace-name-edit-icon" className={showEditWorkspaceName ? 'fas fa-lock' : 'fas fa-edit'} style={{ cursor: 'pointer', color: 'var(--bs-secondary-color)' }} onClick={() => setShowEditWorkspaceName(!showEditWorkspaceName)}></i>
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
+          }}
+        />
       </div>
       <div className="d-flex flex-column flex-md-row h-100 px-3 pb-1 workspace-details-content-wrapper">
         <div className="workspace-details-file-explorer">

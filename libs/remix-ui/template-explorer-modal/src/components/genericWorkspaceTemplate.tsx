@@ -73,7 +73,7 @@ export function GenericWorkspaceTemplate() {
 
   return (
     <section data-id={`generic-template-section-${state.workspaceTemplateChosen.value}`} className="tem-form-body">
-      <div className="d-flex flex-column gap-1" style={{position: "sticky", top: "0", background: "var(--bs-body-bg)", padding: ".5rem", paddingBottom: "0"}}>
+      <div className="d-flex flex-column gap-1" style={{ position: 'sticky', top: 0, background: 'var(--bs-body-bg)', padding: '0.5rem' }}>
         <label className="tem-form-label">Workspace name</label>
         <input
           name="workspaceName"
@@ -83,7 +83,7 @@ export function GenericWorkspaceTemplate() {
           value={uniqueWorkspaceName}
           onChange={(e) => {
             setUniqueWorkspaceName(e.target.value)
-            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: uniqueWorkspaceName })
+            dispatch({ type: TemplateExplorerWizardAction.SET_WORKSPACE_NAME, payload: e.target.value })
           }}
         />
       </div>
