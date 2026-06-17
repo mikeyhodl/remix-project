@@ -7,6 +7,7 @@ export interface Command {
   category?: string
   action?: () => void
   disabled?: boolean
+  requiredPermissions?: string[]
 }
 
 interface AutocompletePanelProps {

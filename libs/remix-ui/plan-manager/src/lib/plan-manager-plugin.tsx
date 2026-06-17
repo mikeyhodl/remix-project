@@ -188,6 +188,16 @@ export class PlanManagerPlugin extends ViewPlugin {
     // whatever was loaded at login.
     this.refreshOnOpen()
     try {
+      try {
+        // If the side panel is collapsed (d-none), un-hide it first.
+        // showContent alone doesn't remove d-none when isHidden===true &&
+        // the saved panelState also has isHidden===true — the sidePanel handler
+        // deliberately keeps it hidden in that code path.
+        const panelHidden = await this.call('sidePanel' as any, 'isPanelHidden').catch(() => false)
+        if (panelHidden) {
+          await this.call('sidePanel' as any, 'togglePanel').catch(() => { })
+        }
+      } catch { /* noop */ }
       await this.call('menuicons', 'select', 'planManager')
     } catch { /* noop */ }
   }

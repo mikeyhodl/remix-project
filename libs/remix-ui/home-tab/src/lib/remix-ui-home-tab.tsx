@@ -110,27 +110,33 @@ contract HelloWorld {
   // ─── AI (gated) ───
 
   const openSkillsSelection = async () => {
-    appContext.appStateDispatch({ type: appActionTypes.showSkillsModal, payload: true })
-    trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Skills', isClick: true })
+    if (!hasSkillsPermission) { plugin.call('planManager', 'open') } else {
+      appContext.appStateDispatch({ type: appActionTypes.showSkillsModal, payload: true })
+      trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Skills', isClick: true })
+    }
   }
 
   const openAuditsSelection = async () => {
-    appContext.appStateDispatch({ type: appActionTypes.showChecklistModal, payload: true })
-    trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Audits', isClick: true })
+    if (!hasAuditorPermission) { plugin.call('planManager', 'open') } else {
+      appContext.appStateDispatch({ type: appActionTypes.showChecklistModal, payload: true })
+      trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Audits', isClick: true })
+    }
   }
 
   const startGasOptimization = async () => {
-    await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
-    await plugin.call('menuicons', 'select', 'remixaiassistant')
-    await plugin.call('remixaiassistant', 'newConversation')
-    try {
-      await plugin.call('skillsexplorermodal', 'loadSkill', 'coding-solidity-gas-optimization')
-    } catch (e: any) {
-      plugin.call('notification', 'toast', `Error loading Gas optimization skills ${e.message}`)
+    if (!hasAuditorPermission) { plugin.call('planManager', 'open') } else {
+      await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
+      await plugin.call('menuicons', 'select', 'remixaiassistant')
+      await plugin.call('remixaiassistant', 'newConversation')
+      try {
+        await plugin.call('skillsexplorermodal', 'loadSkill', 'coding-solidity-gas-optimization')
+      } catch (e: any) {
+        plugin.call('notification', 'toast', `Error loading Gas optimization skills ${e.message}`)
+      }
+      setTimeout(() => {
+        plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.`, true)
+      })
     }
-    setTimeout(() => {
-      plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.`, true)
-    })
   }
 
   return (
@@ -232,41 +238,33 @@ contract HelloWorld {
               </a>
             </div>
 
-            {/* AI — gated */}
-            {(hasSkillsPermission || hasAuditorPermission) && (
-              <div className="ht-section">
-                <div className="ht-section-header">
-                  <span className="ht-section-title">AI</span>
-                </div>
-                {hasSkillsPermission && (
-                  <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageLoadSkills" onClick={openSkillsSelection}>
-                    <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-cube"></i></span>
-                    <span className="ht-row-text">
-                      <strong><FormattedMessage id="home.loadSkills" /></strong>
-                      <small>AI skill modules</small>
-                    </span>
-                  </button>
-                )}
-                {hasAuditorPermission && (
-                  <>
-                    <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageLoadAudits" onClick={openAuditsSelection}>
-                      <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-shield-halved"></i></span>
-                      <span className="ht-row-text">
-                        <strong><FormattedMessage id="home.loadAudits" /></strong>
-                        <small>Security audit checklists</small>
-                      </span>
-                    </button>
-                    <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageGasOptimization" onClick={startGasOptimization}>
-                      <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-gauge-high"></i></span>
-                      <span className="ht-row-text">
-                        <strong><FormattedMessage id="home.startGasOptimizationBtn" /></strong>
-                        <small>Optimize gas usage</small>
-                      </span>
-                    </button>
-                  </>
-                )}
+            {/* AI */}
+            <div className="ht-section">
+              <div className="ht-section-header">
+                <span className="ht-section-title">AI</span>
               </div>
-            )}
+              <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageLoadSkills" onClick={openSkillsSelection}>
+                <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-cube"></i></span>
+                <span className="ht-row-text">
+                  <strong><FormattedMessage id="home.loadSkills" /></strong>
+                  <small>AI skill modules</small>
+                </span>
+              </button>
+              <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageLoadAudits" onClick={openAuditsSelection}>
+                <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-shield-halved"></i></span>
+                <span className="ht-row-text">
+                  <strong><FormattedMessage id="home.loadAudits" /></strong>
+                  <small>Security audit checklists</small>
+                </span>
+              </button>
+              <button className="ht-row" style={{ border: '1px solid var(--bs-border-color)' }} data-id="landingPageGasOptimization" onClick={startGasOptimization}>
+                <span className="ht-row-icon" style={{ color: 'var(--custom-ai-color)' }}><i className="fa-solid fa-gauge-high"></i></span>
+                <span className="ht-row-text">
+                  <strong><FormattedMessage id="home.startGasOptimizationBtn" /></strong>
+                  <small>Optimize gas usage</small>
+                </span>
+              </button>
+            </div>
 
           </div>
 
