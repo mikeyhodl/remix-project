@@ -868,6 +868,15 @@ export function RemixUiTopbar() {
           style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
         >
           <div className="d-flex flex-row align-items-center flex-nowrap" style={{ whiteSpace: 'nowrap' }}>
+            <div style={{ whiteSpace: 'nowrap' }}>
+              <GitHubLogin
+                cloneGitRepository={showCloneModal}
+                logOutOfGithub={logOutOfGithub}
+                publishToGist={publishToGist}
+                loginWithGitHub={loginWithGitHub}
+                theme={currentTheme?.quality}
+              />
+            </div>
             {showLoginUI && (
               <LoginButton
                 plugin={plugin}
