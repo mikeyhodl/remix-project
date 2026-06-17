@@ -647,7 +647,7 @@ class AppComponent {
     this.menuicons = new VerticalIcons()
     this.sidePanel = new SidePanel()
     this.hiddenPanel = new HiddenPanel()
-    this.rightSidePanel = new RightSidePanel()
+    this.rightSidePanel = new RightSidePanel(this.desktopClientMode)
     this.popupPanel = new PopupPanel()
     this.overlayPanel = new OverlayPanel()
 
