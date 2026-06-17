@@ -26,6 +26,7 @@ const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-ke
 const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
 const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
 const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
+const enableCodeAnalysisPopover = config.get('settings/editor/code-analysis-popover')
 
 let githubConfig = config.get('settings/github-config') || false
 let ipfsConfig = config.get('settings/ipfs-config') || false
@@ -90,6 +91,12 @@ if (typeof displayErrors !== 'boolean') {
 if (typeof saveEvmState !== 'boolean') {
   config.set('settings/save-evm-state', true)
   saveEvmState = true
+}
+
+let enableCodeAnalysisPopoverBoolean = enableCodeAnalysisPopover
+if (typeof enableCodeAnalysisPopoverBoolean !== 'boolean') {
+  config.set('settings/editor/code-analysis-popover', true)
+  enableCodeAnalysisPopoverBoolean = true
 }
 
 export const initialState: SettingsState = {
@@ -264,6 +271,10 @@ export const initialState: SettingsState = {
   },
   'deepagent-moonshot-api-key': {
     value: deepagentMoonshotApiKey,
+    isLoading: false
+  },
+  'editor/code-analysis-popover': {
+    value: enableCodeAnalysisPopoverBoolean,
     isLoading: false
   },
   toaster: {

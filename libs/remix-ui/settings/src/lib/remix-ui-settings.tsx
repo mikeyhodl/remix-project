@@ -4,7 +4,7 @@ import Fuse from 'fuse.js'
 import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredentialsDescription } from '@remix-ui/helper'
 import { AppConfig, FeatureGroup } from '@remix-api'
 import { AppContext } from '@remix-ui/app'
-import { API_KEYS_ALLOWED_PLANS } from '@remix/remix-ai-core'
+import { API_KEYS_ALLOWED_PLANS, CODE_ANALYSIS_POPOVER_ALLOWED_PLANS } from '@remix/remix-ai-core'
 
 import { initialState, settingReducer } from './settingsReducer'
 import { Toaster } from '@remix-ui/toaster' // eslint-disable-line
@@ -69,6 +69,11 @@ const settingsSections: SettingsSection[] = [
           name: 'text-wrap',
           label: 'settings.wordWrapText',
           type: 'toggle'
+        }, {
+          name: 'editor/code-analysis-popover' as keyof typeof initialState,
+          label: 'settings.editorCodeAnalysisPopover',
+          description: 'settings.editorCodeAnalysisPopoverDescription',
+          type: 'toggle' as const
         }, {
           name: 'personal-mode',
           label: 'settings.enablePersonalModeText',
@@ -318,6 +323,11 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
     return featureGroups.some(fg => API_KEYS_ALLOWED_PLANS.includes(fg.name))
   }, [featureGroups])
 
+  // Check if user can use code analysis popover based on their plan
+  const canUseCodeAnalysisPopover = useMemo(() => {
+    return featureGroups.some(fg => CODE_ANALYSIS_POPOVER_ALLOWED_PLANS.includes(fg.name))
+  }, [featureGroups])
+
   // Fetch user's feature groups on mount
   useEffect(() => {
     const fetchFeatureGroups = async () => {
@@ -351,7 +361,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
   }, [props.plugin])
 
   // Derive visible sections based on app config and user permissions
-  const computeVisibleSections = (config: AppConfig, canUseApiKeys: boolean): SettingsSection[] => {
+  const computeVisibleSections = (config: AppConfig, canUseApiKeys: boolean, canUseCodeAnalysis: boolean): SettingsSection[] => {
     return settingsSections
       .filter(section => {
         if (section.key === 'account' && config['settings.account_management'] === false) {
@@ -360,13 +370,34 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
         return true
       })
       .map(section => {
-        // For AI section, filter out the deepagent-api-keys subsection if user can't use own API keys
-        if (section.key === 'ai' && !canUseApiKeys) {
+        // For AI section, filter based on user permissions
+        if (section.key === 'ai') {
           return {
             ...section,
-            subSections: section.subSections.filter(
-              subSection => subSection.title !== 'settings.deepAgentApiKeysSection'
-            )
+            subSections: section.subSections
+              .filter(subSection => {
+                // Filter out deepagent-api-keys if user can't use own API keys
+                if (!canUseApiKeys && subSection.title === 'settings.deepAgentApiKeysSection') {
+                  return false
+                }
+                return true
+              })
+          }
+        }
+        // For General section, filter code analysis popover based on user plan
+        if (section.key === 'general') {
+          return {
+            ...section,
+            subSections: section.subSections.map(subSection => ({
+              ...subSection,
+              options: subSection.options.filter(option => {
+                // Filter out code analysis popover if user doesn't have proper plan
+                if (!canUseCodeAnalysis && option.name === 'editor/code-analysis-popover') {
+                  return false
+                }
+                return true
+              })
+            }))
           }
         }
         return section
@@ -375,14 +406,14 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
 
   // Recompute visible sections when shared app config or permissions change
   useEffect(() => {
-    const sections = computeVisibleSections(appConfig, canUseOwnApiKeys)
+    const sections = computeVisibleSections(appConfig, canUseOwnApiKeys, canUseCodeAnalysisPopover)
     setVisibleSections(sections)
     setFilteredSections(sections)
     if (!sections.find(s => s.key === selected)) {
       setSelected(sections[0]?.key)
       setFilteredSection(sections[0])
     }
-  }, [appConfig, canUseOwnApiKeys])
+  }, [appConfig, canUseOwnApiKeys, canUseCodeAnalysisPopover])
 
   useEffect(() => {
     props.plugin.call('theme', 'currentTheme').then((theme) => {
