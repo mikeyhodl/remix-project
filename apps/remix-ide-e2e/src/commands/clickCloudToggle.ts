@@ -18,10 +18,11 @@ class clickCloudToggle extends EventEmitter {
       .click({
         selector: '[data-id="confirm-enable-cloud-modal-footer-ok-react"]',
         suppressNotFoundErrors: true
-      }).click({
+      })
+      .click({
         selector: '[data-id="confirm-disable-cloud-modal-footer-ok-react"]',
         suppressNotFoundErrors: true
-      });
+      })
       .perform((done) => {
         done()
         this.emit('complete')
