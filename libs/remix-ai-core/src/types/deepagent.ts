@@ -1,7 +1,6 @@
 export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'ollama'
 
 export const API_KEYS_ALLOWED_PLANS = ['starter', 'pro', 'beta']
-export const CODE_ANALYSIS_POPOVER_ALLOWED_PLANS = ['starter', 'pro', 'beta']
 
 export interface ModelSelection {
   provider: ModelProvider
