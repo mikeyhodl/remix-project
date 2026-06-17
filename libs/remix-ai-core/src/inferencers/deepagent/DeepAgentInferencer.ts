@@ -797,7 +797,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const content = await mcpClient.readResource('project://structure')
-      
+
       if (!content?.text) {
         return ''
       }
@@ -831,7 +831,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const content = await mcpClient.readResource('compilation://config')
-      
+
       if (!content?.text) {
         return ''
       }
