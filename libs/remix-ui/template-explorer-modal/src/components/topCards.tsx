@@ -18,12 +18,10 @@ export function TopCards() {
   const platform = useContext(platformContext)
   const enableDirUpload = { directory: '', webkitdirectory: '' }
   const [importFiles, setImportFiles] = useState(false)
-  const [importOptionsPosition, setImportOptionsPosition] = useState({ top: 0, left: 0 })
   const importCardRef = useRef<HTMLDivElement>(null)
-  const importOptionRef = useRef(null)
   const importFileInputRef = useRef(null)
   const importFolderInputRef = useRef<HTMLInputElement>(null)
-  useOnClickOutside([importCardRef, importOptionRef], () => setImportFiles(false))
+  useOnClickOutside([importCardRef], () => setImportFiles(false))
 
   // Use the clone repository modal hook
   const { showCloneModal } = useCloneRepositoryModal({
@@ -32,41 +30,22 @@ export function TopCards() {
     platform
   });
 
-  useEffect(() => {
-    if (importFiles && importCardRef.current) {
-      const card = importCardRef.current
-      const container = card.offsetParent as HTMLElement
-
-      if (container) {
-        const cardRect = card.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-
-        setImportOptionsPosition({
-          top: cardRect.bottom - containerRect.top - 8, // 8px gap below the card
-          left: cardRect.left - containerRect.left
-        })
-      } else {
-        // Fallback: use offsetTop/offsetLeft if offsetParent is not available
-        setImportOptionsPosition({
-          top: card.offsetTop + card.offsetHeight - 8, // 8px gap below the card
-          left: card.offsetLeft
-        })
-      }
-    }
-  }, [importFiles])
-
   const ImportOptions = () => {
 
     return (
       <ul
-        className="list-unstyled p-3 gap-2 d-flex flex-column align-items-start justify-content-end bg-light position-absolute"
-        ref={importOptionRef}
+        className="list-unstyled d-flex flex-column gap-1"
+        onClick={(e) => e.stopPropagation()}
         style={{
-          borderRadius: '10px',
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: 0,
+          right: 0,
           zIndex: 1000,
-          top: `${importOptionsPosition.top}px`,
-          left: `${importOptionsPosition.left}px`,
-          width: '298px'
+          borderRadius: '8px',
+          background: 'var(--custom-onsurface-layer-1)',
+          border: '1px solid var(--bs-border-color)',
+          padding: '0.25rem',
         }}
         data-id="importOptionsMenu"
       >
@@ -214,7 +193,7 @@ export function TopCards() {
         }}
       >
         <span className="tem-topcard-icon">
-          <img src={'assets/img/remixai-logoDefault.webp'} style={{ width: '20px', height: '20px' }} />
+          <img src={'assets/img/remixai-logoDefault.webp'} style={{ width: '16px', height: '16px' }} />
         </span>
         <span className="tem-topcard-text">
           <strong>Create with AI</strong>
@@ -238,7 +217,7 @@ export function TopCards() {
         }}
       >
         <span className="tem-topcard-icon">
-          <img src={'assets/img/openzeppelin-logo.png'} style={{ width: '20px', height: '20px' }} />
+          <img src={'assets/img/openzeppelin-logo.png'} style={{ width: '16px', height: '16px' }} />
         </span>
         <span className="tem-topcard-text">
           <strong>Contract Wizard</strong>
@@ -250,7 +229,7 @@ export function TopCards() {
         <div
           ref={importCardRef}
           data-id="import-project-topcard"
-          className="tem-topcard"
+          className="tem-topcard tem-topcard--import"
           onClick={() => {
             if (state.manageCategory === 'Template') {
               document.getElementById('importProjectInput')?.click()
@@ -295,15 +274,14 @@ export function TopCards() {
             <strong>{state.manageCategory === 'Template' ? 'Import Project' : 'Import Files'}</strong>
             <span>{state.manageCategory === 'Template' ? 'Import an existing project' : 'Import existing files'}</span>
           </span>
+          {importFiles && <ImportOptions />}
         </div>
       )}
-
-      {importFiles && <ImportOptions />}
 
       {state.manageCategory === 'Template' && (
         <div
           data-id="create-git-clone"
-          className="tem-topcard"
+          className="tem-topcard tem-topcard--import"
           onClick={async () => {
             dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'gitClone' })
             trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'topCardGitClone', isClick: true })

@@ -41,7 +41,7 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
   return (
     <section data-id="template-explorer-modal-react" data-path={`templateExplorerModal-${state.manageCategory}`}>
       <section className="template-explorer-modal-background" style={{ zIndex: 8888 }}>
-        <div ref={containerRef} className="template-explorer-modal-container border bg-body p-2" style={{ height: modalHeight }}>
+        <div ref={containerRef} className="template-explorer-modal-container border bg-body p-2" style={{ height: "min-content", maxHeight: "80%", transition: "height 0.15s ease, color 0.15s ease"}}>
           <div className="template-explorer-modal-close-container bg-dark w-100 d-flex flex-row justify-content-between align-items-center">
             {state.wizardStep === 'template' || state.wizardStep === 'reset' ? <div className="d-flex flex-row gap-2 w-100">
               <div className="template-explorer-search-wrapper">
@@ -59,8 +59,8 @@ export function RemixUiTemplateExplorerModal (props: RemixUiTemplateExplorerModa
                 />
               </div>
             </div> : <div>
-              <div className="d-flex flex-row gap-2 w-100 mx-1 my-2">
-                <button className="btn" onClick={() => {
+              <div className="d-flex flex-row gap-2 w-100">
+                <button className="btn tem-btn-back" onClick={() => {
                   if (state.wizardStep === 'importFiles' || state.manageCategory === 'Files') {
                     dispatch({ type: TemplateExplorerWizardAction.SET_WIZARD_STEP, payload: 'template' })
                     dispatch({ type: TemplateExplorerWizardAction.SET_MANAGE_CATEGORY, payload: 'Files' })

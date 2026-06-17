@@ -79,6 +79,29 @@
   background-color: transparent;
 }
 
+.tem-btn-back {
+  font-size: 13px;
+  color: var(--bs-body-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tem-btn-back:hover {
+  color: var(--bs-emphasis-color);
+}
+
+.tem-btn-back:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.tem-btn-back:focus-visible {
+  outline: 1px solid var(--bs-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 .template-explorer-search-wrapper {
   position: relative;
   width: 100%;
@@ -304,7 +327,7 @@
 }
 
 .import-option-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--tem-hover-bg);
 }
 
 .text-white-force {
@@ -341,11 +364,67 @@
   flex: 1;
 }
 
+/* ========== Shared form screens ========== */
+
+.tem-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  flex: 1;
+}
+
+.tem-form-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+  margin: 0;
+}
+
+.tem-form-desc {
+  font-size: 12px;
+  color: var(--bs-secondary-color);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tem-form-input {
+  background-color: var(--custom-onsurface-layer-1) !important;
+  border-color: var(--bs-border-color) !important;
+  color: var(--bs-body-color) !important;
+}
+
+.tem-form-input:focus {
+  background-color: var(--custom-onsurface-layer-1) !important;
+  border-color: var(--bs-primary) !important;
+  color: var(--bs-body-color) !important;
+  box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.3);
+}
+
+.tem-form-input::placeholder {
+  color: var(--bs-body-color);
+  opacity: 0.45;
+}
+
+.tem-form-footer {
+  background-color: var(--bs-body-bg) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  bottom: 0;
+  padding: 1rem 0;
+  border-top: 1px solid var(--bs-border-color);
+}
+
 /* ========== Top cards ========== */
 
 .tem-topcard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
   position: relative;
 }
@@ -356,7 +435,7 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 8px;
-  background: transparent;
+  background: var(--custom-onsurface-layer-1);
   border: 1px solid var(--bs-border-color);
   cursor: pointer;
   text-align: left;
@@ -366,8 +445,18 @@
 }
 
 .tem-topcard:hover {
-  background: var(--tem-hover-bg);
+  background: var(--bs-secondary-bg);
   border-color: rgba(var(--bs-body-color-rgb), 0.2);
+}
+
+.tem-topcard--import {
+  border-style: dashed;
+  background: transparent;
+  position: relative;
+}
+
+.tem-topcard--import:hover {
+  background: var(--tem-hover-bg);
 }
 
 .tem-topcard-icon {

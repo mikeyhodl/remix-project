@@ -25,33 +25,31 @@ export function TemplateExplorerBody() {
               </label>
             )}
           </div>
-          <div data-id="templateExplorerBodyTags" className="d-flex flex-wrap align-items-center gap-2">
-            {state.manageCategory === 'Template' ? (
-              <>
+          {state.manageCategory === 'Template' && (
+            <div data-id="templateExplorerBodyTags" className="d-flex flex-wrap align-items-center gap-2">
+              <span
+                className={`template-tag ${!selectedTag ? 'template-tag--active' : ''}`}
+                onClick={() => {
+                  clearFilter()
+                  trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'clearFilterButtonClick', isClick: true })
+                }}
+              >
+                All
+              </span>
+              {allTags?.filter(filterTheseTags)?.reverse()?.map((tag: any) => (
                 <span
-                  className={`template-tag ${!selectedTag ? 'template-tag--active' : ''}`}
+                  key={tag as any}
+                  className={`template-tag ${selectedTag === tag ? 'template-tag--active' : ''}`}
                   onClick={() => {
-                    clearFilter()
-                    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'clearFilterButtonClick', isClick: true })
+                    handleTagClick(tag as any)
+                    trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'tagSelected', name: tag, isClick: true })
                   }}
                 >
-                  All
+                  {tag as any}
                 </span>
-                {allTags?.filter(filterTheseTags)?.reverse()?.map((tag: any) => (
-                  <span
-                    key={tag as any}
-                    className={`template-tag ${selectedTag === tag ? 'template-tag--active' : ''}`}
-                    onClick={() => {
-                      handleTagClick(tag as any)
-                      trackMatomoEvent({ category: MatomoCategories.TEMPLATE_EXPLORER_MODAL, action: 'tagSelected', name: tag, isClick: true })
-                    }}
-                  >
-                    {tag as any}
-                  </span>
-                ))}
-              </>
-            ) : null}
-          </div>
+              ))}
+            </div>
+          )}
           <TemplateExplorer />
         </div>
       )}
