@@ -37,7 +37,7 @@ export function flattenJSON(obj: any): string {
       parts.push(`${prefix}:${item}`);
     } else if (typeof item === "object" && !Array.isArray(item)) {
       for (const key in item) {
-        if (item.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
           const newKey = prefix ? `${prefix}.${key}` : key;
           const val = item[key];
           if (typeof val === "object" && val !== null && !Array.isArray(val)) {
