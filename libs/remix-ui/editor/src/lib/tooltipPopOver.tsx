@@ -64,7 +64,7 @@ const analysisCache = new Map<string, CacheEntry>()
 
 // Cache configuration
 const CACHE_CONFIG = {
-  MAX_SIZE: 100,              // Maximum number of cached entries
+  MAX_SIZE: 100, // Maximum number of cached entries
   MAX_AGE_MS: 30 * 60 * 1000, // 30 minutes cache TTL
   CLEANUP_INTERVAL: 5 * 60 * 1000 // Clean up stale entries every 5 minutes
 }

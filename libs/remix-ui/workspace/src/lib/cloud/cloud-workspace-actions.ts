@@ -183,9 +183,8 @@ export function exitCloudProvider(): void {
  * and switches to the last-active (or first) cloud workspace.
  */
 export async function enableCloud(): Promise<void> {
-  console.log('[enableCloud] called, isCloudMode=', cloudStore.isCloudMode, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (cloudStore.isCloudMode) { console.log('[enableCloud] already in cloud mode — returning early'); return }
+  if (cloudStore.isCloudMode) { return }
 
   // Show confirmation modal before enabling cloud mode
   return new Promise((resolve, reject) => {
@@ -215,7 +214,7 @@ export async function enableCloud(): Promise<void> {
  */
 async function doEnableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (cloudStore.isCloudMode) { console.log('[doEnableCloud] already in cloud mode — returning early'); return }
+  if (cloudStore.isCloudMode) { return }
 
   // Remember the current local workspace so we can restore it on disable
   const currentLocal = localStorage.getItem('currentWorkspace')
@@ -241,7 +240,6 @@ async function doEnableCloud(): Promise<void> {
     if (workspaces.length > 0) {
       const lastCloudName = localStorage.getItem(cloudLocalKey('lastCloudWorkspace'))
       const targetWs = workspaces.find(w => w.name === lastCloudName) || workspaces[0]
-      console.log('[enableCloud] switching to cloud workspace:', targetWs.name, 'uuid=', targetWs.uuid)
       try {
         await switchToCloudWorkspace(targetWs, (status) => {
           cloudStore.updateSyncStatus(targetWs.uuid, status)
@@ -288,7 +286,7 @@ async function doEnableCloud(): Promise<void> {
  */
 export async function disableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (!cloudStore.isCloudMode) { console.log('[disableCloud] already off, skipping'); return }
+  if (!cloudStore.isCloudMode) { return }
 
   // Show confirmation modal before disabling cloud mode
   return new Promise((resolve, reject) => {
@@ -318,9 +316,7 @@ export async function disableCloud(): Promise<void> {
  */
 async function doDisableCloud(): Promise<void> {
   if (!_plugin) throw new Error('Cloud plugin not initialized')
-  if (!cloudStore.isCloudMode) { console.log('[doDisableCloud] already off, skipping'); return }
-
-  console.log('[doDisableCloud] starting...')
+  if (!cloudStore.isCloudMode) { return }
 
   // Remember the current cloud workspace for when the user re-enables
   const activeId = cloudStore.getState().activeWorkspaceId
@@ -421,7 +417,6 @@ export async function switchToCloudWorkspace(
   cloudWorkspace: CloudWorkspace,
   onSyncStatus?: (status: WorkspaceSyncStatus) => void,
 ): Promise<void> {
-  console.log('[switchToCloudWorkspace] called for', cloudWorkspace.name, 'uuid=', cloudWorkspace.uuid, 'stack=', new Error().stack?.split('\n').slice(1, 4).join(' | '))
   if (!_plugin) throw new Error('Cloud plugin not initialized')
 
   const provider = _plugin.fileProviders.workspace
