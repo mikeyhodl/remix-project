@@ -23,6 +23,7 @@ import { PluginViewWrapper } from '@remix-ui/helper'
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, UsageReport } from '@remix-api'
+import { Features } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -1130,7 +1131,7 @@ const PlanManagerOverlay: React.FC<{
   // default-deny rationale.
   const ui: UiVisibility = useMemo(() => selectUiVisibility(snap), [snap])
   const requiresEmailVerification = !!snap.permissions
-    && hasFeature(snap.permissions, 'ai:verified_accounts')
+    && hasFeature(snap.permissions, Features.AI_VERIFIED_ACCOUNTS)
     && (snap.permissions.has_email === false || snap.permissions.email_verified === false)
   // Keep `activeSection` honest with permissions: if the user (or an
   // intent) selected a tab the backend has since hidden, drop the

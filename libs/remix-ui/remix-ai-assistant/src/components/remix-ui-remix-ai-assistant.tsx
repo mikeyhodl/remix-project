@@ -9,7 +9,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 //@ts-ignore
 import '../css/color.css'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent } from '@remix-api'
+import { MatomoEvent, AIEvent, Features } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ChatHistoryComponent } from './chat'
@@ -976,8 +976,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const comingSoon = isOn('ai:modes_coming_soon')
 
       // Check specific feature permissions
-      setHasAuditorPermission(isOn('ai:auditor'))
-      setHasSkillsPermission(isOn('ai:skills'))
+      setHasAuditorPermission(isOn(Features.AI_AUDITOR))
+      setHasSkillsPermission(isOn(Features.AI_SKILLS))
 
       const nextPillStates = {
         upgrade: comingSoon ? 'coming_soon' : isOn('ai:upgrade_available') ? 'available' : 'hidden',

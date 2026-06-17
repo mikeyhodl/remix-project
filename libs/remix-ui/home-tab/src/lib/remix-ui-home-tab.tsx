@@ -3,7 +3,7 @@ import React, { useContext, useRef, useState, useEffect } from 'react'
 import './remix-ui-home-tab.css'
 import { ThemeContext, themes } from './themeContext'
 import { appActionTypes, AppContext, useAuth } from '@remix-ui/app'
-import { HomeTabEvent, MatomoEvent } from '@remix-api'
+import { HomeTabEvent, MatomoEvent, Features } from '@remix-api'
 import { TrackingContext } from '@remix-ide/tracking'
 import { FormattedMessage } from 'react-intl'
 import { uploadFolderExcludingRootFolder } from '@remix-ui/workspace'
@@ -28,8 +28,8 @@ export const RemixUiHomeTab = (props: RemixUiHomeTabProps) => {
   })
 
   const { features } = useAuth()
-  const hasAuditorPermission = features['ai:auditor']?.is_enabled === true
-  const hasSkillsPermission = features['ai:skills']?.is_enabled === true
+  const hasAuditorPermission = features[Features.AI_AUDITOR]?.is_enabled === true
+  const hasSkillsPermission = features[Features.AI_SKILLS]?.is_enabled === true
 
   useEffect(() => {
     plugin.call('theme', 'currentTheme').then((theme: any) => {

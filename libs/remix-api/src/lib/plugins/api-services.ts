@@ -5,6 +5,13 @@
 
 import { IApiClient, ApiResponse } from './api-client'
 import {
+  AI_MISTRAL_SMALL,
+  AI_MISTRAL_MEDIUM,
+  AI_CODESTRAL,
+  AI_SONNET_4_6,
+  AI_OPUS_4_6,
+} from './features'
+import {
   Credits,
   LinkedAccount,
   AccountsResponse,
@@ -417,7 +424,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     capabilities: ['chat', 'code'],
     is_default: true,
     requires_auth: true,
-    required_feature: 'ai:mistral-small',
+    required_feature: AI_MISTRAL_SMALL,
     available: true,
     sort_order: 10
   },
@@ -430,7 +437,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     capabilities: ['chat', 'code'],
     is_default: false,
     requires_auth: true,
-    required_feature: 'ai:mistral-medium',
+    required_feature: AI_MISTRAL_MEDIUM,
     available: true,
     sort_order: 20
   },
@@ -443,7 +450,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     capabilities: ['code', 'completion'],
     is_default: false,
     requires_auth: true,
-    required_feature: 'ai:codestral',
+    required_feature: AI_CODESTRAL,
     available: true,
     sort_order: 30
   },
@@ -456,7 +463,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     capabilities: ['chat', 'code', 'completion'],
     is_default: false,
     requires_auth: true,
-    required_feature: 'ai:sonnet-4.6',
+    required_feature: AI_SONNET_4_6,
     available: true,
     sort_order: 40
   },
@@ -469,7 +476,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     capabilities: ['chat', 'code', 'completion'],
     is_default: false,
     requires_auth: true,
-    required_feature: 'ai:opus-4.6',
+    required_feature: AI_OPUS_4_6,
     available: true,
     sort_order: 50
   },
@@ -479,7 +486,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     provider: 'mistralai',
     description: 'Lightning fast and efficient for basic tasks',
     requires_auth: true,
-    required_feature: 'ai:mistral-small',
+    required_feature: AI_MISTRAL_SMALL,
     is_default: false,
     available: true,
     category: 'general',
@@ -492,7 +499,7 @@ const HARDCODED_AI_MODELS: NonNullable<PermissionsResponse['ai_models']> = [
     provider: 'mistralai',
     description: 'Fast and efficient for basic tasks',
     requires_auth: true,
-    required_feature: 'ai:mistral-small',
+    required_feature: AI_MISTRAL_SMALL,
     available: true,
     is_default: false,
     category: 'general',
