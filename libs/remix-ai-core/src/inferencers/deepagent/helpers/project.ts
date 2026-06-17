@@ -31,7 +31,7 @@ export function renderTree(tree: FsNode, indent = "  "): string {
 
 export function flattenJSON(obj: any): string {
   const parts: string[] = [];
-  
+
   function flatten(item: any, prefix = ""): void {
     if (item === null || item === undefined) {
       parts.push(`${prefix}:${item}`);
@@ -61,7 +61,7 @@ export function flattenJSON(obj: any): string {
       parts.push(`${prefix}:${item}`);
     }
   }
-  
+
   flatten(obj);
   return parts.join(",");
 }
