@@ -9,7 +9,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 //@ts-ignore
 import '../css/color.css'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, Features } from '@remix-api'
+import { MatomoEvent, AIEvent, Features, PublicPlan } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ChatHistoryComponent } from './chat'
@@ -133,6 +133,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Permission state for specific features
   const [hasAuditorPermission, setHasAuditorPermission] = useState(false)
   const [hasSkillsPermission, setHasSkillsPermission] = useState(false)
+  // Public plans catalog (feature -> plan tier), loaded once on mount.
+  // Used to label upsell CTAs with the cheapest plan granting a feature.
+  const [publicPlans, setPublicPlans] = useState<PublicPlan[]>([])
 
   const [mcpEnhanced, setMcpEnhanced] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState<ToolApprovalRequest[]>([])
@@ -1009,6 +1012,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           onAssistantStateChange(snap)
         }
       } catch { /* assistantState not active */ }
+    })()
+
+    // Load the public plans catalog once so upsell badges can name the
+    // cheapest plan that grants a locked feature (e.g. "Pro").
+    ;(async () => {
+      try {
+        const plans: PublicPlan[] = await props.plugin.call('auth' as any, 'getPublicPlans')
+        if (Array.isArray(plans) && plans.length) setPublicPlans(plans)
+      } catch { /* auth plugin not active */ }
     })()
 
     // Human-in-the-loop: listen for tool approval requests (batch processing)
@@ -2242,6 +2254,28 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'composer_sign_in_click', isClick: true })
   }, [props.plugin, trackMatomoEvent])
 
+  // Hand-off when a user picks a slash command they lack the entitlement
+  // for. Opens the plan-manager on the feature-required section with the
+  // first missing feature so the upsell is contextual. Falls back to the
+  // legacy beta widget when planManager isn't active (e.g. tests).
+  const handleFeatureUpgradeRequired = useCallback((commandName: string, missingFeature: string) => {
+    props.plugin.call('planManager' as any, 'open', { reason: 'feature-required', requiredFeature: missingFeature }).catch(() => {
+      props.plugin.call('betaCornerWidget', 'show').catch(() => { /* noop */ })
+    })
+    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'command_upgrade_required', value: commandName, isClick: true })
+  }, [props.plugin, trackMatomoEvent])
+
+  // Resolve the cheapest plan tier that grants a given feature, returning
+  // its display name (e.g. "Pro") so the UI can label the upsell badge.
+  // Picks the lowest-priority (cheapest) plan whose feature is enabled.
+  const getRequiredPlanName = useCallback((feature: string): string | null => {
+    if (!publicPlans.length) return null
+    const granting = publicPlans
+      .filter((plan) => plan.features?.some((f) => f.feature_name === feature && f.is_enabled !== false))
+      .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+    return granting[0]?.display_name ?? null
+  }, [publicPlans])
+
   const modalMessage = () => {
     return (
       <ul className="p-3">
@@ -2821,6 +2855,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               onSignIn={handleSignIn}
               hasAuditorPermission={hasAuditorPermission}
               hasSkillsPermission={hasSkillsPermission}
+              onUpgradeRequired={handleFeatureUpgradeRequired}
+              getRequiredPlanName={getRequiredPlanName}
             />
           ) : (
             <AiChatPromptArea
@@ -2877,6 +2913,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
               onSignIn={handleSignIn}
               hasAuditorPermission={hasAuditorPermission}
               hasSkillsPermission={hasSkillsPermission}
+              onUpgradeRequired={handleFeatureUpgradeRequired}
+              getRequiredPlanName={getRequiredPlanName}
             />
           )
         }
