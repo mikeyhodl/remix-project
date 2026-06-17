@@ -34,6 +34,7 @@ import { createModelInstance } from './ModelFactory'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
+import { flattenJSON, renderTree } from './helpers/project'
 
 export const notSuitableForCodeGeneration = ['mistral-medium-latest', 'mistral-small-latest', 'ministral-3b', 'ministral-8b-latest']
 
@@ -60,6 +61,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   // still has the prior user/assistant turns as context — otherwise the
   // model loses all memory whenever the user clicks Stop.
   private pendingHistoryMessages: Array<{ role: 'user' | 'assistant'; content: string }> | null = null
+  private renewWorkspaceContext = false
+  private compilerConfigStr = ''
 
   private static generateThreadId(): string {
     return CONVERSATION_THREAD_PREFIX + `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -170,6 +173,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     }
     this.modelSelection = modelSelection
 
+    this.plugin.on('filePanel', 'setWorkspace', async () => {
+      this.renewWorkspaceContext = true
+    })
+
     // Default configuration (API key handled by proxy)
     this.config = {
       enabled: true,
@@ -278,6 +285,10 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       remixAILogger.warn('[DeepAgentInferencer] Failed to initialize tools:', error)
       this.tools = []
     }
+  }
+
+  cleanup(): void {
+    this.plugin.off('filePanel', 'setWorkspace')
   }
 
   private emitErrorToTodos(error: any): void {
@@ -440,6 +451,20 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         remixAILogger.log('[DeepAgentInferencer] answer(): seeding', seeded.length, 'history messages into new thread', this.sessionThreadId)
       }
 
+      remixAILogger.log('[DeepAgentInferencer] answer(): checking renewWorkspaceContext:', this.renewWorkspaceContext)
+      if (this.renewWorkspaceContext) {
+        const current = await this.plugin.call('filePanel', 'getCurrentWorkspace')
+        context += '\n\nCurrent Remix workspace: ' + (current?.name || 'unknown')
+        context += await this.getProjectStructure()
+        this.renewWorkspaceContext = false
+      } else {
+        remixAILogger.log('[DeepAgentInferencer] answer(): NOT renewing workspace context (renewWorkspaceContext is false)')
+      }
+      const compilerConfig = await this.getCompilerConfig()
+      if (!this.compilerConfigStr || this.compilerConfigStr != compilerConfig) {
+        context += "\n\nCompiler configuration: " + compilerConfig
+        this.compilerConfigStr = compilerConfig
+      }
       const messages = [
         ...seeded,
         { role: 'user', content: context ? `Context:\n${context}\n\nQuestion: ${prompt}` : prompt }
@@ -755,6 +780,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   private async getProjectStructure(): Promise<string> {
+    console.log('[DeepAgentInferencer] Attempting to retrieve project structure from MCP...')
     if (!this.mcpInferencer) {
       return ''
     }
@@ -771,14 +797,48 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       const content = await mcpClient.readResource('project://structure')
+      
       if (!content?.text) {
         return ''
       }
 
-      remixAILogger.log('[DeepAgentInferencer] Added project structure to system prompt')
-      return `\n\n## Current Project Structure\n${content.text}`
+      const context = JSON.parse(content.text || '{}')
+      const flatten = renderTree(context.structure)
+      const openedFiles = Object.keys(context?.currentOpenedFiles || {}).join(',')
+
+      return `\n\n## Current Project Structure\n${flatten}\n\n## Current Opened Files\n${openedFiles}`
     } catch (error) {
       remixAILogger.warn('[DeepAgentInferencer] Failed to get project structure:', error)
+      return ''
+    }
+  }
+
+  private async getCompilerConfig(): Promise<string> {
+    console.log('[DeepAgentInferencer] Attempting to retrieve compiler config from MCP...')
+    if (!this.mcpInferencer) {
+      return ''
+    }
+
+    try {
+      const connectedServers = this.mcpInferencer.getConnectedServers()
+      if (!connectedServers || !connectedServers.includes('Remix IDE Server')) {
+        return ''
+      }
+
+      const mcpClient = (this.mcpInferencer as any).mcpClients?.get('Remix IDE Server')
+      if (!mcpClient || !mcpClient.isConnected()) {
+        return ''
+      }
+
+      const content = await mcpClient.readResource('compilation://config')
+      
+      if (!content?.text) {
+        return ''
+      }
+
+      return `\n\n## Current Compiler Config\n${flattenJSON(JSON.parse(content.text))}`
+    } catch (error) {
+      remixAILogger.warn('[DeepAgentInferencer] Failed to get compiler config:', error)
       return ''
     }
   }
@@ -802,7 +862,9 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       })()
 
       const projectStructure = await this.getProjectStructure()
-      const systemPromptWithContext = REMIX_DEEPAGENT_SYSTEM_PROMPT + projectStructure
+      const compilerConfig = await this.getCompilerConfig()
+      this.compilerConfigStr = compilerConfig
+      const systemPromptWithContext = REMIX_DEEPAGENT_SYSTEM_PROMPT + projectStructure + '\n\n' + compilerConfig
 
       // Create agent configuration with selected tools
       // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
@@ -838,7 +900,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       }
 
       // Cast result to any to handle @langchain/core version mismatch between root and deepagents
-      this.agent = await createDeepAgent(agentConfig as any) as any
+      this.agent = createDeepAgent(agentConfig as any) as any
 
       remixAILogger.log(`[DeepAgentInferencer] Recreated agent with ${selectedTools.length} selected tools`)
     } catch (error) {
