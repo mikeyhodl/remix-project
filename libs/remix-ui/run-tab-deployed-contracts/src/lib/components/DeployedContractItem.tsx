@@ -10,11 +10,13 @@ import { DeployedContractsAppContext } from '../contexts'
 import { DeployedContract } from '../types'
 import { runTransactions } from '../actions'
 import { ContractKebabMenu } from './ContractKebabMenu'
+import { EnsNaming } from './EnsNaming'
 
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
 import { TrackingContext } from '@remix-ide/tracking'
 import { useAuth } from '@remix-ui/app'
+import isElectron from 'is-electron'
 
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
@@ -34,6 +36,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const intl = useIntl()
   const { features } = useAuth()
   const hasQuickdappAccess = features?.['dapp:quickdapp']?.is_enabled
+  const isDesktop = isElectron()
   const [networkName, setNetworkName] = useState<string>('')
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState(null)
@@ -52,6 +55,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const [funcInputs, setFuncInputs] = useState<{[funcIndex: number]: {[paramIndex: number]: string}}>({})
   const [expandPath, setExpandPath] = useState<string[]>([])
   const [functionSearchTerm, setFunctionSearchTerm] = useState<string>('')
+  const [showEnsNaming, setShowEnsNaming] = useState<boolean>(false)
 
   useEffect(() => {
     plugin.call('udappEnv', 'getNetwork').then((net) => {
@@ -407,7 +411,26 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
       }
       console.log('[QuickDapp] chainId resolved:', chainId);
 
-      const prompt = `I want to create a DApp frontend. Follow these steps exactly:
+      const prompt = isDesktop
+        ? `I want to create a DApp frontend inline in the /frontend folder of my current workspace. Follow these steps exactly:
+
+STEP 1 - CHECK FOR EXISTING CONTENT:
+Check if /frontend exists with content. If yes, ask: "The /frontend folder already has files. Overwrite them?"
+
+STEP 2 - CALL THE TOOL:
+After I confirm (or if /frontend is empty/doesn't exist), you MUST call generate_dapp with these parameters:
+
+generate_dapp({
+  description: "Modern dark mode single-page DApp using React and Ethers.js",
+  contractName: "${contract.name}",
+  contractAddress: "${contract.address}",
+  chainId: "${chainId}",
+  frontendMode: "inline",
+  confirmOverwrite: true  // only if I confirmed overwrite
+})
+
+IMPORTANT: Your next action MUST be checking /frontend and then calling generate_dapp. Do not just say "Understood" or "Proceeding" - actually call the tool.`
+        : `I want to create a DApp frontend. Follow these steps exactly:
 
 STEP 1 - ASK FOR LOCATION CHOICE:
 Ask me: "Where should I create your DApp?"
@@ -515,6 +538,14 @@ IMPORTANT: After I make my choice, your next action MUST be calling generate_dap
       onKebabMenuToggle(false)
     }
     handleRemove({ stopPropagation: () => {} } as React.MouseEvent)
+  }
+
+  const handleNameContract = async () => {
+    if (onKebabMenuToggle) {
+      onKebabMenuToggle(false)
+    }
+    setShowEnsNaming(true)
+    if (!isExpanded) setIsExpanded(true)
   }
 
   const getStateMutabilityBadge = (funcABI: FuncABI) => {
@@ -662,6 +693,7 @@ IMPORTANT: After I make my choice, your next action MUST be calling generate_dap
             }}
             contract={contract}
             onCreateDapp={handleCreateDapp}
+            onNameContract={networkName !== 'Remix VM' ? handleNameContract : undefined}
             onCopyABI={handleCopyABI}
             onCopyBytecode={handleCopyBytecode}
             onOpenInExplorer={handleOpenInExplorer}
@@ -671,6 +703,11 @@ IMPORTANT: After I make my choice, your next action MUST be calling generate_dap
             <div className="p-3 pt-0" onClick={(e) => e.stopPropagation()}>
               {/* Divider */}
               <div className="border-top mb-3"></div>
+
+              {/* ENS Naming */}
+              {showEnsNaming && (
+                <EnsNaming contract={contract} onClose={() => setShowEnsNaming(false)} />
+              )}
 
               {/* High level interaction section */}
               <div className="mb-3">
