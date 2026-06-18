@@ -697,7 +697,7 @@ export const TabsUI = (props: TabsUIProps) => {
           ``,
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
           `Location is fixed to Inline in /frontend for this request. Ask me once for:`,
-          `- Base App: No (default) or Yes`,
+          `- Base mini-app: No (default) or Yes`,
           `- Design: defaults, style notes, or a Figma URL`,
           ``,
           `Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,
@@ -714,7 +714,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `- contractAddress: "${inst.address}"`,
           `- chainId: "${chainId}"`,
           `- frontendMode: "inline"`,
-          `- isBaseMiniApp: true only if I selected Base App Yes; otherwise false`,
+          `- isBaseMiniApp: true only if I selected Base mini-app Yes; otherwise false`,
           `- figmaUrl and figmaToken only if I provided them`,
           `- confirmOverwrite: true only if I confirmed overwrite`,
           `- setupOptionsConfirmed: true`,
@@ -730,7 +730,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
           `Ask me once: "How should I create your DApp?"`,
           `- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)`,
-          `- Base App: No (default) or Yes`,
+          `- Base mini-app: No (default) or Yes`,
           `- Design: defaults, style notes, or a Figma URL`,
           ``,
           `Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,
@@ -747,7 +747,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `- contractAddress: "${inst.address}"`,
           `- chainId: "${chainId}"`,
           `- frontendMode: "inline" or "workspace" based on my Location answer`,
-          `- isBaseMiniApp: true only if I selected Base App Yes; otherwise false`,
+          `- isBaseMiniApp: true only if I selected Base mini-app Yes; otherwise false`,
           `- figmaUrl and figmaToken only if I provided them`,
           `- confirmOverwrite: true only if I chose Inline and confirmed overwrite`,
           `- setupOptionsConfirmed: true`,
@@ -767,8 +767,8 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
-          : `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
+          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
+          : `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
       )
     } else if (instances.length > 0) {
       // No match for current file but other contracts exist
@@ -782,8 +782,8 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
-          : `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
+          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
+          : `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
       )
     } else {
       // No deployed contracts at all — AI will guide compile→deploy→generate
@@ -799,7 +799,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `Please help me through the full process:`,
           ``,
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
-          `Location is fixed to Inline in /frontend for this request. Ask me once for Base App No(default)/Yes and Design defaults/style/Figma.`,
+          `Location is fixed to Inline in /frontend for this request. Ask me once for Base mini-app No(default)/Yes and Design defaults/style/Figma.`,
           `Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,
           `After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.`,
           ``,
@@ -825,7 +825,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
           `Ask me once: "How should I create your DApp?"`,
           `- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)`,
-          `- Base App: No (default) or Yes`,
+          `- Base mini-app: No (default) or Yes`,
           `- Design: defaults, style notes, or a Figma URL`,
           ``,
           `Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,

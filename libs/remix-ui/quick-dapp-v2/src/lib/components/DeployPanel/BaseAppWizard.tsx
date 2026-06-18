@@ -327,7 +327,7 @@ const BaseAppWizard: React.FC = () => {
         formData.append('files', screenshotBlob, 'screenshot.png');
       }
 
-      // Farcaster manifest no longer bundled — Base App uses standard web app model (April 2026)
+      // Farcaster manifest no longer bundled — Base mini-app uses standard web app model (April 2026)
 
       const uploadHeaders: Record<string, string> = {};
       const authToken = typeof localStorage !== 'undefined' ? localStorage.getItem('remix_access_token') : null;
@@ -566,7 +566,7 @@ const BaseAppWizard: React.FC = () => {
                       <strong>Update Code:</strong> Edit files in File Explorer, then click <strong>Publish Changes</strong> above to re-deploy to IPFS & ENS.
                     </li>
                     <li>
-                      <strong>Docs:</strong> For advanced configuration, see <a href="https://docs.base.org/mini-apps" target="_blank" rel="noreferrer" className="fw-bold text-decoration-underline">Base Apps Documentation <i className="fas fa-external-link-alt small"></i></a>.
+                      <strong>Docs:</strong> For advanced configuration, see <a href="https://docs.base.org/mini-apps" target="_blank" rel="noreferrer" className="fw-bold text-decoration-underline">Base mini-apps Documentation <i className="fas fa-external-link-alt small"></i></a>.
                     </li>
                   </ul>
                 </div>
@@ -683,7 +683,7 @@ const BaseAppWizard: React.FC = () => {
                     Copy the <b>App ID Meta Tag</b> from the verification screen.
                     </Alert>
                     <Form.Group className="mb-3">
-                      <Form.Label>Base App ID Meta Tag</Form.Label>
+                      <Form.Label>Base mini-app ID Meta Tag</Form.Label>
                       <Form.Control
                         as="textarea" rows={2}
                         placeholder='<meta name="base:app_id" content="..." />'
