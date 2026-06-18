@@ -416,7 +416,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
 
 STEP 1 - ASK FOR SETUP OPTIONS:
 Location is fixed to Inline in /frontend for this request. Ask me once for:
-- Base App: No (default) or Yes
+- Base mini-app: No (default) or Yes
 - Design: defaults, style notes, or a Figma URL
 
 Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.
@@ -433,7 +433,7 @@ After I confirm (or if /frontend is empty/doesn't exist), you MUST call generate
 - contractAddress: "${contract.address}"
 - chainId: "${chainId}"
 - frontendMode: "inline"
-- isBaseMiniApp: true only if I selected Base App Yes; otherwise false
+- isBaseMiniApp: true only if I selected Base mini-app Yes; otherwise false
 - figmaUrl and figmaToken only if I provided them
 - confirmOverwrite: true only if I confirmed overwrite
 - setupOptionsConfirmed: true
@@ -445,7 +445,7 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
 STEP 1 - ASK FOR SETUP OPTIONS:
 Ask me once: "How should I create your DApp?"
 - Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)
-- Base App: No (default) or Yes
+- Base mini-app: No (default) or Yes
 - Design: defaults, style notes, or a Figma URL
 
 Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.
@@ -462,7 +462,7 @@ After I answer, you MUST call generate_dapp with:
 - contractAddress: "${contract.address}"
 - chainId: "${chainId}"
 - frontendMode: "inline" or "workspace" based on my Location answer
-- isBaseMiniApp: true only if I selected Base App Yes; otherwise false
+- isBaseMiniApp: true only if I selected Base mini-app Yes; otherwise false
 - figmaUrl and figmaToken only if I provided them
 - confirmOverwrite: true only if I chose Inline and confirmed overwrite
 - setupOptionsConfirmed: true

@@ -279,7 +279,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base App No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
+  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -340,7 +340,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       },
       setupOptionsSummary: {
         type: 'string',
-        description: 'Required when setupOptionsConfirmed=true. Short summary of the setup choices confirmed by the user, e.g. "Location workspace, Base App no, Design defaults".'
+        description: 'Required when setupOptionsConfirmed=true. Short summary of the setup choices confirmed by the user, e.g. "Location workspace, Base mini-app no, Design defaults".'
       }
     },
     required: ['description', 'contractName', 'contractAddress', 'chainId']
@@ -460,12 +460,12 @@ export class GenerateDAppHandler extends BaseToolHandler {
           message: 'Before generating files, ask the user once for DApp setup options.',
           optionsToAsk: isDesktop
             ? [
-              'Base App: No (default) or Yes',
+              'Base mini-app: No (default) or Yes',
               'Design: defaults, style notes, or a Figma URL'
             ]
             : [
               'Location: Workspace (default) or Inline in /frontend',
-              'Base App: No (default) or Yes',
+              'Base mini-app: No (default) or Yes',
               'Design: defaults, style notes, or a Figma URL'
             ],
           defaults: {
@@ -475,7 +475,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
           },
           fixedLocation: isDesktop ? 'inline' : undefined,
           nextAction: isDesktop
-            ? 'Ask only Base App and Design, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, and any figmaUrl/figmaToken.'
+            ? 'Ask only Base mini-app and Design, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, and any figmaUrl/figmaToken.'
             : 'Ask only those setup options and then STOP. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, and any figmaUrl/figmaToken.'
         })
       }
@@ -758,15 +758,15 @@ export class GenerateDAppHandler extends BaseToolHandler {
           `FUNCTIONS:\n${abiSummary}\n\n` +
           `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
           (args.isBaseMiniApp
-            ? `\nBASE APP RULES:\n` +
-            `- Base App is a QuickDapp packaging/deployment mode handled after file generation by the Base App wizard.\n` +
+            ? `\nBase mini-app RULES:\n` +
+            `- Base mini-app is a QuickDapp packaging/deployment mode handled after file generation by the Base mini-app wizard.\n` +
             `- Do NOT import @farcaster/miniapp-sdk (deprecated). Do NOT include fc:frame or fc:miniapp meta tags.\n` +
             `- Do NOT add base:app_id meta tags, ENS/IPFS setup files, manifests, or deployment scripts. The wizard manages those later.\n` +
             `- Do NOT create or modify dapp.config.json. The system already records config.isBaseMiniApp.\n` +
             `- Use standard wallet pattern compatible with QuickDapp preview/deploy (window.__qdapp_getProvider or window.ethereum).\n` +
-            `- Do NOT change the contract chain just because Base App was selected. Use the contract chain listed above and the wallet rules below.\n` +
+            `- Do NOT change the contract chain just because Base mini-app was selected. Use the contract chain listed above and the wallet rules below.\n` +
             (isInlineMode
-              ? `- In inline mode, Base App source files still live only under /frontend. Do NOT write root index.html or root src files.\n`
+              ? `- In inline mode, Base mini-app source files still live only under /frontend. Do NOT write root index.html or root src files.\n`
               : '')
             : '') +
           `${figmaLine}` +
@@ -1415,7 +1415,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_dapp',
-      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base App No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
+      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
       inputSchema: new GenerateDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
