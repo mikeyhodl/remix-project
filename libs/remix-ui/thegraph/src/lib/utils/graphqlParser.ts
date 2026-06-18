@@ -1,6 +1,19 @@
 // Utility for parsing and handling GraphQL files with metadata
 
-import { SupportedNetwork } from '../types'
+/**
+ * Supported blockchain networks for The Graph
+ */
+export type SupportedNetwork =
+  | 'mainnet'
+  | 'arbitrum-one'
+  | 'avalanche'
+  | 'base'
+  | 'bsc'
+  | 'optimism'
+  | 'polygon'
+  | 'unichain'
+  | 'sepolia'
+  | 'goerli'
 
 /**
  * Metadata extracted from .graphql file comments
