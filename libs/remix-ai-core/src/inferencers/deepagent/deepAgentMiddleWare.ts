@@ -4,6 +4,7 @@ import { remixAILogger } from '../../helpers/logger'
 /* eslint-disable no-useless-escape */
 import { AIMessage, AgentMiddleware, BaseMessage, ModelRequest, WrapModelCallHandler, trimMessages } from 'langchain'
 import { Plugin } from '@remixproject/engine'
+import type { DeepAgentInferencer } from './DeepAgentInferencer'
 
 /**
  * Custom middleware for DeepAgent with beforeModel hook functionality
@@ -11,8 +12,9 @@ import { Plugin } from '@remixproject/engine'
 export class RemixDeepAgentMiddleware implements AgentMiddleware {
   name = 'RemixDeepAgentMiddleware'
 
-  constructor (private plugin: Plugin) {
+  constructor (private plugin: Plugin, private inferencer: DeepAgentInferencer) {
     this.plugin = plugin
+    this.inferencer = inferencer
   }
 
   /**
@@ -29,7 +31,7 @@ export class RemixDeepAgentMiddleware implements AgentMiddleware {
     })
 
     removePeviousContextFromMessages(request)
-    await shortenToolDescription(request, this.plugin)
+    await shortenToolDescription(request, this.plugin, this.inferencer)
 
     // Call the actual model
     const result = await handler(request as any)
@@ -84,7 +86,7 @@ const removePeviousContextFromMessages = (request: ModelRequest) => {
   }
 }
 
-const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => {
+const shortenToolDescription = async (request: ModelRequest, plugin: Plugin, inferencer: DeepAgentInferencer) => {
   request.tools.find((tool) => {
     if (tool.name === 'write_todos') {
       // Keep a minimal description - full guidance is in system prompt
@@ -141,8 +143,12 @@ const shortenToolDescription = async (request: ModelRequest, plugin: Plugin) => 
       part.text = shortSystemTask
     }
     if (part.text.includes('## Skills System')) {
-      part.text = hasSkills ? shortSystemSkillsSystem(hasSkills, skills) : ''
+      part.text = hasSkills ? shortSystemSkillsSystem(hasSkills, skills) : 'No Skills installed'
     }
+  });
+  (request.systemMessage.content as any[]).push({
+    text: await inferencer.getProjectStructure() + '\n' + await inferencer.getCompilerConfig(),
+    type: 'text'
   })
   request.systemPrompt = (request.systemMessage.content as any).map((part: any) => part.text).join('\n')
 }
