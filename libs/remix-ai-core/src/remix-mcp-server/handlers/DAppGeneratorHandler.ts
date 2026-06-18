@@ -279,7 +279,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL, then stop. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
+  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. In Remix Desktop, Location is fixed to Inline in /frontend; otherwise ask Location Workspace(default)/Inline. Always ask Base App No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -324,7 +324,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       },
       frontendMode: {
         type: 'string',
-        description: 'Where to create the DApp: "workspace" (new workspace, default) or "inline" (./frontend in current workspace)',
+        description: 'Where to create the DApp: "workspace" (new workspace, default in web) or "inline" (./frontend in current workspace). Remix Desktop always forces inline.',
         enum: ['workspace', 'inline'],
         default: 'workspace'
       },
@@ -448,7 +448,9 @@ export class GenerateDAppHandler extends BaseToolHandler {
     let figmaDesign: FigmaDesignSuccess | undefined
     try {
       remixAILogger.log('[GenerateDApp] Received args:', args)
-      const targetMode = args.frontendMode || 'workspace'
+      const isDesktop = isElectron()
+      const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
+      args.frontendMode = targetMode
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -456,17 +458,25 @@ export class GenerateDAppHandler extends BaseToolHandler {
           requiresUserInput: true,
           reason: 'setup_options_required',
           message: 'Before generating files, ask the user once for DApp setup options.',
-          optionsToAsk: [
-            isElectron() ? 'Location: Inline in /frontend (fixed in Remix Desktop)' : 'Location: Workspace (default) or Inline in /frontend',
-            'Base App: No (default) or Yes',
-            'Design: defaults, style notes, or a Figma URL'
-          ],
+          optionsToAsk: isDesktop
+            ? [
+              'Base App: No (default) or Yes',
+              'Design: defaults, style notes, or a Figma URL'
+            ]
+            : [
+              'Location: Workspace (default) or Inline in /frontend',
+              'Base App: No (default) or Yes',
+              'Design: defaults, style notes, or a Figma URL'
+            ],
           defaults: {
-            location: isElectron() ? 'inline' : 'workspace',
+            location: isDesktop ? 'inline' : 'workspace',
             isBaseMiniApp: false,
             design: 'defaults'
           },
-          nextAction: 'Ask only those setup options and then STOP. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, and any figmaUrl/figmaToken.'
+          fixedLocation: isDesktop ? 'inline' : undefined,
+          nextAction: isDesktop
+            ? 'Ask only Base App and Design, then STOP. Do not ask Location in Remix Desktop. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, and any figmaUrl/figmaToken.'
+            : 'Ask only those setup options and then STOP. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, and any figmaUrl/figmaToken.'
         })
       }
 
@@ -570,18 +580,24 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
           if (fileCount > 0 && !args.confirmOverwrite) {
             remixAILogger.log(`[QuickDapp] /frontend folder exists with ${fileCount} files, requesting user confirmation`)
+            const overwriteOptions = isDesktop
+              ? `**Option 1: Overwrite existing files**\n` +
+                `- Call generate_dapp again with the SAME parameters PLUS confirmOverwrite=true, frontendMode="inline", and setupOptionsConfirmed=true\n\n` +
+                `**Option 2: Cancel**\n` +
+                `- Do not proceed with DApp generation\n\n`
+              : `**Option 1: Overwrite existing files**\n` +
+                `- Call generate_dapp again with the SAME parameters PLUS confirmOverwrite=true and setupOptionsConfirmed=true\n\n` +
+                `**Option 2: Create in new workspace (RECOMMENDED - safer)**\n` +
+                `- Call generate_dapp again with the SAME parameters BUT change frontendMode="workspace" and keep setupOptionsConfirmed=true\n` +
+                `- This creates a separate workspace and keeps existing /frontend files intact\n\n` +
+                `**Option 3: Cancel**\n` +
+                `- Do not proceed with DApp generation\n\n`
             return this.createErrorResult(
               `⚠️ **OVERWRITE WARNING - USER CONFIRMATION REQUIRED**\n\n` +
               `The /frontend folder in workspace "${currentWs.name}" already exists and contains ${fileCount} file(s).\n\n` +
               `**These files will be PERMANENTLY DELETED and replaced with the new DApp.**\n\n` +
               `ASK THE USER which option they prefer:\n\n` +
-              `**Option 1: Overwrite existing files**\n` +
-              `- Call generate_dapp again with the SAME parameters PLUS confirmOverwrite=true and setupOptionsConfirmed=true\n\n` +
-              `**Option 2: Create in new workspace (RECOMMENDED - safer)**\n` +
-              `- Call generate_dapp again with the SAME parameters BUT change frontendMode="workspace" and keep setupOptionsConfirmed=true\n` +
-              `- This creates a separate workspace and keeps existing /frontend files intact\n\n` +
-              `**Option 3: Cancel**\n` +
-              `- Do not proceed with DApp generation\n\n` +
+              overwriteOptions +
               `⚠️ DO NOT PROCEED without user confirmation. Ask the user which option they want.`
             )
           }
@@ -1399,7 +1415,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_dapp',
-      description: 'Set up a new DApp workspace from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL, then stop. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
+      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. In Remix Desktop, Location is fixed to Inline in /frontend; otherwise ask Location Workspace(default)/Inline. Always ask Base App No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
       inputSchema: new GenerateDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
