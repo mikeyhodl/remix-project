@@ -14,7 +14,7 @@ const profile = {
   name: 'editor',
   description: 'service - editor',
   version: packageJson.version,
-  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText', 'getPositionAt', 'openReadOnly', 'showCustomDiff', 'hasUnacceptedChanges', 'clearAllBreakpoints', 'acceptDiff', 'discardDiff', 'getDiffSessions', 'setActiveDiff', 'closeDiffSession', 'openSplitView'],
+  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText', 'getPositionAt', 'openReadOnly', 'showCustomDiff', 'hasUnacceptedChanges', 'clearAllBreakpoints', 'acceptDiff', 'discardDiff', 'getDiffSessions', 'setActiveDiff', 'closeDiffSession', 'openSplitView', 'closeSplitView'],
 }
 
 export default class Editor extends Plugin {
@@ -586,6 +586,19 @@ export default class Editor extends Plugin {
     }
   }
 
+  /**
+   * Close the split view and return to single editor view
+   * Keeps the currently active file (not necessarily the original left file)
+   */
+  closeSplitView () {
+    // Clear split view state
+    this.splitViewFile = null
+    this.splitViewContent = null
+    this.splitViewLeftPath = null
+
+    // Just re-render - the current file remains active
+    this.renderComponent()
+  }
 
   setIsDiff (isDiff, currentDiffFile = null, hashedPathModified = null) {
     this.isDiff = isDiff

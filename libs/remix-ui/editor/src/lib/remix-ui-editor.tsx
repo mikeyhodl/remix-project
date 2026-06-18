@@ -161,6 +161,7 @@ export type EditorAPIType = {
   getDiffSessions: () => Promise<DiffSession[]>
   setActiveDiff: (diffId: string) => Promise<boolean>
   closeDiffSession: (diffId: string) => Promise<boolean>
+  closeSplitView: () => void
 }
 
 /* eslint-disable-next-line */
@@ -938,6 +939,10 @@ export const EditorUI = (props: EditorUIProps) => {
 
   props.editorAPI.closeDiffSession = async (diffId: string): Promise<boolean> => {
     return await props.plugin.call('editor', 'closeDiffSession', diffId)
+  }
+
+  props.editorAPI.closeSplitView = () => {
+    props.plugin.call('editor', 'closeSplitView')
   }
 
   function removeAllWidgets() {
@@ -1953,6 +1958,7 @@ export const EditorUI = (props: EditorUIProps) => {
               language={editorModelsState[props.currentFile] ? editorModelsState[props.currentFile].language : 'text'}
               onMount={handleEditorDidMount}
               beforeMount={handleEditorWillMount}
+              keepCurrentModel={true}
               options={{
                 glyphMargin: true,
                 readOnly: editorModelsState[props.currentFile]?.readOnly,
@@ -1967,19 +1973,28 @@ export const EditorUI = (props: EditorUIProps) => {
             {/* Header */}
             <div className="d-flex justify-content-between align-items-center px-2 py-1 border-bottom" style={{ backgroundColor: 'var(--secondary)', minHeight: '32px' }}>
               <span className="small" style={{ color: 'var(--text)' }}>Query Results</span>
+              <button
+                className="btn btn-sm p-0"
+                onClick={() => props.editorAPI.closeSplitView()}
+                title="Close split view"
+                style={{ color: 'var(--text)', lineHeight: 1 }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
             </div>
             {/* Results editor */}
             <div style={{ flex: 1, minHeight: 0 }}>
               <Editor
                 width="100%"
                 height="100%"
-                path={props.splitViewFile}
-                language={props.splitViewFile?.endsWith('.json') ? 'json' : 'text'}
+                path="inmemory://remix-splitview-results.json"
+                language="json"
                 value={props.splitViewContent}
                 beforeMount={handleEditorWillMount}
+                keepCurrentModel={true}
                 options={{
                   glyphMargin: false,
-                  readOnly: false,
+                  readOnly: true,
                   inlineSuggest: { enabled: false },
                   minimap: { enabled: false }
                 }}
@@ -1989,22 +2004,25 @@ export const EditorUI = (props: EditorUIProps) => {
         </div>
       )}
       {/* Regular single editor - shown when NOT in split view */}
-      <Editor
-        width="100%"
-        height={(props.isDiff || props.splitViewFile) ? '0%' : '100%'}
-        path={props.currentFile}
-        language={editorModelsState[props.currentFile] ? editorModelsState[props.currentFile].language : 'text'}
-        onMount={handleEditorDidMount}
-        beforeMount={handleEditorWillMount}
-        options={{
-          glyphMargin: true,
-          readOnly: (!editorRef.current || !props.currentFile) && editorModelsState[props.currentFile]?.readOnly,
-          inlineSuggest: { enabled: true },
-          minimap: { enabled: false }
-        }}
-        defaultValue={defaultEditorValue}
-        className={(props.isDiff || props.splitViewFile) ? "d-none" : "d-block"}
-      />
+      {!props.splitViewFile && (
+        <Editor
+          width="100%"
+          height={props.isDiff ? '0%' : '100%'}
+          path={props.currentFile}
+          language={editorModelsState[props.currentFile] ? editorModelsState[props.currentFile].language : 'text'}
+          onMount={handleEditorDidMount}
+          beforeMount={handleEditorWillMount}
+          keepCurrentModel={true}
+          options={{
+            glyphMargin: true,
+            readOnly: (!editorRef.current || !props.currentFile) && editorModelsState[props.currentFile]?.readOnly,
+            inlineSuggest: { enabled: true },
+            minimap: { enabled: false }
+          }}
+          defaultValue={defaultEditorValue}
+          className={props.isDiff ? "d-none" : "d-block"}
+        />
+      )}
       {editorModelsState[props.currentFile]?.readOnly && (
         <span className="ps-4 h6 mb-0 w-100 alert-info position-absolute bottom-0 end-0">
           <i className="fas fa-lock-alt p-2"></i>
