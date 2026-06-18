@@ -75,66 +75,44 @@ export class TheGraphPlugin extends Plugin {
    * @param pathOrCmd - Either a file path string or a context menu command object
    */
   async runSubgraphFile(pathOrCmd: string | { path: string[] }): Promise<QueryResult> {
-    // Handle both direct path string and context menu command object
     const path = typeof pathOrCmd === 'string' ? pathOrCmd : pathOrCmd.path[0]
 
     try {
-      // Log start to terminal
       await this.call('terminal', 'log', {
         type: 'info',
         value: `[TheGraph] Running subgraph query: ${path}`
       })
-
-      // Read the file content
       const content = await this.call('fileManager', 'readFile', path)
-
-      // Parse the file
       const parsed = parseGraphQLFile(content)
-
-      // Validate the query
       const validation = validateGraphQLSyntax(parsed.query)
+
       if (!validation.valid) {
         const errorMsg = `[TheGraph] Invalid query syntax: ${validation.error}`
         await this.call('terminal', 'log', { type: 'error', value: errorMsg })
         throw new Error(validation.error)
       }
-
-      // Get endpoint from metadata or use default
       const endpoint = parsed.metadata.endpoint || this.settings.defaultEndpoint
+
       if (!endpoint) {
         const errorMsg = '[TheGraph] No endpoint specified. Add "# @endpoint: <url>" to your file or set a default endpoint.'
         await this.call('terminal', 'log', { type: 'error', value: errorMsg })
         throw new Error('No endpoint specified')
       }
-
-      // Execute the query
       const result = await this.executeQuery(endpoint, parsed.query, parsed.metadata.variables)
-
-      // Generate result file path
       const resultPath = path.replace('.subgraph', '.result.json')
-
-      // Prepare result content
       const resultContent = JSON.stringify(result.data || { errors: result.errors }, null, 2)
 
-      // Save results to file
       await this.call('fileManager', 'writeFile', resultPath, resultContent)
-
-      // Log success to terminal
       await this.call('terminal', 'log', {
         type: 'info',
         value: `[TheGraph] Query executed in ${result.executionTime}ms. Results saved to ${resultPath}`
       })
-
-      // Open split view with query on left and results on right
       try {
         await this.call('editor', 'openSplitView', path, resultPath, resultContent)
       } catch (splitViewError) {
-        // Fallback to just opening the result file if split view fails
         console.warn('[TheGraph] Split view failed, opening result file instead:', splitViewError)
         await this.call('fileManager', 'open', resultPath)
       }
-
-      // Emit event
       this.emit('queryExecuted', { path, result })
 
       return result
@@ -154,11 +132,9 @@ export class TheGraphPlugin extends Plugin {
     const match = endpoint.match(gatewayPattern)
 
     if (match) {
-      // This is a gateway URL without an API key in the path
       try {
         const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
         if (apiKey) {
-          // Insert the API key into the URL: /api/API_KEY/subgraphs/id/...
           const subgraphId = match[1]
           return `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${subgraphId}`
         } else {
@@ -182,9 +158,7 @@ export class TheGraphPlugin extends Plugin {
     const startTime = Date.now()
 
     try {
-      // Format the endpoint with API key if needed
       const formattedEndpoint = await this.getFormattedEndpoint(endpoint)
-
       const response = await fetch(formattedEndpoint, {
         method: 'POST',
         headers: {
@@ -204,7 +178,6 @@ export class TheGraphPlugin extends Plugin {
       const executionTime = Date.now() - startTime
 
       if (data.errors && data.errors.length > 0) {
-        // Log GraphQL errors
         for (const err of data.errors) {
           await this.call('terminal', 'log', {
             type: 'warn',
