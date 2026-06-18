@@ -893,6 +893,11 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           this.filesystemBackend,
           fallbackModel
         )
+        let subagentsDesc = ''
+        agentConfig.subagents.forEach(sub => {
+          subagentsDesc += `\n- ${sub.name}:${sub.description || ''}`
+        })
+        agentConfig.systemPrompt += `\n\n##The agent has access to the following subagents:${subagentsDesc}`
       }
 
       if (this.memoryBackend) {
