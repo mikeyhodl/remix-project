@@ -696,7 +696,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `I want to create a DApp frontend inline in the /frontend folder of my current workspace. Follow these steps exactly:`,
           ``,
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
-          `Location is fixed to Inline in /frontend for this environment. Ask me once for:`,
+          `Location is fixed to Inline in /frontend for this request. Ask me once for:`,
           `- Base App: No (default) or Yes`,
           `- Design: defaults, style notes, or a Figma URL`,
           ``,
@@ -767,7 +767,7 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this environment. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
+          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
           : `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
       )
     } else if (instances.length > 0) {
@@ -782,7 +782,7 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this environment. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
+          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base App No(default)/Yes and Design defaults/style notes/Figma URL. Location is fixed to Inline in /frontend for this request. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, and setupOptionsSummary.`
           : `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base App No(default)/Yes, and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true and setupOptionsSummary.`
       )
     } else {
@@ -799,7 +799,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `Please help me through the full process:`,
           ``,
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
-          `Location is fixed to Inline in /frontend for this environment. Ask me once for Base App No(default)/Yes and Design defaults/style/Figma.`,
+          `Location is fixed to Inline in /frontend for this request. Ask me once for Base App No(default)/Yes and Design defaults/style/Figma.`,
           `Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,
           `After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.`,
           ``,

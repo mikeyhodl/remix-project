@@ -415,7 +415,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
         ? `I want to create a DApp frontend inline in the /frontend folder of my current workspace. Follow these steps exactly:
 
 STEP 1 - ASK FOR SETUP OPTIONS:
-Location is fixed to Inline in /frontend for this environment. Ask me once for:
+Location is fixed to Inline in /frontend for this request. Ask me once for:
 - Base App: No (default) or Yes
 - Design: defaults, style notes, or a Figma URL
 
