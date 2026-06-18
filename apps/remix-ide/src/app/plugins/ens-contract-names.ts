@@ -262,6 +262,7 @@ export class EnsContractNamesPlugin extends Plugin {
 
       this.throwIfCancelled(requestId)
       const currentChainId = await publicClient.getChainId()
+      await this.logWalletProviderDiagnostics('setReverse', chainId, provider, currentChainId)
       await this.logTerminal('info', `[ENS-Reverse] Chain: ${currentChainId}, expected: ${chainId}`)
       if (currentChainId !== chainId) {
         throw new Error(`Please switch your wallet to ${SUPPORTED_CHAINS.get(chainId)} (chain ID ${chainId}). Current: ${currentChainId}`)
@@ -362,6 +363,7 @@ export class EnsContractNamesPlugin extends Plugin {
     try {
       const publicClient = createPublicClient({ transport: custom(provider) })
       const currentChainId = await publicClient.getChainId()
+      await this.logWalletProviderDiagnostics('checkReverseStatus', chainId, provider, currentChainId)
 
       if (currentChainId !== chainId) {
         return {
@@ -445,6 +447,54 @@ export class EnsContractNamesPlugin extends Plugin {
   private throwIfCancelled(requestId: string) {
     if (requestId && this.cancelledOperations.has(requestId)) {
       throw new Error('Operation canceled')
+    }
+  }
+
+  private async logWalletProviderDiagnostics(context: string, expectedChainId: number, provider: any, currentChainId?: number) {
+    const readChainId = async (target: any) => {
+      if (!target?.request) return null
+      try {
+        return await target.request({ method: 'eth_chainId' })
+      } catch (error: any) {
+        return `error:${error?.message || String(error)}`
+      }
+    }
+
+    try {
+      const windowEthereum = typeof window !== 'undefined' ? (window as any).ethereum : null
+      const remixNetwork = await this.call('udappEnv' as any, 'getNetwork').catch((error: any) => ({ error: error?.message || String(error) }))
+      const selectedProvider = await this.call('udappEnv' as any, 'getSelectedProvider').catch((error: any) => `error:${error?.message || String(error)}`)
+      const providerChainId = await readChainId(provider)
+      const windowChainId = windowEthereum === provider ? providerChainId : await readChainId(windowEthereum)
+      const injectedProviders = Array.isArray(windowEthereum?.providers)
+        ? windowEthereum.providers.map((candidate: any, index: number) => ({
+          index,
+          isMetaMask: !!candidate?.isMetaMask,
+          isCoinbaseWallet: !!candidate?.isCoinbaseWallet,
+          isRabby: !!candidate?.isRabby,
+          selectedAddress: candidate?.selectedAddress || null,
+        }))
+        : []
+
+      await this.logTerminal('info', `[ENS_PROVIDER_DEBUG] ${this.safeJson({
+        context,
+        expectedChainId,
+        viemCurrentChainId: currentChainId,
+        remixNetwork,
+        selectedProvider,
+        providerChainId,
+        windowChainId,
+        providerIsWindowEthereum: provider === windowEthereum,
+        providerFlags: {
+          isMetaMask: !!provider?.isMetaMask,
+          isCoinbaseWallet: !!provider?.isCoinbaseWallet,
+          isRabby: !!provider?.isRabby,
+          selectedAddress: provider?.selectedAddress || null,
+        },
+        injectedProviders,
+      })}`)
+    } catch (error: any) {
+      await this.logTerminal('error', `[ENS_PROVIDER_DEBUG] diagnostics failed: ${this.safeJson({ context, error: error?.message || String(error) })}`)
     }
   }
 
