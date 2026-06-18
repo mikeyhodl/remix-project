@@ -35,7 +35,7 @@ export function EnsNaming({ contract, onClose }: EnsNamingProps) {
   const { plugin, themeQuality } = useContext(DeployedContractsAppContext)
 
   const [label, setLabel] = useState(getDefaultEnsLabel(contract))
-  const [project, setProject] = useState('default')
+  const [project, setProject] = useState('project')
   const [chainId, setChainId] = useState<number | null>(null)
   const [viewStep, setViewStep] = useState<ViewStep>('input')
 

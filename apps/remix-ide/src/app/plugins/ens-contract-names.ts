@@ -262,9 +262,9 @@ export class EnsContractNamesPlugin extends Plugin {
 
       this.throwIfCancelled(requestId)
       const currentChainId = await publicClient.getChainId()
-      await this.logWalletProviderDiagnostics('setReverse', chainId, provider, currentChainId)
       await this.logTerminal('info', `[ENS-Reverse] Chain: ${currentChainId}, expected: ${chainId}`)
       if (currentChainId !== chainId) {
+        await this.logWalletProviderDiagnostics('setReverse', chainId, provider, currentChainId)
         throw new Error(`Please switch your wallet to ${SUPPORTED_CHAINS.get(chainId)} (chain ID ${chainId}). Current: ${currentChainId}`)
       }
 
@@ -363,9 +363,9 @@ export class EnsContractNamesPlugin extends Plugin {
     try {
       const publicClient = createPublicClient({ transport: custom(provider) })
       const currentChainId = await publicClient.getChainId()
-      await this.logWalletProviderDiagnostics('checkReverseStatus', chainId, provider, currentChainId)
 
       if (currentChainId !== chainId) {
+        await this.logWalletProviderDiagnostics('checkReverseStatus', chainId, provider, currentChainId)
         return {
           status: 'wrong_chain',
           name: '',
@@ -472,7 +472,6 @@ export class EnsContractNamesPlugin extends Plugin {
           isMetaMask: !!candidate?.isMetaMask,
           isCoinbaseWallet: !!candidate?.isCoinbaseWallet,
           isRabby: !!candidate?.isRabby,
-          selectedAddress: candidate?.selectedAddress || null,
         }))
         : []
 
@@ -489,7 +488,6 @@ export class EnsContractNamesPlugin extends Plugin {
           isMetaMask: !!provider?.isMetaMask,
           isCoinbaseWallet: !!provider?.isCoinbaseWallet,
           isRabby: !!provider?.isRabby,
-          selectedAddress: provider?.selectedAddress || null,
         },
         injectedProviders,
       })}`)
