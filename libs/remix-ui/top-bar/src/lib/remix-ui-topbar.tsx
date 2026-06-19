@@ -734,7 +734,7 @@ export function RemixUiTopbar() {
       <div className="d-flex flex-row align-items-center justify-content-between w-100" style={{ minWidth: 0 }}>
         <div
           className="d-flex flex-row align-items-center m-1"
-          style={{ minWidth: 0, flex: isNonMaximizedWindow ? '0.78 1 0' : '1 1 0' }}
+          style={{ minWidth: 0 }}
         >
           <div
             className="d-flex align-items-center justify-content-between me-3 cursor-pointer"
@@ -781,7 +781,7 @@ export function RemixUiTopbar() {
           </span>
           {showCloudLoginModal && <LoginModal onClose={() => setShowCloudLoginModal(false)} plugin={plugin} />}
         </div>
-        <div className="m-1 d-flex align-self-center" style={{ minWidth: 0, flex: isNonMaximizedWindow ? '1.22 1 0' : '1 1 0' }}>
+        <div className="m-1 d-flex align-self-center">
           {showCloudToggle && (
             <CloudToggle
               className="ms-2"
@@ -791,7 +791,7 @@ export function RemixUiTopbar() {
             />)}
           <div
             className="d-flex align-items-center flex-nowrap ms-2"
-            style={{ minWidth: 0, width: '100%', justifyContent: isNonMaximizedWindow ? 'flex-start' : 'center' }}
+            style={{ minWidth: 0, width: '100%' }}
           >
             <WorkspacesDropdown
               menuItems={menuItems}
@@ -936,6 +936,12 @@ export function RemixUiTopbar() {
           >
             <i className="fa fa-cog"></i>
           </span>
+          <span
+            className={`remixui_icon_ai`}
+            onClick={() => {
+              plugin.call('rightSidePanel', 'highlight')
+            }}
+          ><img src="assets/img/remixai-logoAI.webp" alt="remixaiassistant"></img></span>
         </div>
       </div>
       {feedbackFormUrl && (
