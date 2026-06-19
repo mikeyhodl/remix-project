@@ -587,7 +587,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         : 'Cancel at period end'
       const choice = await this.requestConfirm({
         title: `Cancel ${planState.planName}?`,
-        message: 'Pick when the cancellation should take effect. After cancellation you\u2019ll keep the Free plan automatically \u2014 no action needed on your part.',
+        message: 'After cancellation you\u2019ll keep the Free plan automatically \u2014 no action needed on your part.',
         variant: 'danger',
         eyebrow: 'Cancel subscription',
         icon: 'fas fa-circle-xmark',
@@ -599,7 +599,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         ],
         actions: [
           { value: 'next_billing_period', label: periodEndLabel, variant: 'primary', icon: 'fas fa-calendar-check' },
-          { value: 'immediately', label: 'Cancel immediately', variant: 'danger', icon: 'fas fa-bolt' },
+         // { value: 'immediately', label: 'Cancel immediately', variant: 'danger', icon: 'fas fa-bolt' },
           { value: 'keep', label: 'Keep subscription', variant: 'ghost' }
         ]
       })
@@ -2123,7 +2123,7 @@ const UpgradePromoBanner: React.FC<{
   const planName = topPlan?.name ?? 'Pro'
   const isFree = planCtx.kind === 'no_subscription'
   const headline = isFree
-    ? `Unlock ${planName} — more models, more credits, more power`
+    ? `Unlock ${planName}`
     : `Get more from Remix AI — upgrade from ${planCtx.planName} to ${planName}`
 
   return (
@@ -2167,7 +2167,7 @@ const UpgradePromoBanner: React.FC<{
               {freeCreditsTotal.toLocaleString()} free AI credits
             </span>
           )}
-          {features.slice(0, 3).map((f, i) => (
+          {features.slice(0, 100).map((f, i) => (
             <span key={i} className="pm-promo__pill pm-promo__pill--feature">
               <i className="fas fa-check"></i>
               {f}
@@ -2557,7 +2557,7 @@ const PlanCard: React.FC<{
         {!showUnifiedCurrent && isSubscriptionCurrent && <div className="pm-plan__current pm-plan__current--subscription">Subscription</div>}
         {!showUnifiedCurrent && isAccessActive && (
           <div className="pm-plan__current pm-plan__current--access" title={`Access from ${formatFeatureGroupSource(accessGroup.source_type)}`}>
-            Access
+            {`Accessed granted: ${formatFeatureGroupSource(accessGroup.source_type)}`}
           </div>
         )}
       </div>
@@ -2932,14 +2932,14 @@ const PlansSection: React.FC<{
           compete visually with the priced cards. */}
       <a
         className="pm-enterprise-strip"
-        href="mailto:sales@remix.live?subject=Remix%20Team%20%2F%20Enterprise%20enquiry"
+        href="https://remix.live/contact"
         target="_blank"
         rel="noopener noreferrer"
       >
         <span className="pm-enterprise-strip__label">
           <i className="fas fa-building" aria-hidden></i>
           <strong>Team &amp; Enterprise</strong>
-          <span className="pm-enterprise-strip__sub">SSO, pooled credits, custom quotas</span>
+          <span className="pm-enterprise-strip__sub"></span>
         </span>
         <span className="pm-enterprise-strip__cta">
           Contact us <i className="fas fa-arrow-right" aria-hidden></i>
@@ -3011,7 +3011,7 @@ const TopUpSection: React.FC<{
       </div>
       <div className="pm-topup__custom">
         <span>Need a custom amount?</span>
-        <a href="mailto:remix@ethereum.org">Contact us</a>
+        <a href="https://remix.live/contact" target="_blank" rel="noopener noreferrer">Contact us</a>
       </div>
     </div>
   )
