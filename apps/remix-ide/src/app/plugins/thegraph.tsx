@@ -54,19 +54,6 @@ export class TheGraphPlugin extends Plugin {
     } catch (e) {
       console.warn('[TheGraph] Failed to load settings:', e)
     }
-
-    // Register context menu for .subgraph files
-    this.call('filePanel', 'registerContextMenuItem', {
-      id: 'thegraph',
-      name: 'runSubgraphFile',
-      label: 'Run Subgraph Query',
-      type: ['file'],
-      extension: ['.subgraph'],
-      path: [],
-      pattern: [],
-      group: 2,
-      multiselect: false
-    })
   }
 
   /**
