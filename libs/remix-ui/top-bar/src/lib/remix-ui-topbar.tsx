@@ -937,11 +937,35 @@ export function RemixUiTopbar() {
             <i className="fa fa-cog"></i>
           </span>
           <span
-            className={`remixui_icon_ai`}
-            onClick={() => {
-              plugin.call('rightSidePanel', 'highlight')
+            className="ms-3"
+            style={{ 
+              fontSize: '1.2rem', 
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(91, 207, 207, 0.1)',
+              border: '1px solid rgba(91, 207, 207, 0.3)'
             }}
-          ><img src="assets/img/remixai-logoAI.webp" alt="remixaiassistant"></img></span>
+            onClick={async () => {
+              const pState = await plugin.call('menuicons', 'getPluginState', 'remixaiassistant')
+              if (pState.pinned) {
+                plugin.call('rightSidePanel', 'highlight')
+              } else {
+                plugin.call('menuicons', 'toggle', 'remixaiassistant')
+              }
+            }}
+            data-id="remixai-assistant-icon"
+          >
+            <img 
+              src="assets/img/remixai-logoAI.webp" 
+              alt="remixaiassistant"
+              style={{ width: '20px', height: '20px' }}
+            />
+          </span>
         </div>
       </div>
       {feedbackFormUrl && (
