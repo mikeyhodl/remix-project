@@ -196,7 +196,7 @@ export class EnsContractNamesPlugin extends Plugin {
     const { requestId = '', chainId, contractAddress } = params
     this.emitForRequest(ENS_EVENTS.primaryEnsStatus, requestId, { result: { status: 'checking', name: '', message: '' } })
 
-    const provider = this.getWalletProvider()
+    const provider = await this.getWalletProvider()
     if (!provider) {
       const result: PrimaryEnsCheckResult = { status: 'unavailable', name: '', message: '' }
       this.emitForRequest(ENS_EVENTS.primaryEnsStatus, requestId, { result })
@@ -254,7 +254,7 @@ export class EnsContractNamesPlugin extends Plugin {
 
     try {
       this.throwIfCancelled(requestId)
-      const provider = this.getWalletProvider()
+      const provider = await this.getWalletProvider()
       if (!provider) throw new Error('No wallet provider found. Please install MetaMask.')
 
       const walletClient = createWalletClient({ transport: custom(provider) })
@@ -350,7 +350,7 @@ export class EnsContractNamesPlugin extends Plugin {
   }
 
   private async readReverseStatus(chainId: number, contractAddress: string, fullName: string): Promise<ReverseCheckResult> {
-    const provider = this.getWalletProvider()
+    const provider = await this.getWalletProvider()
     if (!provider) {
       return {
         status: 'unavailable',
@@ -496,9 +496,14 @@ export class EnsContractNamesPlugin extends Plugin {
     }
   }
 
-  private getWalletProvider(): any {
-    if (typeof window === 'undefined') return null
-    return (window as any).ethereum
+  private async getWalletProvider(): Promise<any> {
+    try {
+      const currentEnv = await this.call('blockchain' as any, 'getProviderObject')
+      if (currentEnv?.config?.isVM || currentEnv?.name?.startsWith('vm-')) return null
+      return currentEnv?.provider || null
+    } catch {
+      return null
+    }
   }
 
   private emitForRequest(eventName: EnsEventName, requestId: string, payload: Record<string, any>) {
