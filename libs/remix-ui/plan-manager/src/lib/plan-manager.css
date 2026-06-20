@@ -1291,6 +1291,34 @@
   color: #ff7676;
 }
 
+/* Reactivate link — quiet text-button shown when the sub is scheduled to
+   cancel. Positive accent to contrast with the destructive cancel link. */
+.pm-plan__reactivate-link {
+  margin-top: 8px;
+  padding: 6px 4px;
+  background: transparent;
+  border: 0;
+  color: var(--pm-accent);
+  font-family: var(--pm-body);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--pm-accent) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: color .15s ease, text-decoration-color .15s ease;
+}
+
+.pm-plan__reactivate-link:hover {
+  color: color-mix(in srgb, var(--pm-accent) 80%, #fff);
+  text-decoration-color: currentColor;
+}
+
+.pm-plan__reactivate-link i {
+  margin-right: 6px;
+}
+
 /* "Active until {date} — will not renew" notice on the active card. */
 .pm-plan__cancel-notice {
   margin-top: 10px;

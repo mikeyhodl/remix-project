@@ -50,7 +50,7 @@ export type ActiveAlert =
   | null
 
 export type CheckoutResultKind = 'processing' | 'success' | 'closed' | 'error'
-export type CheckoutIntent = 'subscription' | 'topup' | 'feature' | 'cancel'
+export type CheckoutIntent = 'subscription' | 'topup' | 'feature' | 'cancel' | 'reactivate'
 
 export interface CheckoutResult {
   kind: CheckoutResultKind

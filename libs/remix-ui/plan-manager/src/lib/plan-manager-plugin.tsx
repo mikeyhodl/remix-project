@@ -68,7 +68,7 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'resolveConfirm'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm'],
   events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
@@ -275,9 +275,10 @@ export class PlanManagerPlugin extends ViewPlugin {
     case 'processing':
     case 'success':
       this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId: result.transactionId })
-      // Trigger a refresh so 'processing' promotes to 'success' once data
-      // confirms (the machine handles the promotion in its DATA_LOADED action).
-      void this.loadAccountData()
+      // Refresh ending with PURCHASE_CONFIRMED so 'processing' promotes to
+      // 'success'. A bare loadAccountData() emits DATA_LOADED, which does NOT
+      // promote while the data region is already in the 'ready' state.
+      void this.completePurchaseRefresh()
       break
     case 'closed':
       this.store.send({ type: 'CHECKOUT_CLOSED' })
@@ -558,7 +559,11 @@ export class PlanManagerPlugin extends ViewPlugin {
 
       // 3. PATCH response already reflects new state — mark complete and refresh.
       this.store.send({ type: 'CHECKOUT_COMPLETED' })
-      setTimeout(() => { void this.loadAccountData() }, 250)
+      // Use completePurchaseRefresh so it ends with PURCHASE_CONFIRMED, which
+      // promotes the result 'processing' → 'success'. A bare loadAccountData()
+      // only emits DATA_LOADED, which does NOT promote while the data region is
+      // already in the 'ready' state.
+      setTimeout(() => { void this.completePurchaseRefresh() }, 250)
     } catch (err: any) {
       planManagerLogger.error('[PlanManager] Plan change failed', err)
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during plan change.' })
@@ -628,11 +633,50 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.store.send({ type: 'CHECKOUT_COMPLETED', meta })
       // Refresh — immediate cancel triggers webhook to grant free; period-end
       // cancel just sets cancelAtPeriodEnd, which the next refresh will pick up.
-      // The data refresh promotes the result from 'processing' → 'success'.
-      setTimeout(() => { void this.loadAccountData() }, 250)
+      // Use completePurchaseRefresh so it ends with PURCHASE_CONFIRMED, which
+      // promotes the result 'processing' → 'success'. A bare loadAccountData()
+      // only emits DATA_LOADED, which does NOT promote while the data region is
+      // already in the 'ready' state, leaving the UI stuck on "waiting for
+      // confirmation".
+      setTimeout(() => { void this.completePurchaseRefresh() }, 250)
     } catch (err: any) {
       planManagerLogger.error('[PlanManager] Cancel subscription failed', err)
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during cancellation.' })
+    }
+  }
+
+  /**
+   * Reactivate (un-cancel) a subscription that is scheduled to cancel at period
+   * end. Removes the pending scheduled cancellation so the sub renews as normal.
+   * No-op when the user has no paid subscription with a pending cancellation.
+   */
+  async reactivateSubscription(): Promise<void> {
+    const snap = this.store.getSnapshot()
+    if (!snap.isAuthenticated) return
+    const planState = selectPlanState(snap)
+    if (planState.kind !== 'paid' || !planState.isCancelled) return
+
+    const planName = planState.planName
+    this.store.send({ type: 'CHECKOUT_INTENT', intent: 'reactivate', itemLabel: planName, productId: planState.planId ?? planName })
+
+    try {
+      const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
+      if (!billingApi) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
+        return
+      }
+      const resp = await billingApi.reactivateSubscription()
+      if (!resp?.ok) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not reactivate your subscription.' })
+        return
+      }
+      this.store.send({ type: 'CHECKOUT_COMPLETED' })
+      // End with completePurchaseRefresh so it emits PURCHASE_CONFIRMED, which
+      // promotes the result 'processing' → 'success' and refreshes permissions.
+      setTimeout(() => { void this.completePurchaseRefresh() }, 250)
+    } catch (err: any) {
+      planManagerLogger.error('[PlanManager] Reactivate subscription failed', err)
+      this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected error during reactivation.' })
     }
   }
 
@@ -786,8 +830,10 @@ export class PlanManagerPlugin extends ViewPlugin {
       // Paddle hand-off; the backend already granted the membership.
       if ((response.data as any).immediate === true) {
         this.store.send({ type: 'CHECKOUT_COMPLETED' })
-        // Trigger a fast data refresh so the UI reflects the new plan.
-        setTimeout(() => { void this.loadAccountData() }, 250)
+        // Trigger a fast refresh that ends with PURCHASE_CONFIRMED so the
+        // result is promoted 'processing' → 'success' (a bare loadAccountData
+        // would leave it stuck while the data region is already 'ready').
+        setTimeout(() => { void this.completePurchaseRefresh() }, 250)
         return
       }
       if (!this.paddle && !getPaddle()) {
@@ -1772,6 +1818,7 @@ const PlanManagerOverlay: React.FC<{
                 requiredFeature={intent?.requiredFeature ?? null}
                 onSubscribe={(planId, priceId) => plugin.subscribeToPlan(planId, priceId)}
                 onCancel={() => plugin.cancelSubscription()}
+                onReactivate={() => plugin.reactivateSubscription()}
                 cancelledNotice={planCtx.kind === 'paid' && planCtx.isCancelled ? { expiresOn: planCtx.expiresOn } : null}
               />
             )}
@@ -1792,7 +1839,7 @@ const PlanManagerOverlay: React.FC<{
           <div className="pm-footer__legal">
             {snap.isAuthenticated
               ? <>Signed in · billing data live</>
-              : <>Catalog only · sign in to manage your subscription</>}
+              : <>Catalog only. Sign in to manage your subscription.</>}
           </div>
           <div className="pm-footer__vat">All prices exclude VAT/tax where applicable</div>
           <div className="pm-footer__links">
@@ -2475,7 +2522,8 @@ const PlanCard: React.FC<{
   cancelledNotice: { expiresOn: string | null } | null
   onSubscribe: (planId: string, priceId?: number) => void
   onCancel: () => void
-}> = ({ plan, isSubscriptionCurrent, accessGroup, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel }) => {
+  onReactivate: () => void
+}> = ({ plan, isSubscriptionCurrent, accessGroup, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel, onReactivate }) => {
   const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
   const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
   const hasMonthly = activePrices.some((pr: any) => pr.billing_interval === 'month')
@@ -2557,7 +2605,7 @@ const PlanCard: React.FC<{
         {!showUnifiedCurrent && isSubscriptionCurrent && <div className="pm-plan__current pm-plan__current--subscription">Subscription</div>}
         {!showUnifiedCurrent && isAccessActive && (
           <div className="pm-plan__current pm-plan__current--access" title={`Access from ${formatFeatureGroupSource(accessGroup.source_type)}`}>
-            {`Accessed granted: ${formatFeatureGroupSource(accessGroup.source_type)}`}
+            {`You have access`}
           </div>
         )}
       </div>
@@ -2670,14 +2718,25 @@ const PlanCard: React.FC<{
               </span>
             </div>
           )}
-          <button
-            type="button"
-            className="pm-plan__cancel-link"
-            onClick={() => onCancel()}
-            title="Cancel your subscription"
-          >
-            {cancelledNotice ? 'Manage cancellation' : 'Cancel subscription'}
-          </button>
+          {cancelledNotice ? (
+            <button
+              type="button"
+              className="pm-plan__reactivate-link"
+              onClick={() => onReactivate()}
+              title="Remove the scheduled cancellation and keep your subscription"
+            >
+              <i className="fas fa-rotate-left" aria-hidden></i> Reactivate subscription
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="pm-plan__cancel-link"
+              onClick={() => onCancel()}
+              title="Cancel your subscription"
+            >
+              Cancel subscription
+            </button>
+          )}
         </>
       )}
     </article>
@@ -2858,9 +2917,11 @@ const PlansSection: React.FC<{
   onSubscribe: (planId: string, priceId?: number) => void
   /** Cancel the active paid subscription. Opens the in-panel chooser. */
   onCancel: () => void
+  /** Reactivate a subscription scheduled to cancel (removes the scheduled cancellation). */
+  onReactivate: () => void
   /** When the active paid sub is set to cancel, show "will not renew" copy. */
   cancelledNotice: { expiresOn: string | null } | null
-}> = ({ plans, currentPlanId, userFeatureGroups, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, cancelledNotice }) => {
+}> = ({ plans, currentPlanId, userFeatureGroups, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, onReactivate, cancelledNotice }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -2902,8 +2963,7 @@ const PlansSection: React.FC<{
         <div className="pm-plans__access-note" role="status">
           <i className="fas fa-key" aria-hidden></i>
           <span>
-            Billing subscription: <strong>{currentPlan?.name ?? 'None'}</strong>. Active access: <strong>{primaryAccess.plan.name}</strong>
-            {' '}via {formatFeatureGroupSource(primaryAccess.group.source_type)}. Permissions, quotas, and included AI usage follow active access.
+            Active subscription: <strong>{currentPlan?.name ?? 'None'}</strong>. Active access: <strong>{primaryAccess.plan.name}</strong>
           </span>
         </div>
       )}
@@ -2925,6 +2985,7 @@ const PlansSection: React.FC<{
             cancelledNotice={cancelledNotice}
             onSubscribe={onSubscribe}
             onCancel={onCancel}
+            onReactivate={onReactivate}
           />
         )
       })}
@@ -3511,11 +3572,11 @@ const SignInPromptScreen: React.FC<{
             <i className="fas fa-sparkles"></i>
             <span>Account required</span>
           </div>
-          <h2 className="pm-signin__title">Create a free account to use Remix&nbsp;AI</h2>
+          <h2 className="pm-signin__title">Create a free account to use RemixAI</h2>
 
           <ul className="pm-signin__perks">
-            <li><i className="fas fa-robot"></i> Solidity assistant, completions &amp; security audit</li>
-            <li><i className="fas fa-lock"></i> Auth via your existing identity — we never see your password</li>
+            <li><i className="fas fa-robot"></i> Solidity Assistant, Code Completion, and Security Audits</li>
+            <li><i className="fas fa-lock"></i> Authorize via your existing identity — we never see your password.</li>
           </ul>
 
           <div className="pm-signin__actions">
@@ -3532,8 +3593,8 @@ const SignInPromptScreen: React.FC<{
           </div>
 
           <p className="pm-signin__legal">
-            By continuing you agree to the&nbsp;
-            <a href="https://remix-project.org/terms" target="_blank" rel="noreferrer">Terms</a>
+            By continuing, you agree to the&nbsp;
+            <a href="https://remix-project.org/terms" target="_blank" rel="noreferrer">Terms of Service</a>
             &nbsp;and&nbsp;
             <a href="https://remix-project.org/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
           </p>
@@ -3936,10 +3997,14 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
     icon: 'fas fa-spinner fa-spin',
     title: (intent, item) => intent === 'cancel'
       ? `Cancelling ${item || 'your subscription'}…`
-      : 'Confirming your payment…',
+      : intent === 'reactivate'
+        ? `Reactivating ${item || 'your subscription'}…`
+        : 'Confirming your payment…',
     body: (intent, item) => intent === 'cancel'
       ? `We’re processing your cancellation${item ? ` of ${item}` : ''}. This usually takes just a moment.`
-      : `We're waiting for confirmation from the payment processor${item ? ` for ${item}` : ''}. This usually takes a few seconds — feel free to keep this open or close it; we'll notify you when it lands.`
+      : intent === 'reactivate'
+        ? `We’re removing the scheduled cancellation${item ? ` for ${item}` : ''}. This usually takes just a moment.`
+        : `We're waiting for confirmation from the payment processor${item ? ` for ${item}` : ''}. This usually takes a few seconds — feel free to keep this open or close it; we'll notify you when it lands.`
   },
   success: {
     eyebrow: 'Payment confirmed',
@@ -3948,7 +4013,8 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
       intent === 'topup' ? `${item || 'Credits'} added to your account` :
         intent === 'subscription' ? `Welcome to ${item || 'your new plan'}` :
           intent === 'cancel' ? `${item || 'Subscription'} cancelled` :
-            'Purchase confirmed',
+            intent === 'reactivate' ? `${item || 'Subscription'} reactivated` :
+              'Purchase confirmed',
     body: (intent, _item, meta) =>
       intent === 'topup'
         ? 'Your balance has been updated. AI workflows are ready to go.'
@@ -3958,7 +4024,9 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
             ? (meta?.effectiveFrom === 'next_billing_period'
               ? `Your subscription will end${meta?.accessUntil ? ` on ${meta.accessUntil}` : ' at the end of your current billing period'}. Until then nothing changes — you keep every paid feature and credit.`
               : 'Your subscription has been cancelled and you’re back on the Free plan. Any unused paid credits stay in your account and keep working.')
-            : 'You can start using your new entitlements right away.'
+            : intent === 'reactivate'
+              ? 'Your subscription will renew as normal — the scheduled cancellation has been removed and you keep every paid feature and credit.'
+              : 'You can start using your new entitlements right away.'
   },
   closed: {
     eyebrow: 'Checkout cancelled',
@@ -3980,7 +4048,9 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
       }
       return intent === 'cancel'
         ? 'We couldn’t cancel your subscription'
-        : 'We couldn’t complete your payment'
+        : intent === 'reactivate'
+          ? 'We couldn’t reactivate your subscription'
+          : 'We couldn’t complete your payment'
     },
     body: (intent, _item, meta) => {
       if (meta?.flow === 'plan-change-preview') {
@@ -3990,6 +4060,7 @@ const CHECKOUT_COPY: Record<CheckoutResultKind, {
       }
       if (intent === 'topup') return 'Your top-up didn\'t go through. No credits were added and no card was charged.'
       if (intent === 'cancel') return 'Your cancellation request didn’t go through. Your subscription is unchanged. Please try again or contact support if the problem persists.'
+      if (intent === 'reactivate') return 'Your reactivation request didn’t go through. The scheduled cancellation is still in place. Please try again or contact support if the problem persists.'
       return 'Your subscription change didn\'t go through. Your current plan is unchanged and no card was charged.'
     }
   }

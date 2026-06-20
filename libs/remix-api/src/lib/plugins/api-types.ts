@@ -764,6 +764,21 @@ export interface CancelSubscriptionResponse {
   }
 }
 
+/**
+ * Response for POST /billing/subscription/reactivate — removes a pending
+ * scheduled cancellation (un-cancel). The returned subscription reflects the
+ * cleared scheduledChange eagerly.
+ */
+export interface ReactivateSubscriptionResponse {
+  ok: true
+  subscription: {
+    id: string
+    status: string
+    scheduledChange: any | null
+    nextBilledAt: string | null
+  }
+}
+
 // ===== Transaction polling (GET /billing/transaction/:providerTransactionId) ====
 
 /**

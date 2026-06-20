@@ -53,6 +53,7 @@ import {
   ChangeSubscriptionResponse,
   CancelSubscriptionRequest,
   CancelSubscriptionResponse,
+  ReactivateSubscriptionResponse,
   TransactionStatusResponse,
   CreditsUsageQuery,
   UsageReport,
@@ -727,6 +728,19 @@ export class BillingApiService {
     request: CancelSubscriptionRequest = {}
   ): Promise<ApiResponse<CancelSubscriptionResponse>> {
     return this.apiClient.post<CancelSubscriptionResponse>('/subscription/cancel', request)
+  }
+
+  /**
+   * Reactivate (un-cancel) a subscription that is scheduled to cancel.
+   * POST /billing/subscription/reactivate
+   *
+   * Removes the pending scheduled cancellation. Returns 409
+   * `no_scheduled_cancellation` if there is nothing to undo, or 501
+   * `reactivate_not_supported` if the provider can't remove scheduled changes.
+   * The returned subscription reflects the cleared scheduledChange eagerly.
+   */
+  async reactivateSubscription(): Promise<ApiResponse<ReactivateSubscriptionResponse>> {
+    return this.apiClient.post<ReactivateSubscriptionResponse>('/subscription/reactivate', {})
   }
 
   /**
