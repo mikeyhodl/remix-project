@@ -329,12 +329,22 @@ export class NudgePlugin extends Plugin {
    * fires the `user:on_free_plan` engine event.
    */
   private async _checkFreePlanNudge(): Promise<void> {
+    this.log('[NudgePlugin] _checkFreePlanNudge: start')
     try {
       // 1. Does the user already have an active paid subscription?
       const billingApi = await this.call('auth' as any, 'getBillingApi')
+      this.log('[NudgePlugin] _checkFreePlanNudge: billingApi resolved', billingApi)
       const subResp = await billingApi.getSubscription()
-      const sub = subResp?.data
-      if (sub && ['active', 'trialing', 'past_due'].includes(sub.status)) return
+      this.log('[NudgePlugin] _checkFreePlanNudge: subscription response', subResp)
+      const subData = subResp?.data
+      const sub = subData?.subscription
+      // subData.hasActiveSubscription is the authoritative flag; fall back to
+      // checking the nested subscription.status for API variants that omit it.
+      if (subData?.hasActiveSubscription || (sub && ['active', 'trialing', 'past_due'].includes(sub.status))) {
+        this.log('[NudgePlugin] _checkFreePlanNudge: user has active subscription, skipping nudge', sub?.status)
+        return
+      }
+      this.log('[NudgePlugin] _checkFreePlanNudge: no active subscription, proceeding', subData)
 
       // 2. Fetch plan catalog to derive discount copy.
       let title = 'Upgrade to Remix AI Pro'
@@ -342,9 +352,13 @@ export class NudgePlugin extends Plugin {
 
       try {
         const productsApi = await this.call('auth' as any, 'getProductsApi')
+        this.log('[NudgePlugin] _checkFreePlanNudge: productsApi resolved')
         const catalogResp = await productsApi.getAvailableProducts({ type: 'subscription_plan' })
+        this.log('[NudgePlugin] _checkFreePlanNudge: catalog response', catalogResp)
         const plans: any[] = (catalogResp.data?.data ?? []).filter((p: any) => (p.price_cents ?? 0) > 0)
+        this.log('[NudgePlugin] _checkFreePlanNudge: paid plans', plans)
         const topPlan = [...plans].sort((a: any, b: any) => b.price_cents - a.price_cents)[0]
+        this.log('[NudgePlugin] _checkFreePlanNudge: top plan', topPlan)
 
         if (topPlan) {
           const planName: string = topPlan.name
@@ -352,6 +366,7 @@ export class NudgePlugin extends Plugin {
           const priceCents: number = topPlan.price_cents
           const unit: string = topPlan.billing_interval === 'year' ? 'year' : 'month'
           const introDiscount = Array.isArray(topPlan.intro_discounts) ? topPlan.intro_discounts[0] : null
+          this.log('[NudgePlugin] _checkFreePlanNudge: introDiscount', introDiscount)
 
           if (introDiscount) {
             const isPct = introDiscount.discount_type === 'percentage'
@@ -368,16 +383,20 @@ export class NudgePlugin extends Plugin {
             const discountedLabel = `$${(dc / 100).toFixed(2)}`
             const regularLabel = `$${(priceCents / 100).toFixed(2)}`
             message = `Limited offer: ${offerLabel} — get ${planName} for just ${discountedLabel}/${unit} (regular ${regularLabel}). Premium models, MCP tools, and higher credit quotas included.`
+            this.log('[NudgePlugin] _checkFreePlanNudge: discount message built', { offerLabel, discountedLabel, regularLabel })
           } else {
             const priceLabel = `$${(priceCents / 100).toFixed(2)}`
             message = `Upgrade to ${planName} for ${priceLabel}/${unit} — unlock premium AI models, MCP integrations, and higher credit quotas.`
+            this.log('[NudgePlugin] _checkFreePlanNudge: no discount, price message built', priceLabel)
           }
         }
-      } catch {
+      } catch (err) {
+        this.log('[NudgePlugin] _checkFreePlanNudge: catalog fetch failed', err)
         // Catalog unavailable — fall through with generic copy.
       }
 
       // 3. Register the rule (dynamic copy baked in) and fire the trigger.
+      this.log('[NudgePlugin] _checkFreePlanNudge: registering rule and firing user:on_free_plan', { title, message })
       this.engine_.addRule({
         id: 'free-plan-upgrade',
         condition: 'user:on_free_plan',
@@ -397,7 +416,9 @@ export class NudgePlugin extends Plugin {
         priority: 13
       })
       this.engine_.fire('user:on_free_plan')
-    } catch {
+      this.log('[NudgePlugin] _checkFreePlanNudge: done')
+    } catch (err) {
+      this.log('[NudgePlugin] _checkFreePlanNudge: outer error', err)
       // Auth or billing API unavailable — skip silently.
     }
   }
