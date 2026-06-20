@@ -17,7 +17,7 @@
 
 import { ViewPlugin } from '@remixproject/engine-web'
 import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
-import { PluginViewWrapper } from '@remix-ui/helper'
+import { PluginViewWrapper, DISCORD_URL } from '@remix-ui/helper'
 // Paddle singleton lives next to this plugin now — `@remix-ui/billing` was
 // removed when Plan Manager became the sole billing surface.
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
@@ -1844,7 +1844,7 @@ const PlanManagerOverlay: React.FC<{
           <div className="pm-footer__vat">All prices exclude VAT/tax where applicable</div>
           <div className="pm-footer__links">
             <a href="https://remix-ide.readthedocs.io/" target="_blank" rel="noreferrer">Docs</a>
-            <a href="https://discord.gg/TWfKkZVwJW" target="_blank" rel="noreferrer">Support</a>
+            <a href={DISCORD_URL} target="_blank" rel="noreferrer">Support</a>
           </div>
         </footer>
 
@@ -4150,7 +4150,7 @@ const CheckoutResultScreen: React.FC<{
             ) : (
               <a
                 className="pm-result__btn pm-result__btn--ghost"
-                href="https://discord.gg/TWfKkZVwJW"
+                href={DISCORD_URL}
                 target="_blank"
                 rel="noreferrer"
               >
