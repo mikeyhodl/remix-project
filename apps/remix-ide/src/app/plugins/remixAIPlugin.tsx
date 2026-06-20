@@ -494,12 +494,12 @@ export class RemixAIPlugin extends Plugin {
 
         // Don't use remote fallback for Ollama - user explicitly chose local models
         const fallbackInferencer = this.selectedModel.provider === 'ollama' ? null : this.remoteInferencer
-        
+
         // Clean up old instance if it exists
         if (this.deepAgentInferencer && typeof this.deepAgentInferencer.cleanup === 'function') {
           this.deepAgentInferencer.cleanup()
         }
-        
+
         this.deepAgentInferencer = new DeepAgentInferencer(
           this,
           this.remixMCPServer.tools,
@@ -647,7 +647,8 @@ export class RemixAIPlugin extends Plugin {
     option.stream = false
     option.stream_result = false
     option.return_stream_response = false
-    return await this.remoteInferencer.basic_prompt(prompt, option)
+    // return await this.remoteInferencer.basic_prompt(prompt, option)
+    return this.deepAgentInferencer?.basic_inference(prompt) ?? this.remoteInferencer.basic_prompt(prompt, option)
   }
 
   async code_generation(prompt: string, params: IParams=CompletionParams): Promise<any> {

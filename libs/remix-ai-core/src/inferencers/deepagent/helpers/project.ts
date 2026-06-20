@@ -31,13 +31,13 @@ export function renderTree(tree: FsNode, indent = "  "): string {
 
 export function flattenJSON(obj: any): string {
   const parts: string[] = [];
-  
+
   function flatten(item: any, prefix = ""): void {
     if (item === null || item === undefined) {
       parts.push(`${prefix}:${item}`);
     } else if (typeof item === "object" && !Array.isArray(item)) {
       for (const key in item) {
-        if (item.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
           const newKey = prefix ? `${prefix}.${key}` : key;
           const val = item[key];
           if (typeof val === "object" && val !== null && !Array.isArray(val)) {
@@ -61,7 +61,7 @@ export function flattenJSON(obj: any): string {
       parts.push(`${prefix}:${item}`);
     }
   }
-  
+
   flatten(obj);
   return parts.join(",");
 }

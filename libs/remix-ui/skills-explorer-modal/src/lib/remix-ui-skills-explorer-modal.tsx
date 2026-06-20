@@ -285,7 +285,7 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
   // Filter skills based on search term and permission level
   const filteredSkills = skills.filter(skill => {
     // First check search term match
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
                          skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description.toLowerCase().includes(searchTerm.toLowerCase())
 
