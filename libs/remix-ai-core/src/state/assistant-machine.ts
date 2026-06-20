@@ -19,6 +19,7 @@
 
 import { setup, createActor, type AnyActorRef } from 'xstate'
 import type { PermissionsResponse } from '@remix-api'
+import { Features } from '@remix-api'
 import { ANONYMOUS_FALLBACK_MODELS, parseAIModelsFromPermissions, type AIModel } from '../types/models'
 
 // ─── Public types ───────────────────────────────────────────────────
@@ -257,7 +258,7 @@ export const assistantMachine = setup({
     /** ai:verified_accounts present but email_verified !== true. */
     isEmailVerificationRequired: ({ context }) => {
       // Only require verification when the gate exists AND is enabled.
-      if (!isFeatureEnabled(context.permissions, 'ai:verified_accounts')) return false
+      if (!isFeatureEnabled(context.permissions, Features.AI_VERIFIED_ACCOUNTS)) return false
       return context.permissions?.email_verified !== true
     },
     isAnonymous: ({ context }) => !context.isAuthenticated,
@@ -304,7 +305,7 @@ export const assistantMachine = setup({
         return
       }
       // Only enforce email verification when ai:verified_accounts exists and is enabled.
-      if (isFeatureEnabled(context.permissions, 'ai:verified_accounts') && context.permissions?.email_verified !== true) {
+      if (isFeatureEnabled(context.permissions, Features.AI_VERIFIED_ACCOUNTS) && context.permissions?.email_verified !== true) {
         context.gateReason = 'email-unverified'
         context.requiredFeature = null
         return
@@ -629,9 +630,9 @@ export function selectAllowedModelIds(
 
 function providerToFeatureKey(provider: string): string | null {
   switch (provider) {
-  case 'mistralai': return 'ai:Mistral'
-  case 'anthropic': return 'ai:Anthropic'
-  case 'openai': return 'ai:OpenAI'
+  case 'mistralai': return Features.AI_PROVIDER_MISTRAL
+  case 'anthropic': return Features.AI_PROVIDER_ANTHROPIC
+  case 'openai': return Features.AI_PROVIDER_OPENAI
   default: return null
   }
 }
@@ -718,7 +719,7 @@ export function selectTaskParam(
 
 /** Sugar over selectFeatureEnabled — Auto Mode is just `ai:auto`. */
 export function selectAutoModeEnabled(snap: AssistantSnapshot): boolean {
-  return selectFeatureEnabled(snap, 'ai:auto')
+  return selectFeatureEnabled(snap, Features.AI_AUTO)
 }
 
 /**

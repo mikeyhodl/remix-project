@@ -3,6 +3,8 @@ import React, { MutableRefObject, Ref, useContext, useEffect, useRef, useState, 
 import GroupListMenu from "./contextOptMenu"
 import { AiAssistantType, AiContextType, groupListType } from '../types/componentTypes'
 import { MatomoEvent } from '@remix-api';
+import { Features } from '@remix-api';
+import { useAuth } from '@remix-ui/app'
 import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
@@ -110,6 +112,13 @@ export interface PromptAreaProps {
   handleGasOptimisationAudit?: () => void
   hasAuditorPermission?: boolean
   hasSkillsPermission?: boolean
+  // Called when the user picks a slash command they are not entitled to.
+  // Receives the command name and the first missing feature key so the
+  // host can open the plan manager with the right upgrade context.
+  onUpgradeRequired?: (commandName: string, missingFeature: string) => void
+  // Resolves a missing feature to the cheapest plan that grants it (e.g.
+  // "Pro") so locked commands can label their badge with the target tier.
+  getRequiredPlanName?: (feature: string) => string | null
 }
 
 export const PromptArea: React.FC<PromptAreaProps> = ({
@@ -141,12 +150,28 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   handleLoadAuditChecklist,
   handleGasOptimisationAudit,
   hasAuditorPermission = false,
-  hasSkillsPermission = false
+  hasSkillsPermission = false,
+  onUpgradeRequired,
+  getRequiredPlanName
 }) => {
   const { trackMatomoEvent: baseTrackEvent } = useContext(TrackingContext)
   const trackMatomoEvent = <T extends MatomoEvent = MatomoEvent>(event: T) => {
     baseTrackEvent?.<T>(event)
   }
+  const { features } = useAuth()
+  // Single source of truth for "does the signed-in user have feature X".
+  // Mirrors the permissions shape used across the assistant (Record or
+  // array of feature entries). Used to gate slash commands behind the
+  // plan manager.
+  const hasFeature = useCallback((feature: string): boolean => {
+    if (!features) return false
+    if (Array.isArray(features)) return features.some((f: any) => f?.feature_name === feature && f?.is_enabled !== false)
+    const entry = (features as Record<string, any>)[feature]
+    if (entry == null) return false
+    if (typeof entry === 'boolean') return entry
+    return entry?.is_enabled !== false && entry?.allowed !== false
+  }, [features])
+
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const promptAreaRef = useRef<HTMLDivElement>(null)
@@ -177,34 +202,59 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   const actionCommands: Command[] = useMemo(() => {
     const cmds: Command[] = [
-      { name: 'model', description: 'Switch AI model', category: 'Settings', action: handleSetModel },
+      { name: 'model', description: 'Switch AI model', category: 'Settings', action: handleSetModel, requiredFeatures: [] },
     ]
-    if (handleOpenSettings) cmds.push({ name: 'settings', description: 'Open RemixAI settings', category: 'Settings', action: handleOpenSettings })
+    if (handleOpenSettings) cmds.push({ name: 'settings', description: 'Open RemixAI settings', category: 'Settings', action: handleOpenSettings, requiredFeatures: [] })
     if (handleLoadSkills) {
       cmds.push({
         name: 'Load Skills',
         description: 'Load skills',
         category: 'Tools',
         action: handleLoadSkills,
-        disabled: false
+        disabled: false,
+        requiredFeatures: [Features.AI_SKILLS]
       })
     }
     if (handleLoadAuditChecklist) {
       cmds.push({
         name: 'Load Security Audit checklist',
-        description: hasAuditorPermission ? 'Load audit checklist' : 'Coming soon',
+        description: 'Load audit checklist',
         category: 'Tools',
-        action: hasAuditorPermission ? handleLoadAuditChecklist : undefined,
-        disabled: !hasAuditorPermission
+        action: handleLoadAuditChecklist,
+        requiredFeatures: [Features.AI_AUDITOR]
       })
     }
-    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: hasAuditorPermission ? 'Gas optimisation audit' : 'Coming soon', category: 'Tools', action: handleGasOptimisationAudit, disabled: !hasAuditorPermission })
+    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit, requiredFeatures: [Features.AI_AUDITOR] })
     return cmds
-  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission])
+  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit])
+
+  // Returns the first required feature the user is missing for a command,
+  // or null when the command is fully unlocked.
+  const getMissingFeature = useCallback((command: Command): string | null => {
+    if (!command.requiredFeatures?.length) return null
+    return command.requiredFeatures.find((f) => !hasFeature(f)) ?? null
+  }, [hasFeature])
 
   // Handle command selection
   const handleCommandSelect = useCallback((command: Command) => {
     setShowAutocomplete(false)
+
+    // Gate: if the user lacks any required feature, route to the plan
+    // manager instead of running the command.
+    const missingFeature = getMissingFeature(command)
+    if (missingFeature) {
+      trackMatomoEvent({
+        category: 'ai',
+        action: 'remixAI',
+        value: `command_upgrade_required_${command.name}`,
+        isClick: true
+      })
+      onUpgradeRequired?.(command.name, missingFeature)
+      setInput('')
+      textareaRef?.current?.focus()
+      return
+    }
+
     // Track command selection with Matomo
     trackMatomoEvent({
       category: 'ai',
@@ -222,7 +272,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
     }
     textareaRef?.current?.focus()
-  }, [input, setInput, setShowAutocomplete])
+  }, [input, setInput, setShowAutocomplete, getMissingFeature, onUpgradeRequired])
 
   const handleShortcutSelect = useCallback((prompt: string) => {
     setInput(prompt)
@@ -405,29 +455,52 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             }}
             data-id="shortcut-popover-tools"
           >
-            {toolCommands.map((cmd, i) => (
-              <button
-                key={cmd.name}
-                onClick={() => {
-                  setActiveShortcut(null)
-                  cmd.action?.()
-                }}
-                className="d-block w-100 text-start px-3 py-2 border-0"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: 'var(--bs-body-color)',
-                  fontSize: '0.8rem',
-                  borderBottom: i < toolCommands.length - 1 ? '1px solid var(--bs-border-color)' : 'none',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--custom-onsurface-layer-1)' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                data-id={`shortcut-tool-${cmd.name}`}
-              >
-                <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>/{cmd.name}</span>
-                <span className="ms-2" style={{ color: 'var(--bs-secondary-color)', fontSize: '0.75rem' }}>{cmd.description}</span>
-              </button>
-            ))}
+            {toolCommands.map((cmd, i) => {
+              const missingFeature = getMissingFeature(cmd)
+              const isLocked = missingFeature !== null
+              return (
+                <button
+                  key={cmd.name}
+                  onClick={() => {
+                    setActiveShortcut(null)
+                    if (isLocked) {
+                      onUpgradeRequired?.(cmd.name, missingFeature as string)
+                      return
+                    }
+                    cmd.action?.()
+                  }}
+                  className="d-block w-100 text-start px-3 py-2 border-0"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'var(--bs-body-color)',
+                    fontSize: '0.8rem',
+                    borderBottom: i < toolCommands.length - 1 ? '1px solid var(--bs-border-color)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--custom-onsurface-layer-1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                  data-id={`shortcut-tool-${cmd.name}`}
+                >
+                  <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>/{cmd.name}</span>
+                  <span className="ms-2" style={{ color: 'var(--bs-secondary-color)', fontSize: '0.75rem' }}>{cmd.description}</span>
+                  {isLocked && (
+                    <span
+                      className="badge rounded-pill ms-2"
+                      style={{
+                        backgroundColor: 'var(--custom-ai-color)',
+                        color: 'var(--bs-body-bg)',
+                        fontSize: '0.6rem',
+                        padding: '2px 6px',
+                        fontWeight: 'normal'
+                      }}
+                      data-id={`shortcut-tool-upgrade-${cmd.name}`}
+                    >
+                      {getRequiredPlanName?.(missingFeature as string) ?? 'Upgrade'}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
       </div>}
@@ -447,6 +520,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             selectedIndex={selectedCommandIndex}
             onSelectedIndexChange={setSelectedCommandIndex}
             extraCommands={actionCommands}
+            hasFeature={hasFeature}
+            onUpgradeRequired={(cmd, missingFeature) => onUpgradeRequired?.(cmd.name, missingFeature)}
+            getRequiredPlanName={getRequiredPlanName}
           />
         )}
         <div className="ai-chat-input d-flex flex-column">

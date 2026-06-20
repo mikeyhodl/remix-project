@@ -5,7 +5,7 @@ import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
 import { AppContext, AppModal, useAuth } from '@remix-ui/app'
 import { DISCORD_URL, REMIX_WEBSITE_URL, REMIX_DOCS_URL } from '@remix-ui/helper'
-import { MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
+import { MatomoEvent, EditorEvent, AIEvent, Features } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
@@ -191,7 +191,7 @@ export const EditorUI = (props: EditorUIProps) => {
     baseTrackEvent?.<T>(event)
   }
   const { features } = useAuth()
-  const hasContextualEditorFeature = features['ai:contextual-editor']?.is_enabled === true
+  const hasContextualEditorFeature = features[Features.AI_CONTEXTUAL_EDITOR]?.is_enabled === true
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const currentBreakpointsRef = useRef<Record<string, Record<number, any>>>({})

@@ -33,6 +33,7 @@ import type {
   CreditPackage,
   PermissionsResponse
 } from '@remix-api'
+import { Features } from '@remix-api'
 import { planManagerLogger, setPlanManagerLoggingEnabled } from './plan-manager-logger'
 
 export type { QuotaEntry }
@@ -1071,11 +1072,11 @@ export interface UiVisibility {
  */
 export function selectUiVisibility(snap: PlanManagerSnapshot): UiVisibility {
   const p = snap.permissions
-  const showCredits = hasFeature(p, 'ui:show-credits')
-  const showPlans = hasFeature(p, 'ui:show-plans')
-  const showQuotas = hasFeature(p, 'ui:show-quotas')
-  const showTopUps = hasFeature(p, 'ui:show-top-ups')
-  const showUsage = hasFeature(p, 'ui:show-usage')
+  const showCredits = hasFeature(p, Features.UI_SHOW_CREDITS)
+  const showPlans = hasFeature(p, Features.UI_SHOW_PLANS)
+  const showQuotas = hasFeature(p, Features.UI_SHOW_QUOTAS)
+  const showTopUps = hasFeature(p, Features.UI_SHOW_TOP_UPS)
+  const showUsage = hasFeature(p, Features.UI_SHOW_USAGE)
   return {
     showCredits,
     showPlans,
@@ -1184,11 +1185,11 @@ export class PlanManagerStore {
           ? 'record'
           : typeof featuresRaw,
       uiFeatureRaw: {
-        'ui:show-credits': readRawFeature('ui:show-credits'),
-        'ui:show-plans': readRawFeature('ui:show-plans'),
-        'ui:show-quotas': readRawFeature('ui:show-quotas'),
-        'ui:show-top-ups': readRawFeature('ui:show-top-ups'),
-        'ui:show-usage': readRawFeature('ui:show-usage')
+        'ui:show-credits': readRawFeature(Features.UI_SHOW_CREDITS),
+        'ui:show-plans': readRawFeature(Features.UI_SHOW_PLANS),
+        'ui:show-quotas': readRawFeature(Features.UI_SHOW_QUOTAS),
+        'ui:show-top-ups': readRawFeature(Features.UI_SHOW_TOP_UPS),
+        'ui:show-usage': readRawFeature(Features.UI_SHOW_USAGE)
       },
       uiFeatureResolved: ui
     }

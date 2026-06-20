@@ -166,6 +166,42 @@ export interface AppConfig {
 /** Response from GET /sso/config (public, no auth required) */
 export type AppConfigResponse = AppConfig
 
+/**
+ * A single feature entry as exposed by the public plans catalog
+ * (`GET /config/public/plans`). Mirrors the permissions feature shape.
+ */
+export interface PublicPlanFeature {
+  feature_name: string
+  feature_display_name?: string
+  category?: string
+  is_enabled?: boolean
+  limit_value?: number | null
+  limit_unit?: string | null
+  source_feature_group?: string
+  priority?: number
+}
+
+/**
+ * A plan/tier from the public catalog (`GET /config/public/plans`).
+ * No authentication required — used to map a missing feature to the
+ * cheapest plan that grants it so the UI can label upsell CTAs
+ * (e.g. "Pro") instead of a generic "Upgrade".
+ */
+export interface PublicPlan {
+  id: number
+  name: string
+  display_name: string
+  description?: string
+  /** Higher = better tier. Used to find the lowest tier granting a feature. */
+  priority: number
+  is_active?: number | boolean
+  is_default?: number | boolean
+  features: PublicPlanFeature[]
+}
+
+/** Response from GET /config/public/plans (public, no auth required) */
+export type PublicPlansResponse = PublicPlan[]
+
 // ==================== Registration Mode ====================
 
 export type RegistrationMode = 'open' | 'existing_only' | 'invite_only'
