@@ -1260,14 +1260,23 @@ export class PlanManagerPlugin extends ViewPlugin {
       const emailMissing = permissions?.has_email === false
       const emailUnverified = permissions?.email_verified === false
       const panelAlreadyOpen = this.store.getSnapshot().isOpen
+      const emailGateDiagnosis = !gateEnabled
+        ? 'skip: ai:verified_accounts feature not enabled'
+        : !emailMissing && !emailUnverified
+          ? 'skip: email present and verified — no action needed'
+          : panelAlreadyOpen
+            ? 'skip: panel already open — not interrupting active session'
+            : emailMissing
+              ? 'FIRE: email not on file (has_email=false)'
+              : 'FIRE: email present but unverified (email_verified=false)'
       planManagerLogger.log('[PlanManager:email-gate]', {
+        diagnosis: emailGateDiagnosis,
         gateEnabled,
         has_email: permissions?.has_email,
         email_verified: permissions?.email_verified,
         emailMissing,
         emailUnverified,
-        panelAlreadyOpen,
-        willAutoOpen: gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen
+        panelAlreadyOpen
       })
       if (gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen) {
         planManagerLogger.log('[PlanManager:email-gate] auto-opening panel → email-unverified')
@@ -1289,13 +1298,23 @@ export class PlanManagerPlugin extends ViewPlugin {
       const snap = this.store.getSnapshot()
       const planState = selectPlanState(snap)
       const isFreePlan = planState.kind === 'no_subscription'
+      const freePlanGateDiagnosis = !canShowPlans
+        ? 'skip: ui:show-plans feature not enabled'
+        : !isFreePlan
+          ? `skip: user has plan (kind=${planState.kind}, planId=${planState.planId ?? 'none'}) — no upgrade prompt`
+          : this.freePlanAutoOpenFired
+            ? 'skip: already fired once this session'
+            : panelAlreadyOpen
+              ? 'skip: panel already open — not interrupting active session'
+              : 'FIRE: free plan user, panel not open, first time this session'
       planManagerLogger.log('[PlanManager:free-plan-gate]', {
+        diagnosis: freePlanGateDiagnosis,
         canShowPlans,
         planKind: planState.kind,
+        planId: planState.planId ?? null,
         isFreePlan,
         alreadyFired: this.freePlanAutoOpenFired,
-        panelAlreadyOpen,
-        willAutoOpen: canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen
+        panelAlreadyOpen
       })
       if (canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen) {
         this.freePlanAutoOpenFired = true
