@@ -411,25 +411,14 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
               />
             </div>
           )}
-          <div className="d-flex align-items-center gap-2">
-            <button
-              data-id="checklist-explorer-ok-button"
-              className="btn btn-primary btn-sm"
-              onClick={handleOk}
-              disabled={isProcessing}
-              title="Close and start the audit"
-            >
-              OK
-            </button>
-            <button
-              data-id="checklist-explorer-modal-close-button"
-              className="checklist-explorer-modal-close-button"
-              onClick={onClose}
-              disabled={isProcessing}
-            >
-              <i className="fa-solid fa-xmark text-dark"></i>
-            </button>
-          </div>
+          <button
+            data-id="checklist-explorer-modal-close-button"
+            className="checklist-explorer-modal-close-button"
+            onClick={onClose}
+            disabled={isProcessing}
+          >
+            <i className="fa-solid fa-xmark text-dark"></i>
+          </button>
         </div>
 
         <div className="checklist-explorer-container">
