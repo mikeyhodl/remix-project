@@ -189,3 +189,44 @@ export const Features = {
 
 /** Union type of all valid feature keys. */
 export type FeatureKey = typeof Features[keyof typeof Features]
+
+/**
+ * Human-readable display labels for feature keys.
+ * Used in UI copy ("Your plan doesn't include …") to avoid showing raw
+ * `ai:auditor`-style strings to users.
+ */
+export const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
+  // AI
+  [AI_SOLCODER]:            'AI Coding Assistant',
+  [AI_AUDITOR]:             'AI Security Auditor',
+  [AI_SKILLS]:              'AI Skills',
+  [AI_AUTO]:                'AI Auto-complete',
+  [AI_COMPLETION]:          'AI Inline Completion',
+  [AI_OLLAMA]:              'Local AI (Ollama)',
+  [AI_CONTEXTUAL_EDITOR]:  'AI Contextual Editor',
+  // AI Models
+  [AI_MISTRAL_SMALL]:       'Mistral Small',
+  [AI_MISTRAL_MEDIUM]:      'Mistral Medium',
+  [AI_CODESTRAL]:           'Codestral',
+  [AI_SONNET_4_6]:          'Claude Sonnet',
+  [AI_OPUS_4_6]:            'Claude Opus',
+  // AI Providers
+  [AI_PROVIDER_MISTRAL]:    'Mistral',
+  [AI_PROVIDER_ANTHROPIC]:  'Anthropic',
+  [AI_PROVIDER_OPENAI]:     'OpenAI',
+  // MCP
+  [MCP_BASIC_EXTERNAL]:     'External MCP Integrations',
+  [MCP_THEGRAPH]:           'The Graph',
+  [MCP_ETHERSCAN]:          'Etherscan',
+  [MCP_ALCHEMY]:            'Alchemy',
+  [MCP_WEB_SEARCH]:         'Web Search',
+  [MCP_CIRCLE]:             'Circle',
+  [MCP_OPENZEPPELIN]:       'OpenZeppelin',
+  // DApp
+  [DAPP_QUICKDAPP]:         'QuickDapp Generator',
+  // Skills
+  [SKILLS_BASIC]:           'Basic Skills',
+  [SKILLS_ADVANCED]:        'Advanced Skills',
+  // Storage
+  [STORAGE_S3]:             'S3 Cloud Storage',
+}

@@ -23,7 +23,7 @@ import { PluginViewWrapper, DISCORD_URL } from '@remix-ui/helper'
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, FeatureGroup, UsageReport } from '@remix-api'
-import { Features } from '@remix-api'
+import { Features, FEATURE_LABELS } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -157,6 +157,12 @@ export class PlanManagerPlugin extends ViewPlugin {
       })
       if (s.isAuthenticated) {
         void this.initPaddleSingleton()
+        // Auth is the driving motor: every login must (re)load the catalog of
+        // available products, exactly like permissions/balance. The eager load
+        // in onActivation runs while still anonymous and 401s, so without this
+        // the panel can open (e.g. via a sign-in CTA) with no plans/packages.
+        this.store.send({ type: 'CATALOG_LOAD' })
+        void this.loadCatalog()
         void this.loadAccountData()
       }
     }
@@ -194,6 +200,16 @@ export class PlanManagerPlugin extends ViewPlugin {
     const resolved: OpenIntent | undefined = typeof intent === 'string'
       ? { initialSection: intent as OpenIntent['initialSection'] }
       : intent
+    const snapBefore = this.store.getSnapshot()
+    planManagerLogger.log('[PlanManager:open] called', {
+      rawIntent: intent,
+      resolvedIntent: resolved,
+      wasOpen: snapBefore.isOpen,
+      isAuthenticated: snapBefore.isAuthenticated,
+      dataState: snapBefore.dataState,
+      catalogPlans: snapBefore.catalogPlans?.length ?? 0,
+      hasPermissions: !!snapBefore.permissions
+    })
     this.store.send({ type: 'OPEN_OVERLAY', intent: resolved })
     // Refresh on every open — catalog (plans/packages) and, when signed
     // in, account-scoped data (credits/quotas, subscription, permissions).
@@ -1407,17 +1423,40 @@ const PlanManagerOverlay: React.FC<{
   // re-applies even if the user has since navigated away.
   const intent = snap.openIntent
   const lastIntentRef = React.useRef<OpenIntent | null>(null)
+  // The section an external intent wants us to land on. Held in a ref so we
+  // can (re)apply it once the backing permissions/catalog load. open() races
+  // ahead of refreshOnOpen(), so when the intent first fires the target
+  // section is still default-denied (permissions === null → hidden) and the
+  // "keep activeSection honest" effect below would otherwise drop it, leaving
+  // the panel blank with no way to recover the intent.
+  const pendingSectionRef = React.useRef<'credits' | 'plans' | 'topup' | 'usage' | null>(null)
   useEffect(() => {
-    if (!intent || intent === lastIntentRef.current) return
+    if (!intent || intent === lastIntentRef.current) {
+      planManagerLogger.log('[PlanManager:section] intent effect skipped', {
+        hasIntent: !!intent,
+        sameAsLast: intent === lastIntentRef.current,
+        intent
+      })
+      return
+    }
     lastIntentRef.current = intent
+    let target: 'credits' | 'plans' | 'topup' | 'usage' | null = null
     if (intent.initialSection) {
-      setActiveSection(intent.initialSection)
+      target = intent.initialSection
     } else if (intent.reason === 'feature-required' || intent.reason === 'quota-exhausted') {
       // Sensible defaults when the caller didn't pin a section.
-      setActiveSection(intent.reason === 'quota-exhausted' ? 'topup' : 'plans')
+      target = intent.reason === 'quota-exhausted' ? 'topup' : 'plans'
     }
     // Otherwise leave the section collapsed — the user opened the panel
     // from the menu icon and we don't want to push a particular screen.
+    pendingSectionRef.current = target
+    planManagerLogger.log('[PlanManager:section] intent effect applied', {
+      intent,
+      initialSection: intent.initialSection ?? null,
+      reason: intent.reason ?? null,
+      resolvedTarget: target
+    })
+    if (target) setActiveSection(target)
   }, [intent])
 
   // Close-on-Escape — UI concern, stays in React.
@@ -1450,11 +1489,101 @@ const PlanManagerOverlay: React.FC<{
   // intent) selected a tab the backend has since hidden, drop the
   // selection so we don't render a section without its nav entry.
   useEffect(() => {
-    if (activeSection === 'credits' && !ui.showCredits) setActiveSection(null)
-    else if (activeSection === 'plans' && !ui.showPlans) setActiveSection(null)
-    else if (activeSection === 'topup' && !ui.showTopUps) setActiveSection(null)
-    else if (activeSection === 'usage' && !ui.showUsage) setActiveSection(null)
+    // A pending intent section takes priority: re-apply it the moment its
+    // visibility resolves (permissions arrive after the open()/refresh race),
+    // and keep its tab selected meanwhile instead of collapsing to a blank
+    // panel — the section renders its own loading/empty state until then.
+    const pending = pendingSectionRef.current
+    planManagerLogger.log('[PlanManager:section] reconcile effect run', {
+      pending,
+      activeSection,
+      ui: {
+        showCredits: ui.showCredits,
+        showPlans: ui.showPlans,
+        showTopUps: ui.showTopUps,
+        showUsage: ui.showUsage,
+        anyVisible: ui.anyVisible
+      }
+    })
+    if (pending) {
+      const pendingVisible =
+        pending === 'credits' ? ui.showCredits :
+          pending === 'plans' ? ui.showPlans :
+            pending === 'topup' ? ui.showTopUps :
+              pending === 'usage' ? ui.showUsage : false
+      if (pendingVisible) {
+        planManagerLogger.log('[PlanManager:section] pending section now visible — applying', { pending })
+        setActiveSection(pending)
+        pendingSectionRef.current = null
+      } else {
+        planManagerLogger.log('[PlanManager:section] pending section not yet visible — holding tab', { pending })
+      }
+      if (pending === activeSection) return
+      // An intent still wants a (not-yet-visible) section — let it win;
+      // don't fall back yet or we'd flicker through another tab first.
+      if (pending) return
+    }
+    // Is the current selection still backed by a visible nav entry?
+    const currentVisible =
+      activeSection === 'credits' ? ui.showCredits :
+        activeSection === 'plans' ? ui.showPlans :
+          activeSection === 'topup' ? ui.showTopUps :
+            activeSection === 'usage' ? ui.showUsage :
+              false // null === nothing selected
+    if (!currentVisible) {
+      // The selected tab (or the default 'credits' landing) is hidden by
+      // permissions. Rather than collapse to a blank panel, fall back to the
+      // first visible section. This is what lands a free-tier user (no
+      // `ui:show-credits` grant) on Plans automatically instead of a blank
+      // body under visible tabs.
+      const fallback: 'credits' | 'plans' | 'topup' | 'usage' | null =
+        ui.showCredits ? 'credits' :
+          ui.showPlans ? 'plans' :
+            ui.showTopUps ? 'topup' :
+              ui.showUsage ? 'usage' : null
+      if (fallback !== activeSection) {
+        planManagerLogger.log('[PlanManager:section] falling back to first visible section', {
+          from: activeSection,
+          to: fallback,
+          ui: {
+            showCredits: ui.showCredits,
+            showPlans: ui.showPlans,
+            showTopUps: ui.showTopUps,
+            showUsage: ui.showUsage
+          }
+        })
+        setActiveSection(fallback)
+      }
+    }
   }, [activeSection, ui.showCredits, ui.showPlans, ui.showTopUps, ui.showUsage])
+
+  // ── Diagnostic: full picture on every meaningful change ──────────────────
+  useEffect(() => {
+    const p = snap.permissions as any
+    const uiKeys = p
+      ? Object.keys(p).filter(k => k.startsWith('ui:') || k.startsWith('ui_show') || k.includes('show'))
+      : []
+    planManagerLogger.log('[PlanManager:diag] state snapshot', {
+      isOpen: snap.isOpen,
+      isAuthenticated: snap.isAuthenticated,
+      dataState: snap.dataState,
+      openIntent: snap.openIntent,
+      activeSection,
+      pendingSection: pendingSectionRef.current,
+      ui: {
+        showCredits: ui.showCredits,
+        showPlans: ui.showPlans,
+        showTopUps: ui.showTopUps,
+        showUsage: ui.showUsage,
+        anyVisible: ui.anyVisible
+      },
+      catalogPlans: snap.catalogPlans?.length ?? 0,
+      visiblePlans: visiblePlans.length,
+      hasPermissions: !!snap.permissions,
+      permissionUiKeys: uiKeys,
+      requiresEmailVerification
+    })
+  }, [snap.isOpen, snap.isAuthenticated, snap.dataState, snap.openIntent, snap.permissions, snap.catalogPlans, activeSection, ui.showCredits, ui.showPlans, ui.showTopUps, ui.showUsage, visiblePlans.length, requiresEmailVerification])
 
   const refreshDate = formatDate(status.refreshDate)
 
@@ -2974,7 +3103,7 @@ const PlansSection: React.FC<{
         <div className="pm-plans__required" role="status" data-id="pm-plans-required-feature" data-required-feature={requiredFeature}>
           <i className="fas fa-bolt" aria-hidden></i>
           <span>
-            Your current plan doesn't include <code>{requiredFeature}</code>.
+            Your current plan doesn't include <strong>{FEATURE_LABELS[requiredFeature as keyof typeof FEATURE_LABELS] ?? requiredFeature}</strong>.
             Choose a plan below that does to unlock it.
           </span>
         </div>
