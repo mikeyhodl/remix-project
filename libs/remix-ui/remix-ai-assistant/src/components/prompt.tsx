@@ -11,6 +11,8 @@ import { AIModel } from '@remix/remix-ai-core'
 import { PromptDefault } from "./promptDefault";
 import { AutocompletePanel, Command } from './AutocompletePanel'
 
+const AUDIT_COMMAND_TEXT = 'audit a contract'
+
 const getSlashWord = (text: string): string | null => {
   // Only detect slash commands at the beginning or after a space
   const lastSpaceSlash = text.lastIndexOf(' /')
@@ -230,6 +232,17 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
     if (handleLoadAuditChecklist) {
       cmds.push({
+        name: 'Audit a contract',
+        description: hasAuditorPermission ? 'Audit a contract' : 'Coming soon',
+        requiredFeatures: [Features.AI_AUDITOR],
+        category: 'Tools',
+        action: hasAuditorPermission ? () => {
+          handleLoadAuditChecklist()
+          setInput(`/${AUDIT_COMMAND_TEXT}: `)
+        } : undefined,
+        disabled: !hasAuditorPermission
+      })
+      cmds.push({
         name: 'Load Security Audit checklist',
         description: 'Load audit checklist',
         category: 'Tools',
@@ -239,7 +252,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
     if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit, requiredFeatures: [Features.AI_AUDITOR]})
     return cmds
-  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit])
+  }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission, setInput])
 
   // Returns the first required feature the user is missing for a command,
   // or null when the command is fully unlocked.
