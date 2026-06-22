@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef, useContext, ChangeEvent, useReducer} from 'react' // eslint-disable-line
+import React, {useState, useEffect, useRef, useContext, ChangeEvent, useReducer, useCallback} from 'react' // eslint-disable-line
 import { FormattedMessage, useIntl } from 'react-intl'
 import { Dropdown } from 'react-bootstrap'
 import {
@@ -70,7 +70,7 @@ export function Workspace() {
   const [showMigrationDialog, setShowMigrationDialog] = useState(false)
   const { isCloudMode, activeWorkspaceId, syncStatus } = useCloudStore()
 
-  const notifyIfQuickDappWorkspaceLocked = (actionName: string, workspaceName?: string): boolean => {
+  const notifyIfQuickDappWorkspaceLocked = useCallback((actionName: string, workspaceName?: string): boolean => {
     const quickDappLock = getQuickDappWorkspaceLock()
     if (!quickDappLock) return false
 
@@ -84,14 +84,17 @@ export function Workspace() {
     })
     global.toast(message)
     return true
-  }
+  }, [global])
 
   // ── Listen for migration dialog trigger from the top-bar dropdown ──
   useEffect(() => {
-    const handler = () => setShowMigrationDialog(true)
+    const handler = () => {
+      if (notifyIfQuickDappWorkspaceLocked('Opening cloud migration')) return
+      setShowMigrationDialog(true)
+    }
     cloudStore.on('showMigrationDialog', handler)
     return () => { cloudStore.off('showMigrationDialog', handler) }
-  }, [])
+  }, [notifyIfQuickDappWorkspaceLocked])
   const isCloudLoading = isCloudMode && activeWorkspaceId
     ? (syncStatus[activeWorkspaceId]?.status === 'loading' || syncStatus[activeWorkspaceId]?.status === 'syncing')
     : false
