@@ -486,9 +486,9 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                           return (
                             <div key={mainCategory.category} className="main-category mb-3">
                               <div
-                                className={`main-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-primary text-white' : 'bg-secondary text-light'}`}
+                                className={`main-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer bg-secondary text-light`}
                                 onClick={() => toggleCategory(mainCategory.category)}
-                                style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
+                                style={isSelected ? { boxShadow: 'inset 4px 0 0 var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
                               >
                                 <div className="flex-grow-1">
                                   <div className="d-flex align-items-center mb-1">
@@ -551,9 +551,9 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                   return (
                                     <div key={categoryPath} className="sub-category border-bottom">
                                       <div
-                                        className={`sub-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-light border-primary' : 'bg-light'}`}
+                                        className={`sub-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer bg-light`}
                                         onClick={() => toggleCategory(categoryPath)}
-                                        style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
+                                        style={isSelected ? { backgroundColor: 'rgba(var(--bs-primary-rgb), 0.12)', boxShadow: 'inset 4px 0 0 var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
                                       >
                                         <div className="flex-grow-1">
                                           <div className="d-flex align-items-center mb-1">
