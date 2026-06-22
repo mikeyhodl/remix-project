@@ -37,6 +37,15 @@ export const AI_CONTEXTUAL_EDITOR = 'ai:contextual-editor' as const
 /** Verified-accounts gate (email verification required). */
 export const AI_VERIFIED_ACCOUNTS = 'ai:verified_accounts' as const
 
+/** Soft-launch gate: hides upgrade/buy-credits CTAs in favour of "coming soon" badges. */
+export const AI_MODES_COMING_SOON = 'ai:modes_coming_soon' as const
+
+/** Upgrade CTA visible — user can reach a higher plan tier. */
+export const AI_UPGRADE_AVAILABLE = 'ai:upgrade_available' as const
+
+/** Buy-credits CTA visible — user can top up their quota. */
+export const AI_BUY_CREDITS = 'ai:buy_credits' as const
+
 // ─── AI Model Features ──────────────────────────────────────────────────────────
 
 /** Mistral Small model access. */
@@ -135,6 +144,9 @@ export const Features = {
   AI_OLLAMA,
   AI_CONTEXTUAL_EDITOR,
   AI_VERIFIED_ACCOUNTS,
+  AI_MODES_COMING_SOON,
+  AI_UPGRADE_AVAILABLE,
+  AI_BUY_CREDITS,
 
   // AI Models
   AI_MISTRAL_SMALL,

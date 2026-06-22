@@ -976,15 +976,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         if (typeof entry === 'boolean') return entry
         return entry?.is_enabled !== false && entry?.allowed !== false
       }
-      const comingSoon = isOn('ai:modes_coming_soon')
+      const comingSoon = isOn(Features.AI_MODES_COMING_SOON)
 
       // Check specific feature permissions
       setHasAuditorPermission(isOn(Features.AI_AUDITOR))
       setHasSkillsPermission(isOn(Features.AI_SKILLS))
 
       const nextPillStates = {
-        upgrade: comingSoon ? 'coming_soon' : isOn('ai:upgrade_available') ? 'available' : 'hidden',
-        buyCredits: comingSoon ? 'hidden' : isOn('ai:buy_credits') ? 'available' : 'hidden'
+        upgrade: comingSoon ? 'coming_soon' : isOn(Features.AI_UPGRADE_AVAILABLE) ? 'available' : 'hidden',
+        buyCredits: comingSoon ? 'hidden' : isOn(Features.AI_BUY_CREDITS) ? 'available' : 'hidden'
       } as const
       setPillStates(nextPillStates)
       void refreshCooldown()
