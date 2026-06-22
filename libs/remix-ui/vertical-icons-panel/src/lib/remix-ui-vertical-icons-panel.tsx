@@ -126,7 +126,7 @@ const RemixUiVerticalIconsPanel = ({ verticalIconsPlugin, icons }: RemixUiVertic
             aria-expanded={helpMenuOpen}
             onClick={() => setHelpMenuOpen((prev) => !prev)}
           >
-            <i className="fas fa-question-circle" aria-hidden="true"></i>
+            <i className="fas fa-circle-info" aria-hidden="true"></i>
           </button>
         </CustomTooltip>
         {helpMenuOpen && <HelpMenu onClose={() => setHelpMenuOpen(false)} />}
