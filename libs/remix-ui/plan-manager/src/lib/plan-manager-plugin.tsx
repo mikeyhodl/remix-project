@@ -2394,6 +2394,11 @@ const Hero: React.FC<{
 }> = ({ status, refreshDate, planCtx, heroCompact, onTopUp }) => {
   const { paidRemaining, total, state, includedRemaining, includedTotal, hasUnlimitedIncluded } = status
   const showIncluded = hasUnlimitedIncluded || includedTotal > 0
+  // Total available = paid + included (what the CEO wants to see as the headline)
+  const totalAvailable = hasUnlimitedIncluded ? null : paidRemaining + includedRemaining
+  // Only show the blue paid chip when there are also included credits — otherwise
+  // the total already equals just the paid amount and the chip would be redundant.
+  const showPaidChip = paidRemaining > 0 && showIncluded
 
   // Credits don't expire and top-ups stack, so a "% of cycle" gauge would
   // misrepresent the model. We only surface a forward-looking line: when
@@ -2427,24 +2432,40 @@ const Hero: React.FC<{
   return (
     <section className={`pm-hero pm-hero--${state} ${heroCompact ? 'pm-hero--compact' : ''}`}>
       <div className="pm-hero__left">
-        <div className="pm-hero__eyebrow">Paid AI credit balance</div>
+        <div className="pm-hero__eyebrow">Total AI credits available</div>
         <div className="pm-hero__balance-row">
           <div className="pm-hero__amount">
-            <span className="pm-hero__num">{paidRemaining.toLocaleString()}</span>
+            {hasUnlimitedIncluded ? (
+              <span className="pm-hero__num">∞</span>
+            ) : (
+              <span className="pm-hero__num">{totalAvailable!.toLocaleString()}</span>
+            )}
           </div>
-          {showIncluded && (
+          {/* Paid credits chip — blue, only shown when there's a paid balance */}
+          {showPaidChip && (
+            <div className="pm-hero__included pm-hero__included--paid" aria-label="Paid AI credits">
+              <span className="pm-hero__included-kicker">Paid credits</span>
+              <span className="pm-hero__included-value">{paidRemaining.toLocaleString()}</span>
+              <span className="pm-hero__included-label">credits</span>
+            </div>
+          )}
+          {/* Included (free) credits chip */}
+          {showIncluded && !hasUnlimitedIncluded && (
             <div className="pm-hero__included pm-hero__included--free" aria-label="Free included AI credits">
               <span className="pm-hero__included-kicker">Free included AI</span>
-              {hasUnlimitedIncluded ? (
-                <span className="pm-hero__included-value">Unlimited</span>
-              ) : (
-                <span className="pm-hero__included-value">
-                  {includedRemaining.toLocaleString()}
-                  {includedRemaining !== includedTotal && (
-                    <><span>/</span>{includedTotal.toLocaleString()}</>
-                  )}
-                </span>
-              )}
+              <span className="pm-hero__included-value">
+                {includedRemaining.toLocaleString()}
+                {includedRemaining !== includedTotal && (
+                  <><span>/</span>{includedTotal.toLocaleString()}</>
+                )}
+              </span>
+              <span className="pm-hero__included-label">credits</span>
+            </div>
+          )}
+          {hasUnlimitedIncluded && (
+            <div className="pm-hero__included pm-hero__included--free" aria-label="Free included AI credits">
+              <span className="pm-hero__included-kicker">Free included AI</span>
+              <span className="pm-hero__included-value">Unlimited</span>
               <span className="pm-hero__included-label">credits</span>
             </div>
           )}

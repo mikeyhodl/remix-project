@@ -377,6 +377,22 @@
   color: rgba(134, 239, 172, 0.7);
 }
 
+/* Blue variant for paid credits */
+.pm-hero__included--paid {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%);
+  box-shadow: inset 0 1px 0 rgba(96, 165, 250, 0.08), 0 0 20px rgba(96, 165, 250, 0.06);
+}
+.pm-hero__included--paid .pm-hero__included-kicker {
+  color: #93c5fd;
+}
+.pm-hero__included--paid .pm-hero__included-value {
+  color: #bfdbfe;
+}
+.pm-hero__included--paid .pm-hero__included-label {
+  color: rgba(147, 197, 253, 0.7);
+}
+
 .pm-hero__included-kicker,
 .pm-hero__included-label {
   font-family: var(--pm-mono);
