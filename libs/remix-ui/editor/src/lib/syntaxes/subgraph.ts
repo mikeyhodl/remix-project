@@ -17,8 +17,8 @@ export const subgraphLanguageConfig = {
     { open: '{', close: '}' },
     { open: '[', close: ']' },
     { open: '(', close: ')' },
-    { open: '"""', close: '"""', notIn: ['string', 'comment'] },
-    { open: '"', close: '"', notIn: ['string', 'comment'] },
+    { open: '"""', close: '"""', notIn: ['string', 'comment']},
+    { open: '"', close: '"', notIn: ['string', 'comment']},
   ],
   surroundingPairs: [
     { open: '{', close: '}' },
