@@ -170,26 +170,26 @@ export class RemixFilesystemBackend {
 
   async read_file(path: string): Promise<string | { error: string }> {
     try {
-      const normalizedPath = this.normalizePath(path)
-      const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
+      const guardPath = this.normalizePath(path)
+      const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(guardPath, this.isQuickDappCandidatePath(guardPath))
       if (workspaceMismatch) return workspaceMismatch
 
-      const batch = this.editBatches.get(path) || this.editBatches.get(normalizedPath)
+      const batch = this.editBatches.get(path) || this.editBatches.get(guardPath)
       if (batch) {
         return batch.virtualContent
       }
 
-      const exists = await this.plugin.call('fileManager', 'exists', normalizedPath)
+      const exists = await this.plugin.call('fileManager', 'exists', path)
 
       if (!exists) {
 
         throw new Error(`File not found: ${path}`)
       }
 
-      const content = await this.plugin.call('fileManager', 'readFile', normalizedPath)
+      const content = await this.plugin.call('fileManager', 'readFile', path)
 
       if (content.length > MAX_FILE_SIZE) {
-        return this.summarizeFile(normalizedPath, content)
+        return this.summarizeFile(path, content)
       }
 
       return content

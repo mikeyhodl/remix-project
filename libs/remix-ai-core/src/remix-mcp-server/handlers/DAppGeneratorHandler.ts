@@ -823,6 +823,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       remixAILogger.error('[GenerateDApp] Generation failed:', error)
       if (dappOps?.getWorkspaceName()) {
         clearQuickDappWorkspaceLock(dappOps.getWorkspaceName())
+        clearQuickDappGenerationContext(dappOps.getWorkspaceName())
       }
       plugin.emit('dappGenerationError', {
         workspaceName: dappOps?.getWorkspaceName(),
@@ -1130,6 +1131,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       remixAILogger.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
       if (dappOps?.getWorkspaceName()) {
         clearQuickDappWorkspaceLock(dappOps.getWorkspaceName())
+        clearQuickDappGenerationContext(dappOps.getWorkspaceName())
       }
       plugin.emit('dappGenerationError', {
         workspaceName: dappOps?.getWorkspaceName() || args.workspaceName,
