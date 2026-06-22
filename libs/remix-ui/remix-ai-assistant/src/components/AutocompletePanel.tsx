@@ -64,7 +64,7 @@ const AVAILABLE_COMMANDS: Command[] = [
   // { name: 'docs', description: 'Open documentation', category: 'Help' },
 
   // Frontend & UI
-  { name: 'create a dapp [quickdapp agent]', description: 'DApp development', category: 'Frontend', requiredFeatures: [Features.DAPP_QUICKDAPP]},
+  { name: 'create-dapp', description: 'Create a DApp frontend (QuickDapp agent)', category: 'Frontend', requiredFeatures: [Features.DAPP_QUICKDAPP]},
 ]
 
 export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({

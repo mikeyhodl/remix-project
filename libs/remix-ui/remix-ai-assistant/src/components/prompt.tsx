@@ -222,7 +222,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     if (handleOpenSettings) cmds.push({ name: 'settings', description: 'Open RemixAI settings', category: 'Settings', action: handleOpenSettings, requiredFeatures: []})
     if (handleLoadSkills) {
       cmds.push({
-        name: 'Load Skills',
+        name: 'load-skills',
         description: 'Load skills',
         category: 'Tools',
         action: handleLoadSkills,
@@ -232,7 +232,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
     if (handleLoadAuditChecklist) {
       cmds.push({
-        name: 'Audit a contract',
+        name: 'audit',
         description: hasAuditorPermission ? 'Audit a contract' : 'Coming soon',
         requiredFeatures: [Features.AI_AUDITOR],
         category: 'Tools',
@@ -243,14 +243,14 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         disabled: !hasAuditorPermission
       })
       cmds.push({
-        name: 'Load Security Audit checklist',
+        name: 'load-audit-checklist',
         description: 'Load audit checklist',
         category: 'Tools',
         action: handleLoadAuditChecklist,
         requiredFeatures: [Features.AI_AUDITOR]
       })
     }
-    if (handleGasOptimisationAudit) cmds.push({ name: 'Start Gas Optimisation Audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit, requiredFeatures: [Features.AI_AUDITOR]})
+    if (handleGasOptimisationAudit) cmds.push({ name: 'gas-audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit, requiredFeatures: [Features.AI_AUDITOR] })
     return cmds
   }, [handleSetModel, handleOpenSettings, handleLoadSkills, handleLoadAuditChecklist, handleGasOptimisationAudit, hasAuditorPermission, hasSkillsPermission, setInput])
 
@@ -288,11 +288,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       value: `command_selected_${command.name}`,
       isClick: true
     })
-
-    const isAuditCommand = command.category === 'Security' && command.name.toLowerCase().includes('audit')
-    if (isAuditCommand && hasAuditorPermission && handleLoadAuditChecklist) {
-      handleLoadAuditChecklist()
-    }
 
     if (command.action) {
       setInput('')
