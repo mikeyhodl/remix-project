@@ -92,7 +92,7 @@ const RemixUiVerticalIconsPanel = ({ verticalIconsPlugin, icons }: RemixUiVertic
           <IconList theme={theme} icons={icons.filter((p) => p.isRequired && p.profile.name !== 'pluginManager')} verticalIconsPlugin={verticalIconsPlugin} itemContextAction={itemContextAction} />
           {scrollableRef.current && scrollableRef.current.scrollHeight > scrollableRef.current.clientHeight ? <Chevron direction="up" divElementRef={scrollableRef} cssRule={'fa fa-chevron-up remixui_icon-chevron my-0'} /> : null}
         </div>
-        <div id="remixuiScrollable" className={scrollableRef.current && scrollableRef.current.scrollHeight > scrollableRef.current.clientHeight ? 'remixui_default-icons-container remixui_scrollable-container remixui_scrollbar remixui_hide-scroll' : activateScroll && activateScroll.scrollState ? 'remixui_default-icons-container remixui_scrollable-container remixui_scrollbar remixui_hide-scroll' : 'remixui_scrollable-container remixui_scrollbar remixui_hide-scroll'} ref={scrollableRef}>
+        <div id="remixuiScrollable" className={scrollableRef.current && scrollableRef.current.scrollHeight > scrollableRef.current.clientHeight ? 'remixui_default-icons-container remixui_scrollable-container remixui_scrollbar remixui_hide-scroll' : activateScroll && activateScroll.scrollState ? 'remixui_default-icons-container remixui_scrollable-container remixui_scrollbar remixui_hide-scroll' : 'remixui_scrollable-container remixui_scrollbar remixui_hide-scroll'} ref={scrollableRef} style={{ maxHeight: '55%', borderColor: 'orange' }}>
           <IconList
             theme={theme}
             icons={icons.filter((p) => {
