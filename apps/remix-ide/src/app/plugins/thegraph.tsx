@@ -114,6 +114,28 @@ export class TheGraphPlugin extends Plugin {
    * Get the API key from settings and format the endpoint URL if needed
    */
   private async getFormattedEndpoint(endpoint: string): Promise<string> {
+    // Pattern to match any placeholder wrapped in square brackets [...] or curly brackets {...}
+    const placeholderPattern = /\[[^\]]*\]|\{[^}]*\}/g
+
+    if (placeholderPattern.test(endpoint)) {
+      try {
+        const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
+        if (apiKey) {
+          return endpoint.replace(/\[[^\]]*\]|\{[^}]*\}/g, apiKey)
+        } else {
+          const errorMsg = '[TheGraph] No API key configured. Please add your API key in Settings > Connected Services > The Graph API Key.'
+          await this.call('terminal', 'log', { type: 'error', value: errorMsg })
+          throw new Error(errorMsg)
+        }
+      } catch (e: any) {
+        if (e.message.includes('[TheGraph]')) {
+          throw e
+        }
+        console.warn('[TheGraph] Failed to get API key from settings:', e)
+        throw new Error('[TheGraph] Failed to get API key from settings.')
+      }
+    }
+
     // Check if this is a gateway.thegraph.com URL that needs an API key
     const gatewayPattern = /^https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\/(.+)$/
     const match = endpoint.match(gatewayPattern)
