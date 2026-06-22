@@ -204,6 +204,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   const promptAreaRef = useRef<HTMLDivElement>(null)
   const shortcutsRef = useRef<HTMLDivElement>(null)
   const [activeShortcut, setActiveShortcut] = useState<string | null>(null)
+  const [shortcutsExpanded, setShortcutsExpanded] = useState(false)
 
   useEffect(() => {
     if (textareaRef?.current) {
@@ -315,6 +316,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   const handleShortcutSelect = useCallback((prompt: string) => {
     setInput(prompt)
     setActiveShortcut(null)
+    setShortcutsExpanded(false)
     textareaRef?.current?.focus()
   }, [setInput])
 
@@ -430,9 +432,27 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   return (
     <>
-      {isNewChat && <div ref={shortcutsRef} className="position-relative mx-2 mb-1">
-        <div className="d-flex flex-row" style={{ gap: '4px' }}>
-          {[...SHORTCUT_CATEGORIES, ...(toolCommands.length > 0 ? [{ id: 'tools', label: 'Tools' }] : [])].map(cat => (
+      <div ref={shortcutsRef} className="position-relative mx-2 mb-1">
+        <div className="d-flex flex-row align-items-center" style={{ gap: '4px' }}>
+          {!isNewChat && (
+            <button
+              onClick={() => { setShortcutsExpanded(prev => !prev); setActiveShortcut(null) }}
+              className="btn btn-sm rounded-pill"
+              style={{
+                fontSize: '0.72rem',
+                padding: '2px 9px',
+                border: `1px solid ${shortcutsExpanded ? 'var(--custom-ai-color)' : 'var(--bs-border-color)'}`,
+                color: shortcutsExpanded ? 'var(--custom-ai-color)' : 'var(--bs-secondary-color)',
+                backgroundColor: shortcutsExpanded ? 'var(--custom-onsurface-layer-1)' : 'var(--bs-body-bg)',
+                transition: 'all 0.15s ease',
+              }}
+              title="Intent shortcuts"
+              data-id="shortcut-toggle"
+            >
+              <i className="fa-solid fa-bolt"></i>
+            </button>
+          )}
+          {(isNewChat || shortcutsExpanded) && [...SHORTCUT_CATEGORIES, ...(toolCommands.length > 0 ? [{ id: 'tools', label: 'Tools' }] : [])].map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveShortcut(prev => prev === cat.id ? null : cat.id)}
@@ -453,7 +473,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             </button>
           ))}
         </div>
-        {activeShortcut && activeCategory && (
+        {(isNewChat || shortcutsExpanded) && activeShortcut && activeCategory && (
           <div
             className="position-absolute rounded-3 shadow-lg overflow-hidden"
             style={{
@@ -530,7 +550,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             })}
           </div>
         )}
-        {activeShortcut === 'tools' && (
+        {(isNewChat || shortcutsExpanded) && activeShortcut === 'tools' && (
           <div
             className="position-absolute rounded-3 shadow-lg overflow-hidden"
             style={{
@@ -591,7 +611,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             })}
           </div>
         )}
-      </div>}
+      </div>
       <div
         ref={promptAreaRef}
         className="prompt-area d-flex flex-column mx-2 p-1 rounded-3 border border-text position-relative"
