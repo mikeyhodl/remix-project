@@ -725,6 +725,9 @@ export function EnsNaming({ contract, onClose }: EnsNamingProps) {
                 className="btn btn-outline-primary btn-sm flex-fill"
                 onClick={() => {
                   setJobError('')
+                  setReverseStatus('idle')
+                  setReverseCheckMessage('')
+                  setReverseStatusMsg('')
                   setViewStep('reverse')
                 }}
               >

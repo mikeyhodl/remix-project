@@ -438,7 +438,7 @@ export class EnsContractNamesPlugin extends Plugin {
         args: [],
       }) as string
     } catch {
-      throw new Error('Only the contract owner can set the reverse name. This contract may not expose owner().')
+      throw new Error('Reverse naming requires an owner() function on the contract.')
     }
   }
 
