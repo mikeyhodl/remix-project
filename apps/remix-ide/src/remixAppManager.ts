@@ -481,7 +481,7 @@ export class RemixAppManager extends BaseRemixAppManager {
       id: 'thegraph',
       name: 'runSubgraphFile',
       label: 'Run Subgraph Query',
-      type: ['file'],
+      type: [],
       extension: ['.subgraph'],
       path: [],
       pattern: [],
