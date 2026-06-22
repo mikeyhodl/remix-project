@@ -2930,6 +2930,33 @@ const CartUpsellStep: React.FC<{
   const planObj = planItem ? plans.find((p: any) => p.id === planItem.slug) : null
   const introDiscount = (planObj?.introDiscounts ?? [])[0] ?? null
 
+  // Compute the discounted first-payment price so we can show the crossed-out
+  // regular price and the actual amount the user pays today.
+  // Credit packages are one-time and not subject to the subscription discount.
+  const planPriceCents = planItem?.priceCents ?? 0
+  const nonPlanCents = cartTotal - planPriceCents
+  let discountedFirstPaymentCents: number | null = null
+  let renewalLabel: string | null = null    // "then $X.XX/mo after first 3 months"
+  if (introDiscount && planPriceCents > 0) {
+    const isPct = introDiscount.discountType === 'percentage'
+    const discountedPlanCents = isPct
+      ? Math.max(0, Math.floor(planPriceCents * (1 - introDiscount.amount / 100)))
+      : Math.max(0, planPriceCents - Math.round(introDiscount.amount * 100))
+    if (discountedPlanCents < planPriceCents) {
+      discountedFirstPaymentCents = discountedPlanCents + nonPlanCents
+      const interval = planItem?.billingInterval ?? 'month'
+      const intervals = introDiscount.maxRecurringIntervals
+      const durationLabel = !introDiscount.recur || !intervals
+        ? `first ${interval}`
+        : intervals === 1
+          ? `first ${interval}`
+          : `first ${intervals} ${interval}s`
+      renewalLabel = `then $${(planPriceCents / 100).toFixed(2)}/${interval} after ${durationLabel}`
+    }
+  }
+  const hasDiscount = discountedFirstPaymentCents !== null && discountedFirstPaymentCents < cartTotal
+  const checkoutDisplayCents = hasDiscount ? discountedFirstPaymentCents! : cartTotal
+
   const addPackage = (pkg: any) => {
     plugin.store.send({
       type: 'CART_ADD',
@@ -2964,39 +2991,6 @@ const CartUpsellStep: React.FC<{
         </button>
       </div>
 
-      {/* Discount notice — tell the user that a promo will be applied */}
-      {introDiscount && (
-        <div className="pm-cart-upsell__discount-notice">
-          <i className="fas fa-tags"></i>
-          <div>
-            <strong>{introDiscount.name}</strong>
-            <span>
-              {introDiscount.discountType === 'percentage'
-                ? ` — ${Math.round(introDiscount.amount)}% off`
-                : ` — $${introDiscount.amount.toFixed(2)} off`}
-              {' '}will be applied at checkout
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Intro credit packages — free AI credits included with sign-up */}
-      {(planObj?.introCreditPackages ?? []).length > 0 && (
-        <div className="pm-cart-upsell__bonus-notice">
-          <i className="fas fa-gift"></i>
-          <div>
-            <strong>Bonus included</strong>
-            <span>
-              {' — '}
-              {(planObj.introCreditPackages ?? []).map((cp: any) =>
-                `${(cp.credits * (cp.quantity || 1)).toLocaleString()} free AI credits`
-              ).join(' + ')}
-              {' '}added to your account on sign-up
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Current cart summary */}
       <div className="pm-cart-upsell__summary">
         <h3 className="pm-cart-upsell__title">Your order</h3>
@@ -3021,8 +3015,53 @@ const CartUpsellStep: React.FC<{
         </ul>
         <div className="pm-cart-upsell__total">
           <span>Total</span>
-          <span>${(cartTotal / 100).toFixed(2)}</span>
+          <div className="pm-cart-upsell__total-right">
+            {hasDiscount ? (
+              <>
+                <span className="pm-cart-upsell__total-original">${(cartTotal / 100).toFixed(2)}</span>
+                <span className="pm-cart-upsell__total-discounted">${(discountedFirstPaymentCents! / 100).toFixed(2)}</span>
+              </>
+            ) : (
+              <span>${(cartTotal / 100).toFixed(2)}</span>
+            )}
+          </div>
         </div>
+        {renewalLabel && (
+          <div className="pm-cart-upsell__renewal-note">{renewalLabel}</div>
+        )}
+
+        {/* Discount notice — anchored to the total so it's visually connected */}
+        {introDiscount && (
+          <div className="pm-cart-upsell__discount-notice">
+            <i className="fas fa-tags"></i>
+            <div>
+              <strong>{introDiscount.name}</strong>
+              <span>
+                {introDiscount.discountType === 'percentage'
+                  ? ` — ${Math.round(introDiscount.amount)}% off`
+                  : ` — $${introDiscount.amount.toFixed(2)} off`}
+                {' '}will be applied at checkout
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Bonus intro credits — also anchored in the summary block */}
+        {(planObj?.introCreditPackages ?? []).length > 0 && (
+          <div className="pm-cart-upsell__bonus-notice">
+            <i className="fas fa-gift"></i>
+            <div>
+              <strong>Bonus included</strong>
+              <span>
+                {' — '}
+                {(planObj.introCreditPackages ?? []).map((cp: any) =>
+                  `${(cp.credits * (cp.quantity || 1)).toLocaleString()} free AI credits`
+                ).join(' + ')}
+                {' '}added to your account on sign-up
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Upsell: available credit packages */}
@@ -3064,7 +3103,7 @@ const CartUpsellStep: React.FC<{
       {/* Proceed to checkout */}
       <button className="pm-cart-upsell__checkout-btn" onClick={proceed}>
         <i className="fas fa-lock"></i>
-        <span>Proceed to checkout — ${(cartTotal / 100).toFixed(2)}</span>
+        <span>Proceed to checkout — ${(checkoutDisplayCents / 100).toFixed(2)}</span>
       </button>
       <div className="pm-cart-upsell__note">
         <i className="fas fa-info-circle"></i>

@@ -3655,6 +3655,11 @@
   border-radius: 12px;
   padding: 20px;
 }
+/* Notices inside the summary card sit below the total row */
+.pm-cart-upsell__summary .pm-cart-upsell__discount-notice,
+.pm-cart-upsell__summary .pm-cart-upsell__bonus-notice {
+  margin-top: 12px;
+}
 .pm-cart-upsell__title {
   margin: 0 0 14px;
   font-size: 15px;
@@ -3716,6 +3721,29 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--pm-text);
+}
+.pm-cart-upsell__total-right {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.pm-cart-upsell__total-original {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pm-text-mute);
+  text-decoration: line-through;
+  text-decoration-color: rgba(248, 113, 113, 0.7);
+}
+.pm-cart-upsell__total-discounted {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4ade80;
+}
+.pm-cart-upsell__renewal-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--pm-text-mute);
+  text-align: right;
 }
 
 /* Add-ons section */
