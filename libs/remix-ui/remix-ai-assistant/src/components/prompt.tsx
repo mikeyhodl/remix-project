@@ -9,9 +9,21 @@ import { TrackingContext } from '@remix-ide/tracking'
 import { CustomTooltip } from '@remix-ui/helper'
 import { AIModel } from '@remix/remix-ai-core'
 import { PromptDefault } from "./promptDefault";
-import { AutocompletePanel, Command } from './AutocompletePanel'
+import { AutocompletePanel, AVAILABLE_COMMANDS, Command } from './AutocompletePanel'
 
 const AUDIT_COMMAND_TEXT = 'audit a contract'
+
+// Extract the name of a completed slash command (text up to the ':') so we can
+// surface a contextual hint for it. Returns null when no command/colon is present.
+const getActiveCommandName = (text: string): string | null => {
+  const lastSpaceSlash = text.lastIndexOf(' /')
+  const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
+  if (slashStart === -1) return null
+  const afterSlash = text.slice(slashStart + 1)
+  const colonIdx = afterSlash.indexOf(':')
+  if (colonIdx === -1) return null
+  return afterSlash.slice(0, colonIdx).trim() || null
+}
 
 const getSlashWord = (text: string): string | null => {
   // Only detect slash commands at the beginning or after a space
@@ -395,12 +407,21 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   const toolCommands = actionCommands.filter(cmd => cmd.category === 'Tools')
 
+  // Contextual hint for a just-inserted command (e.g. "/compile: ") so the user
+  // knows what to type after the colon.
+  const activeCommandHint = useMemo(() => {
+    const name = getActiveCommandName(input)
+    if (!name) return null
+    const cmd = AVAILABLE_COMMANDS.find(c => c.name.toLowerCase() === name.toLowerCase())
+    return cmd?.hint ?? null
+  }, [input])
+
   // Logout doesn't reliably flip `aiRouteReady` (the route was already ready),
   // so authentication is the source of truth for whether the composer is
   // usable. Folding it in here disables the input + send button and surfaces
   // the sign-in CTA the instant the user logs out.
   const composerReady = aiRouteReady && isAuthenticated
-  const needsSignIn = !isAuthenticated && !!onSignIn
+  const needsSignIn = !aiRouteReady && !isAuthenticated && !!onSignIn
   const placeholderText = needsSignIn
     ? 'Sign in to chat with RemixAI…'
     : aiRouteReady
@@ -630,6 +651,16 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={placeholderText}
             />
+            {activeCommandHint && (
+              <div
+                className="px-2 pb-1 d-flex align-items-center"
+                style={{ fontSize: '0.72rem', color: 'var(--bs-secondary-color)', fontStyle: 'italic' }}
+                data-id="command-hint"
+              >
+                <i className="fa-regular fa-circle-question me-1" style={{ fontSize: '0.7rem' }}></i>
+                {activeCommandHint}
+              </div>
+            )}
             <div className="d-flex flex-row align-items-center">
               {/* <div className="d-flex flex-row align-items-center"> */}
               <button
