@@ -138,12 +138,22 @@ export const validateGraphQLSyntax = (query: string): { valid: boolean; error?: 
   }
 
   // Check for query/mutation/subscription keyword or shorthand query
-  const trimmed = query.trim()
-  if (!trimmed.startsWith('{') &&
-      !trimmed.startsWith('query') &&
-      !trimmed.startsWith('mutation') &&
-      !trimmed.startsWith('subscription') &&
-      !trimmed.startsWith('fragment')) {
+  // Skip comment lines to find the actual query start
+  const lines = query.trim().split('\n')
+  let queryStart = ''
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    if (trimmedLine && !trimmedLine.startsWith('#')) {
+      queryStart = trimmedLine
+      break
+    }
+  }
+
+  if (!queryStart.startsWith('{') &&
+      !queryStart.startsWith('query') &&
+      !queryStart.startsWith('mutation') &&
+      !queryStart.startsWith('subscription') &&
+      !queryStart.startsWith('fragment')) {
     return { valid: false, error: 'Query must start with query, mutation, subscription, fragment, or {' }
   }
 
