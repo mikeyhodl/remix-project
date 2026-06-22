@@ -22,6 +22,8 @@ interface AutocompletePanelProps {
   extraCommands?: Command[]
   /** Predicate telling whether the signed-in user has a given feature. Defaults to always-true. */
   hasFeature?: (feature: string) => boolean
+  /** Whether the user is signed in. When false, locked commands surface a "Sign in" badge instead of a plan name. */
+  isAuthenticated?: boolean
   /** Called when the user picks a command they are not entitled to. Receives the missing feature key. */
   onUpgradeRequired?: (command: Command, missingFeature: string) => void
   /** Resolves a missing feature to the cheapest plan that grants it (e.g. "Pro") for the upsell badge. */
@@ -37,12 +39,12 @@ const AVAILABLE_COMMANDS: Command[] = [
   // { name: 'ollama', description: 'Configure Ollama integration', category: 'Settings' },
 
   // Compilation & Analysis
-  { name: 'compile', description: 'Compile contract', category: 'Build', requiredFeatures: [] },
+  { name: 'compile', description: 'Compile contract', category: 'Build', requiredFeatures: [Features.AI_SOLCODER] },
   // { name: 'slither', description: 'Run Slither security analysis', category: 'Analysis' },
   // { name: 'mythril', description: 'Run Mythril security scan', category: 'Analysis' },
 
   // Deployment & Verification
-  { name: 'deploy', description: 'Deploy contract to network', category: 'Deploy', requiredFeatures: [] },
+  { name: 'deploy', description: 'Deploy contract to network', category: 'Deploy', requiredFeatures: [Features.AI_SOLCODER] },
   { name: 'etherscan', description: 'Fetch contract from Etherscan and call the Etherscan service', category: 'Import', requiredFeatures: [Features.MCP_ETHERSCAN] },
   // { name: 'verify', description: 'Verify contract on block explorer', category: 'Deploy' },
 
@@ -77,6 +79,7 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
   onSelectedIndexChange,
   extraCommands = [],
   hasFeature,
+  isAuthenticated = true,
   onUpgradeRequired,
   getRequiredPlanName
 }) => {
@@ -322,7 +325,7 @@ export const AutocompletePanel: React.FC<AutocompletePanelProps> = ({
                         }}
                         data-id={`autocomplete-upgrade-${cmd.name}`}
                       >
-                        {planName ?? 'Upgrade'}
+                        {!isAuthenticated ? 'Sign in' : (planName ?? 'Upgrade')}
                       </span>
                     ) : isSelected && !cmd.disabled && (
                       <span

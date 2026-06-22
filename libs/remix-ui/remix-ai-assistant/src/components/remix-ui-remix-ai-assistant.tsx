@@ -455,6 +455,13 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     let isRefreshing = false // avoid circular calls
 
     const handleAuthStateChanged = async (authState: any) => {
+      // Mirror the auth flag immediately (no debounce) so the composer's
+      // sign-in CTA + disabled input react the instant the user logs out.
+      // The assistantState `stateChanged` event isn't guaranteed to re-fire
+      // on logout, so this is the reliable signal — same one the model
+      // selector resets from below.
+      setIsAuthenticated(!!authState?.isAuthenticated)
+
       if (isRefreshing) return
 
       if (refreshTimeout) {
@@ -2259,11 +2266,16 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // first missing feature so the upsell is contextual. Falls back to the
   // legacy beta widget when planManager isn't active (e.g. tests).
   const handleFeatureUpgradeRequired = useCallback((commandName: string, missingFeature: string) => {
-    props.plugin.call('planManager' as any, 'open', { reason: 'feature-required', requiredFeature: missingFeature }).catch(() => {
+    // When the user isn't signed in yet, the real gate is authentication, not
+    // a plan tier — so route to the sign-in flow (same hand-off as the locked
+    // model picker / composer CTA) and let the upsell happen post-login.
+    const reason = isAuthenticated ? 'feature-required' : 'auth-required'
+    const requiredFeature = isAuthenticated ? missingFeature : null
+    props.plugin.call('planManager' as any, 'open', { reason, requiredFeature }).catch(() => {
       props.plugin.call('betaCornerWidget', 'show').catch(() => { /* noop */ })
     })
     trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'command_upgrade_required', value: commandName, isClick: true })
-  }, [props.plugin, trackMatomoEvent])
+  }, [props.plugin, trackMatomoEvent, isAuthenticated])
 
   // Resolve the cheapest plan tier that grants a given feature, returning
   // its display name (e.g. "Pro") so the UI can label the upsell badge.

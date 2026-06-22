@@ -30,41 +30,54 @@ const getSlashWord = (text: string): string | null => {
   return word
 }
 
-const SHORTCUT_CATEGORIES = [
+// A shortcut prompt is either a plain prompt string (always available) or an
+// object that additionally lists the features required to use it. Gated
+// prompts behave like the permission-locked slash commands (e.g. Load Skills):
+// when the user lacks a required feature they see a lock + upsell/sign-in badge
+// and clicking routes to the plan manager instead of filling the composer.
+type ShortcutPrompt = string | { text: string; requiredFeatures?: string[] }
+
+interface ShortcutCategory {
+  id: string
+  label: string
+  prompts: ShortcutPrompt[]
+}
+
+const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
   {
     id: 'code',
     label: 'Code',
     prompts: [
-      'Write a Solidity ERC20 token with mint and burn functions',
-      'Add an ownable access control to a contract',
-      '/compile: fix any errors in the active file',
+      { text: 'Write a Solidity ERC20 token with mint and burn functions', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'Add an ownable access control to a contract', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: '/compile: fix any errors in the active file', requiredFeatures: [Features.AI_SOLCODER] },
     ],
   },
   {
     id: 'explain',
     label: 'Explain',
     prompts: [
-      'Explain what this contract does line by line',
-      'What are the security risks in this code?',
-      'What does this function return and when does it revert?',
+      { text: 'Explain what this contract does line by line', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'What are the security risks in this code?', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'What does this function return and when does it revert?', requiredFeatures: [Features.AI_SOLCODER] },
     ],
   },
   {
     id: 'learn',
     label: 'Learn',
     prompts: [
-      'What is a smart contract?',
-      'How does gas work in Ethereum?',
-      'What is the difference between memory and storage in Solidity?',
+      { text: 'What is a smart contract?', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'How does gas work in Ethereum?', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'What is the difference between memory and storage in Solidity?', requiredFeatures: [Features.AI_SOLCODER] },
     ],
   },
   {
     id: 'deploy',
     label: 'Deploy',
     prompts: [
-      '/deploy: deploy this contract to Sepolia testnet',
-      'How do I verify my contract on Etherscan?',
-      'What network should I use for testing?',
+      { text: '/deploy: deploy this contract to Sepolia testnet', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'How do I verify my contract on Etherscan?', requiredFeatures: [Features.AI_SOLCODER] },
+      { text: 'What network should I use for testing?', requiredFeatures: [Features.AI_SOLCODER] },
     ],
   },
 ]
@@ -212,7 +225,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         category: 'Tools',
         action: handleLoadSkills,
         disabled: false,
-        requiredFeatures: [Features.AI_SKILLS]
+        requiredFeatures: [Features.SKILLS_BASIC]
       })
     }
     if (handleLoadAuditChecklist) {
@@ -315,7 +328,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     }
 
     // Handle Enter key
-    if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady) {
+    if (e.key === 'Enter' && !e.shiftKey && !isStreaming && aiRouteReady && isAuthenticated) {
       e.preventDefault()
 
       // If autocomplete panel is visible, select the highlighted command
@@ -335,7 +348,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         handleSend()
       }
     }
-  }, [showAutocomplete, selectedCommandIndex, isStreaming, aiRouteReady, handleSend, setInput, setShowAutocomplete])
+  }, [showAutocomplete, selectedCommandIndex, isStreaming, aiRouteReady, isAuthenticated, handleSend, setInput, setShowAutocomplete])
 
   useEffect(() => {
     if (!activeShortcut) return
@@ -369,7 +382,12 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   const toolCommands = actionCommands.filter(cmd => cmd.category === 'Tools')
 
-  const needsSignIn = !aiRouteReady && !isAuthenticated && !!onSignIn
+  // Logout doesn't reliably flip `aiRouteReady` (the route was already ready),
+  // so authentication is the source of truth for whether the composer is
+  // usable. Folding it in here disables the input + send button and surfaces
+  // the sign-in CTA the instant the user logs out.
+  const composerReady = aiRouteReady && isAuthenticated
+  const needsSignIn = !isAuthenticated && !!onSignIn
   const placeholderText = needsSignIn
     ? 'Sign in to chat with RemixAI…'
     : aiRouteReady
@@ -414,32 +432,68 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             }}
             data-id="shortcut-popover"
           >
-            {activeCategory.prompts.map((prompt, i) => (
-              <button
-                key={i}
-                onClick={() => handleShortcutSelect(prompt)}
-                className="d-block w-100 text-start px-3 py-2 border-0"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: 'var(--bs-body-color)',
-                  fontSize: '0.8rem',
-                  borderBottom: i < activeCategory.prompts.length - 1 ? '1px solid var(--bs-border-color)' : 'none',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--custom-onsurface-layer-1)' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                data-id={`shortcut-prompt-${i}`}
-              >
-                {prompt.startsWith('/') ? (
+            {activeCategory.prompts.map((prompt, i) => {
+              // Normalise the string|object prompt shape and resolve whether
+              // the user is missing any required feature (same gating model as
+              // the Tools commands / Load Skills).
+              const promptText = typeof prompt === 'string' ? prompt : prompt.text
+              const requiredFeatures = typeof prompt === 'string' ? undefined : prompt.requiredFeatures
+              const missingFeature = requiredFeatures?.find((f) => !hasFeature(f)) ?? null
+              const isLocked = missingFeature !== null
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    // Locked prompt → route to the plan manager (or sign-in
+                    // when anonymous) instead of dropping it into the composer.
+                    if (isLocked) {
+                      setActiveShortcut(null)
+                      onUpgradeRequired?.(promptText, missingFeature as string)
+                      return
+                    }
+                    handleShortcutSelect(promptText)
+                  }}
+                  className="d-flex align-items-center justify-content-between w-100 text-start px-3 py-2 border-0"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'var(--bs-body-color)',
+                    fontSize: '0.8rem',
+                    borderBottom: i < activeCategory.prompts.length - 1 ? '1px solid var(--bs-border-color)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--custom-onsurface-layer-1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                  data-id={`shortcut-prompt-${i}`}
+                >
                   <span>
-                    <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
-                      {prompt.substring(0, prompt.indexOf(':') + 1)}
-                    </span>
-                    {prompt.substring(prompt.indexOf(':') + 1)}
+                    {promptText.startsWith('/') ? (
+                      <span>
+                        <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
+                          {promptText.substring(0, promptText.indexOf(':') + 1)}
+                        </span>
+                        {promptText.substring(promptText.indexOf(':') + 1)}
+                      </span>
+                    ) : promptText}
                   </span>
-                ) : prompt}
-              </button>
-            ))}
+                  {isLocked && (
+                    <span
+                      className="badge rounded-pill ms-2"
+                      style={{
+                        backgroundColor: 'var(--custom-ai-color)',
+                        color: 'var(--bs-body-bg)',
+                        fontSize: '0.6rem',
+                        padding: '2px 6px',
+                        fontWeight: 'normal',
+                        whiteSpace: 'nowrap'
+                      }}
+                      data-id={`shortcut-prompt-upgrade-${i}`}
+                    >
+                      {!isAuthenticated ? 'Sign in' : (getRequiredPlanName?.(missingFeature as string) ?? 'Upgrade')}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
         {activeShortcut === 'tools' && (
@@ -495,7 +549,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                       }}
                       data-id={`shortcut-tool-upgrade-${cmd.name}`}
                     >
-                      {getRequiredPlanName?.(missingFeature as string) ?? 'Upgrade'}
+                      {!isAuthenticated ? 'Sign in' : (getRequiredPlanName?.(missingFeature as string) ?? 'Upgrade')}
                     </span>
                   )}
                 </button>
@@ -521,6 +575,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             onSelectedIndexChange={setSelectedCommandIndex}
             extraCommands={actionCommands}
             hasFeature={hasFeature}
+            isAuthenticated={isAuthenticated}
             onUpgradeRequired={(cmd, missingFeature) => onUpgradeRequired?.(cmd.name, missingFeature)}
             getRequiredPlanName={getRequiredPlanName}
           />
@@ -555,7 +610,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               id="remix-ai-prompt-input"
               data-id="remix-ai-prompt-input"
               value={input}
-              disabled={isStreaming || !aiRouteReady}
+              disabled={isStreaming || !composerReady}
               onChange={e => {
                 setInput(e.target.value)
               }}
@@ -647,7 +702,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                 // stop button that cancels nothing is broken UX and
                 // confused users into thinking the assistant was stuck.
                 isStreaming={isStreaming}
-                disabled={!aiRouteReady}
+                disabled={!composerReady}
                 handleSend={handleSend}
                 themeTracker={themeTracker}
                 handleCancel={stopRequest}

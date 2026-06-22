@@ -110,21 +110,21 @@ contract HelloWorld {
   // ─── AI (gated) ───
 
   const openSkillsSelection = async () => {
-    if (!hasSkillsPermission) { plugin.call('planManager', 'open') } else {
+    if (!hasSkillsPermission) { plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.SKILLS_BASIC }) } else {
       appContext.appStateDispatch({ type: appActionTypes.showSkillsModal, payload: true })
       trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Skills', isClick: true })
     }
   }
 
   const openAuditsSelection = async () => {
-    if (!hasAuditorPermission) { plugin.call('planManager', 'open') } else {
+    if (!hasAuditorPermission) { plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.AI_AUDITOR }) } else {
       appContext.appStateDispatch({ type: appActionTypes.showChecklistModal, payload: true })
       trackMatomoEvent({ category: 'hometab', action: 'header', name: 'Explore Audits', isClick: true })
     }
   }
 
   const startGasOptimization = async () => {
-    if (!hasAuditorPermission) { plugin.call('planManager', 'open') } else {
+    if (!hasAuditorPermission) { plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.AI_AUDITOR }) } else {
       await plugin.call('manager', 'activatePlugin', 'remixaiassistant')
       await plugin.call('menuicons', 'select', 'remixaiassistant')
       await plugin.call('remixaiassistant', 'newConversation')
