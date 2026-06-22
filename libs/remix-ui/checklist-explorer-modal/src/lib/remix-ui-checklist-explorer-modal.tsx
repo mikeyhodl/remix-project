@@ -54,6 +54,38 @@ const countTotalItems = (data: (ChecklistItem | ChecklistCategory)[]): number =>
   return collectChecklistItems(data).length
 }
 
+const categoryFileToken = (categoryPath: string): string => {
+  const raw = categoryPath.includes('::') ? categoryPath.split('::').join('-') : categoryPath
+  return raw
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
+const enumerateSelectablePaths = (data: ChecklistData[]): string[] => {
+  const paths: string[] = []
+  for (const mainCat of data) {
+    const hasDirectItems = mainCat.data.some(isChecklistItem)
+    const subCats = mainCat.data.filter(item => !isChecklistItem(item)) as ChecklistCategory[]
+    if (hasDirectItems && subCats.length === 0) {
+      paths.push(mainCat.category)
+    } else {
+      subCats.forEach(sub => paths.push(`${mainCat.category}::${sub.category}`))
+    }
+  }
+  return paths
+}
+
+const computeLoadedCategories = (data: ChecklistData[], files: string[]): Set<string> => {
+  const haystack = files.join('\n')
+  const loaded = new Set<string>()
+  enumerateSelectablePaths(data).forEach(path => {
+    const token = categoryFileToken(path)
+    if (token && haystack.includes(token)) loaded.add(path)
+  })
+  return loaded
+}
+
 export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerModalProps) {
   const { isOpen, onClose, plugin } = props
   const [checklistData, setChecklistData] = useState<ChecklistData[]>([])
@@ -62,6 +94,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(new Set())
   const [wizardStep, setWizardStep] = useState<'browse' | 'confirm' | 'saving'>('browse')
   const [saving, setSaving] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -86,11 +119,22 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
     }
   }
 
+  const fetchExistingChecklistFiles = async (): Promise<string[]> => {
+    if (!plugin) return []
+    try {
+      const entries = await plugin.call('fileManager', 'readdir', 'audits')
+      return Object.keys(entries || {})
+    } catch (e) {
+      return []
+    }
+  }
+
   useEffect(() => {
     if (isOpen) {
       setWizardStep('browse')
       setSelectedCategories(new Set())
       setExpandedCategories(new Set())
+      setLoadedCategories(new Set())
       setSearchTerm('')
       setError(null)
 
@@ -99,6 +143,9 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
         try {
           const data = await fetchChecklistData()
           setChecklistData(data)
+          // Highlight categories whose checklist is already saved in the workspace
+          const existingFiles = await fetchExistingChecklistFiles()
+          setLoadedCategories(computeLoadedCategories(data, existingFiles))
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to load checklist')
         } finally {
@@ -263,12 +310,19 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
       await plugin.call('fileManager', 'writeFile', `audits/${filename}`, checklistContent)
 
       setSaving(false)
-      onClose()
+      handleOk()
     } catch (err) {
       setSaving(false)
       setError(err instanceof Error ? err.message : 'Failed to save checklist')
       setWizardStep('confirm')
     }
+  }
+
+  const handleOk = () => {
+    onClose()
+    Promise.resolve(plugin?.call('remixaiassistant', 'submitChatInput')).catch(() => {
+      // assistant plugin unavailable — modal is already closed
+    })
   }
 
   const handleBack = () => {
@@ -357,14 +411,25 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
               />
             </div>
           )}
-          <button
-            data-id="checklist-explorer-modal-close-button"
-            className="checklist-explorer-modal-close-button"
-            onClick={onClose}
-            disabled={isProcessing}
-          >
-            <i className="fa-solid fa-xmark text-dark"></i>
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              data-id="checklist-explorer-ok-button"
+              className="btn btn-primary btn-sm"
+              onClick={handleOk}
+              disabled={isProcessing}
+              title="Close and start the audit"
+            >
+              OK
+            </button>
+            <button
+              data-id="checklist-explorer-modal-close-button"
+              className="checklist-explorer-modal-close-button"
+              onClick={onClose}
+              disabled={isProcessing}
+            >
+              <i className="fa-solid fa-xmark text-dark"></i>
+            </button>
+          </div>
         </div>
 
         <div className="checklist-explorer-container">
@@ -392,6 +457,12 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                   <div className="category-title">Audit Checklist Categories</div>
                   <div className="category-description mb-4">
                     Select audit categories to include in your checklist
+                    {loadedCategories.size > 0 && (
+                      <span className="ms-2 badge bg-success text-white small">
+                        <i className="fa-solid fa-check me-1"></i>
+                        already in workspace
+                      </span>
+                    )}
                   </div>
 
                   {filteredData.length === 0 ? (
@@ -410,19 +481,26 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                           // Category with only direct checklist items
                           const isSelected = selectedCategories.has(mainCategory.category)
                           const isExpanded = expandedCategories.has(mainCategory.category)
+                          const isLoaded = loadedCategories.has(mainCategory.category)
 
                           return (
                             <div key={mainCategory.category} className="main-category mb-3">
                               <div
                                 className={`main-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-primary text-white' : 'bg-secondary text-light'}`}
                                 onClick={() => toggleCategory(mainCategory.category)}
-                                style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
+                                style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
                               >
                                 <div className="flex-grow-1">
                                   <div className="d-flex align-items-center mb-1">
                                     <h5 className="mb-0">{mainCategory.category}</h5>
                                     {isSelected && (
                                       <i className="fa-solid fa-circle-check ms-2"></i>
+                                    )}
+                                    {isLoaded && (
+                                      <span className="badge bg-success text-white small ms-2" title="A checklist for this category is already saved in audits/">
+                                        <i className="fa-solid fa-check me-1"></i>
+                                        in workspace
+                                      </span>
                                     )}
                                   </div>
                                   <p className="mb-0 small opacity-75">{mainCategory.description}</p>
@@ -468,19 +546,26 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
                                   const categoryPath = `${mainCategory.category}::${subCategory.category}`
                                   const isSelected = selectedCategories.has(categoryPath)
                                   const isExpanded = expandedCategories.has(categoryPath)
+                                  const isLoaded = loadedCategories.has(categoryPath)
 
                                   return (
                                     <div key={categoryPath} className="sub-category border-bottom">
                                       <div
                                         className={`sub-category-header p-3 d-flex justify-content-between align-items-center cursor-pointer ${isSelected ? 'bg-light border-primary' : 'bg-light'}`}
                                         onClick={() => toggleCategory(categoryPath)}
-                                        style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : {}}
+                                        style={isSelected ? { boxShadow: '0 0 0 2px var(--bs-primary)' } : isLoaded ? { boxShadow: 'inset 4px 0 0 var(--bs-success)' } : {}}
                                       >
                                         <div className="flex-grow-1">
                                           <div className="d-flex align-items-center mb-1">
                                             <h6 className="text-dark mb-0">{subCategory.category}</h6>
                                             {isSelected && (
                                               <i className="fa-solid fa-circle-check text-primary ms-2"></i>
+                                            )}
+                                            {isLoaded && (
+                                              <span className="badge bg-success text-white small ms-2" title="A checklist for this category is already saved in audits/">
+                                                <i className="fa-solid fa-check me-1"></i>
+                                                in workspace
+                                              </span>
                                             )}
                                           </div>
                                           <p className="text-muted mb-0 small">{subCategory.description}</p>
@@ -611,6 +696,7 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
               </div>
             </div>
           )}
+
         </div>
 
         {/* Fixed footer */}

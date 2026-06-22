@@ -20,7 +20,7 @@ const profile = {
   maintainedBy: 'Remix',
   permission: true,
   events: ['toolApprovalResponse', 'stopRequested'],
-  methods: ['chatPipe', 'handleExternalMessage', 'getProfile', 'deleteConversation','loadConversations', 'newConversation', 'archiveConversation', 'respondToToolApproval', 'stopRequest']
+  methods: ['chatPipe', 'handleExternalMessage', 'getProfile', 'deleteConversation','loadConversations', 'newConversation', 'archiveConversation', 'respondToToolApproval', 'stopRequest', 'submitChatInput']
 }
 
 export class RemixAIAssistant extends ViewPlugin {
@@ -463,6 +463,12 @@ export class RemixAIAssistant extends ViewPlugin {
   handleExternalMessage = (message: string) => {
     this.externalMessage = message
     this.renderComponent()
+  }
+
+  async submitChatInput() {
+    if (this.chatRef?.current) {
+      await this.chatRef.current.submitCurrentInput()
+    }
   }
 
   onReady() {

@@ -276,6 +276,11 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       isClick: true
     })
 
+    const isAuditCommand = command.category === 'Security' && command.name.toLowerCase().includes('audit')
+    if (isAuditCommand && hasAuditorPermission && handleLoadAuditChecklist) {
+      handleLoadAuditChecklist()
+    }
+
     if (command.action) {
       setInput('')
       setTimeout(() => command.action!(), 0)
@@ -285,7 +290,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
     }
     textareaRef?.current?.focus()
-  }, [input, setInput, setShowAutocomplete, getMissingFeature, onUpgradeRequired])
+  }, [input, setInput, setShowAutocomplete, getMissingFeature, onUpgradeRequired, handleLoadAuditChecklist, hasAuditorPermission])
 
   const handleShortcutSelect = useCallback((prompt: string) => {
     setInput(prompt)

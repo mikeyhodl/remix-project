@@ -51,6 +51,8 @@ export interface RemixUiRemixAiAssistantProps {
 export interface RemixUiRemixAiAssistantHandle {
   /** Programmatically send a prompt to the chat (returns after processing starts) */
   sendChat: (prompt: string, isEditorCodeAnalysis?: boolean) => Promise<void>
+  /** Sends whatever text is currently in the prompt input (no-op if empty) */
+  submitCurrentInput: () => Promise<void>
   /** Clears local chat history (parent receives onMessagesChange([])) */
   clearChat: () => void
   /** Returns current chat history array */
@@ -2369,12 +2371,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       sendChat: async (prompt: string, isEditorCodeAnalysis?: boolean) => {
         await sendPrompt(prompt, isEditorCodeAnalysis)
       },
+      submitCurrentInput: async () => {
+        await handleSend()
+      },
       clearChat: () => {
         setMessages([])
       },
       getHistory: () => messages
     }),
-    [sendPrompt, messages]
+    [sendPrompt, handleSend, messages]
   )
   const chatHistoryRef = useRef<HTMLElement | null>(null)
 
