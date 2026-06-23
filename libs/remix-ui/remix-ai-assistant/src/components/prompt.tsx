@@ -11,8 +11,6 @@ import { AIModel } from '@remix/remix-ai-core'
 import { PromptDefault } from "./promptDefault";
 import { AutocompletePanel, AVAILABLE_COMMANDS, Command } from './AutocompletePanel'
 
-const AUDIT_COMMAND_TEXT = 'audit a contract'
-
 const getActiveCommandName = (text: string): string | null => {
   const lastSpaceSlash = text.lastIndexOf(' /')
   const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
@@ -487,10 +485,14 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   data-id={`shortcut-prompt-${i}`}
                 >
                   <span>
-                    <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
-                      {promptText.indexOf(' ') === -1 ? promptText : promptText.substring(0, promptText.indexOf(' '))}
-                    </span>
-                    {promptText.indexOf(' ') === -1 ? '' : promptText.substring(promptText.indexOf(' '))}
+                    {promptText.startsWith('/') ? (
+                      <span>
+                        <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
+                          {promptText.indexOf(' ') === -1 ? promptText : promptText.substring(0, promptText.indexOf(' '))}
+                        </span>
+                        {promptText.indexOf(' ') === -1 ? '' : promptText.substring(promptText.indexOf(' '))}
+                      </span>
+                    ) : promptText}
                   </span>
                   {isLocked && (
                     <span
