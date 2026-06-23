@@ -133,8 +133,8 @@
     text-align: center;
   }
   .remixui_scrollable-container {
-    flex-basis: 510px;
-    flex-grow: 2;
+    flex: 1 1 auto;
+    min-height: 0;
     text-align: center;
     margin-top: -6px;
     padding-bottom: 48px;
@@ -161,7 +161,7 @@
   }
 
   .remixui_icons_height {
-    height: 97vh;
+    height: 100%;
   }
 
   #menuitems {
@@ -317,12 +317,11 @@
 .hm-row-cta strong { color: var(--bs-emphasis-color); }
 
 .remixui_help-container {
-  position: fixed;
-  bottom: 32px;
-  left: 0;
+  flex-shrink: 0;
   width: 50px;
   display: flex;
   justify-content: center;
+  padding: 6px 0;
   z-index: 2;
 }
 
