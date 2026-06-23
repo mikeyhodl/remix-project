@@ -128,6 +128,15 @@ export class RemixFilesystemBackend {
       })
       return
     }
+    const pathMismatch = this.getQuickDappPathMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
+    if (pathMismatch) {
+      remixAILogger.warn('[QuickDapp][WorkspaceLock] blocked pending edit flush at wrong DApp source root', {
+        filePath,
+        normalizedPath,
+        error: pathMismatch.error
+      })
+      return
+    }
 
     // Request ONE approval for the combined diff
     const result = await this.requestWriteApproval(filePath, batch.originalContent, batch.virtualContent, 'edit_file')
@@ -171,8 +180,11 @@ export class RemixFilesystemBackend {
   async read_file(path: string): Promise<string | { error: string }> {
     try {
       const guardPath = this.normalizePath(path)
+      const isQuickDappCandidatePath = this.isQuickDappCandidatePath(guardPath)
       const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(guardPath, this.isQuickDappCandidatePath(guardPath))
       if (workspaceMismatch) return workspaceMismatch
+      const pathMismatch = this.getQuickDappPathMismatch(guardPath, isQuickDappCandidatePath)
+      if (pathMismatch) return pathMismatch
 
       const batch = this.editBatches.get(path) || this.editBatches.get(guardPath)
       if (batch) {
@@ -239,8 +251,25 @@ export class RemixFilesystemBackend {
         normalizedPath.startsWith('/frontend/') ||
         normalizedPath.startsWith('/dapp/') ||
         /[-_.]dapp\.(html|jsx?|tsx?|css)$/i.test(normalizedPath)
+      if (activeQuickDappContext) {
+        remixAILogger.log('[QD_STATUS_TRACE] file_write_start', {
+          rawPath: path,
+          normalizedPath,
+          currentWorkspaceName,
+          workspaceName: activeQuickDappContext.workspaceName,
+          operation: activeQuickDappContext.operation,
+          isInlineMode: activeQuickDappContext.isInlineMode,
+          sourceRoot: activeQuickDappContext.sourceRoot,
+          isQuickDappCandidatePath,
+          hasWeb3DappContent,
+          shouldEnforceQuickDappRouting,
+          contentLength: typeof content === 'string' ? content.length : 0
+        })
+      }
       const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, isQuickDappCandidatePath || hasWeb3DappContent)
       if (workspaceMismatch) return workspaceMismatch
+      const pathMismatch = this.getQuickDappPathMismatch(normalizedPath, shouldEnforceQuickDappRouting)
+      if (pathMismatch) return pathMismatch
       if (isQuickDappCandidatePath || hasWeb3DappContent) {
         const activeQuickDappContext = currentWorkspaceName
           ? getQuickDappGenerationContext(currentWorkspaceName)
@@ -263,6 +292,14 @@ export class RemixFilesystemBackend {
       }
 
       const result = await this.requestWriteApproval(normalizedPath, oldContent, content, 'write_file')
+      if (activeQuickDappContext) {
+        remixAILogger.log('[QD_STATUS_TRACE] file_write_approval_result', {
+          normalizedPath,
+          workspaceName: activeQuickDappContext.workspaceName,
+          approved: result.approved,
+          timedOut: !!result.timedOut
+        })
+      }
 
       if (!result.approved) {
         if (result.timedOut) {
@@ -274,6 +311,13 @@ export class RemixFilesystemBackend {
       const finalContent = result.modifiedContent || content
 
       await this.writeFileInternal(normalizedPath, finalContent)
+      if (activeQuickDappContext) {
+        remixAILogger.log('[QD_STATUS_TRACE] file_write_complete', {
+          normalizedPath,
+          workspaceName: activeQuickDappContext.workspaceName,
+          operation: activeQuickDappContext.operation
+        })
+      }
 
       return { success: true }
     } catch (error) {
@@ -299,6 +343,8 @@ export class RemixFilesystemBackend {
       const normalizedPath = this.normalizePath(path)
       const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
       if (workspaceMismatch) return workspaceMismatch
+      const pathMismatch = this.getQuickDappPathMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
+      if (pathMismatch) return pathMismatch
 
       const originalContent = await this.read_file(normalizedPath)
 
@@ -513,6 +559,43 @@ export class RemixFilesystemBackend {
     } catch {
       return ''
     }
+  }
+
+  private getQuickDappPathMismatch(path: string, shouldCheck: boolean): { error: string } | undefined {
+    if (!shouldCheck) return undefined
+
+    const activeQuickDappContext = getActiveQuickDappGenerationContext()
+    if (!activeQuickDappContext) return undefined
+
+    const normalizedPath = path.startsWith('/') ? path : this.normalizePath(path)
+    const isInlinePath = normalizedPath.startsWith('/frontend/')
+    const isWrongRoot = activeQuickDappContext.isInlineMode
+      ? !isInlinePath
+      : isInlinePath || normalizedPath.startsWith('/dapp/')
+
+    if (!isWrongRoot) return undefined
+
+    const expectedExample = activeQuickDappContext.isInlineMode
+      ? '/frontend/src/App.jsx'
+      : '/src/App.jsx'
+    const rejectedExample = activeQuickDappContext.isInlineMode
+      ? '/src/App.jsx'
+      : '/frontend/src/App.jsx'
+    const error =
+      `QUICKDAPP_PATH_MISMATCH: QuickDapp ${activeQuickDappContext.operation} is targeting ` +
+      `${activeQuickDappContext.isInlineMode ? 'inline mode under /frontend' : 'workspace mode at the workspace root'}, ` +
+      `but the requested path "${normalizedPath}" is in the wrong DApp source root. ` +
+      `Use paths like "${expectedExample}", not "${rejectedExample}".`
+
+    remixAILogger.warn('[QuickDapp][WorkspaceLock] blocked file tool at wrong DApp source root', {
+      operation: activeQuickDappContext.operation,
+      workspaceName: activeQuickDappContext.workspaceName,
+      isInlineMode: activeQuickDappContext.isInlineMode,
+      sourceRoot: activeQuickDappContext.sourceRoot,
+      path: normalizedPath
+    })
+
+    return { error }
   }
 
   private async getQuickDappWorkspaceMismatch(path: string, shouldCheck: boolean): Promise<{ error: string } | undefined> {

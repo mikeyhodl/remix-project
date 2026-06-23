@@ -74,12 +74,24 @@ function EditHtmlTemplate(): JSX.Element {
         data.slug === activeDapp.slug ||
         data.workspaceName === activeDapp.workspaceName
       );
+      console.log('[QD_STATUS_TRACE] editor_dapp_generated_received', {
+        eventSlug: data?.slug,
+        eventWorkspaceName: data?.workspaceName,
+        activeSlug: activeDapp?.slug,
+        activeWorkspaceName: activeDapp?.workspaceName,
+        isMatchingDapp
+      });
 
       if (isMatchingDapp) {
         console.log('[EditHtmlTemplate] dappGenerated received for current dapp:', data.slug || data.workspaceName);
         dispatch({
           type: 'SET_DAPP_PROCESSING',
           payload: { slug: activeDapp.slug, isProcessing: false }
+        });
+        console.log('[QD_STATUS_TRACE] editor_processing_false_dispatched', {
+          slug: activeDapp.slug,
+          workspaceName: activeDapp.workspaceName,
+          reason: 'dappGenerated'
         });
 
         if (activeDapp.status === 'deployed') {
@@ -119,12 +131,25 @@ function EditHtmlTemplate(): JSX.Element {
         errorSlug === activeDapp.slug ||
         errorData?.workspaceName === activeDapp.workspaceName
       );
+      console.log('[QD_STATUS_TRACE] editor_generation_error_received', {
+        eventSlug: errorData?.slug,
+        eventWorkspaceName: errorData?.workspaceName,
+        activeSlug: activeDapp?.slug,
+        activeWorkspaceName: activeDapp?.workspaceName,
+        isMatchingError,
+        error: errorData?.error
+      });
 
       if (isMatchingError) {
         const errorMessage = errorData?.error || errorData || 'Unknown Error';
         dispatch({
           type: 'SET_DAPP_PROCESSING',
           payload: { slug: activeDapp.slug, isProcessing: false }
+        });
+        console.log('[QD_STATUS_TRACE] editor_processing_false_dispatched', {
+          slug: activeDapp.slug,
+          workspaceName: activeDapp.workspaceName,
+          reason: 'generationError'
         });
         setNotificationModal({
           show: true,
@@ -497,11 +522,27 @@ window.addEventListener('unhandledrejection', function(e) {
       console.warn('[QuickDapp] Could not read DApp files:', e);
     }
 
+    let currentWorkspaceForTrace: any = null;
+    try {
+      currentWorkspaceForTrace = await plugin.call('filePanel', 'getCurrentWorkspace');
+    } catch (e) {
+      console.warn('[QD_STATUS_TRACE] editor_current_workspace_failed', e);
+    }
+
     // Build rich context prompt
     const dappName = activeDapp.config?.title || activeDapp.name || 'Untitled';
     const contractInfo = activeDapp.contract;
+    const targetMode = activeDapp.mode || (activeDapp.inlineMode ? 'inline' : 'workspace');
+    const targetSourceRoot = targetMode === 'inline' ? '/frontend' : '/';
     const promptParts = [
-      `I have an existing DApp called "${dappName}" in workspace "${activeDapp.workspaceName}".`,
+      `DApp update target context:`,
+      `Use the target details below exactly. Do not infer or substitute a different workspace.`,
+      ``,
+      `Target DApp: "${dappName}"`,
+      `Target workspaceName: "${activeDapp.workspaceName}"`,
+      `Target slug: "${activeDapp.slug}"`,
+      `Target mode: "${targetMode}"`,
+      `Target source root: "${targetSourceRoot}"`,
       ``,
       `Contract: ${contractInfo?.name || 'Unknown'} at ${contractInfo?.address || 'unknown'}`,
       `Chain: ${contractInfo?.chainId || 'unknown'}`,
@@ -513,10 +554,25 @@ window.addEventListener('unhandledrejection', function(e) {
 
     promptParts.push(
       ``,
-      `I want to update this DApp. Please list my DApp workspaces, confirm this is the right one, and then ask me what changes I'd like to make.`
+      `I want to update this exact DApp.`,
+      `For this first response, do not call list_dapps, update_dapp, generate_dapp, read_file, write_file, or finalize_dapp_generation.`,
+      `Only ask me one concise question: what changes would I like to make?`,
+      `After my next reply, call update_dapp with workspaceName="${activeDapp.workspaceName}" and description set to my requested changes.`,
+      `Use exactly the target workspaceName above if calling update_dapp.`,
+      `Never call generate_dapp for this update flow.`
     );
 
     const prompt = promptParts.join('\n');
+    console.log('[QD_STATUS_TRACE] editor_update_prompt_ready', {
+      activeWorkspaceName: activeDapp.workspaceName,
+      activeSlug: activeDapp.slug,
+      activeMode: activeDapp.mode,
+      currentWorkspaceName: currentWorkspaceForTrace?.name,
+      contractAddress: contractInfo?.address,
+      chainId: contractInfo?.chainId,
+      fileList,
+      prompt
+    });
 
     // Activate and focus AI Assistant
     try {
@@ -528,7 +584,15 @@ window.addEventListener('unhandledrejection', function(e) {
 
     // Send prompt to AI
     try {
+      console.log('[QD_STATUS_TRACE] editor_chat_pipe_call', {
+        workspaceName: activeDapp.workspaceName,
+        slug: activeDapp.slug
+      });
       await plugin.call('remixaiassistant' as any, 'chatPipe', prompt);
+      console.log('[QD_STATUS_TRACE] editor_chat_pipe_returned', {
+        workspaceName: activeDapp.workspaceName,
+        slug: activeDapp.slug
+      });
     } catch (e) {
       console.warn('[QuickDapp] Could not send prompt to AI Assistant:', e);
     }
