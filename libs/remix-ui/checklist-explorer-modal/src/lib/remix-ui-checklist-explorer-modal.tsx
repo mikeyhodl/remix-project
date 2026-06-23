@@ -309,6 +309,29 @@ export function RemixUiChecklistExplorerModal(props: RemixUiChecklistExplorerMod
 
       await plugin.call('fileManager', 'writeFile', `audits/${filename}`, checklistContent)
 
+      // Post a summary into the chat so completion isn't silent — especially for
+      // /load-audit-checklist, where nothing else is sent after the modal closes.
+      try {
+        let itemCount = 0
+        const categoryLabels: string[] = []
+        Array.from(selectedCategories).forEach(path => {
+          if (path.includes('::')) {
+            const [mainName, subName] = path.split('::')
+            const main = checklistData.find(c => c.category === mainName)
+            const sub = main?.data.find(i => !isChecklistItem(i) && (i as ChecklistCategory).category === subName) as ChecklistCategory | undefined
+            if (sub) { itemCount += countTotalItems(sub.data); categoryLabels.push(subName) }
+          } else {
+            const main = checklistData.find(c => c.category === path)
+            if (main) { itemCount += countTotalItems(main.data); categoryLabels.push(path) }
+          }
+        })
+        const labelText = categoryLabels.join(', ') || 'selected'
+        const summary = `Created \`audits/${filename}\` with the ${labelText} checklist (${itemCount} item${itemCount === 1 ? '' : 's'})`
+        await plugin.call('remixaiassistant', 'handleExternalMessage', summary)
+      } catch (e) {
+        // assistant panel unavailable — the file is still created
+      }
+
       setSaving(false)
       handleOk()
     } catch (err) {
