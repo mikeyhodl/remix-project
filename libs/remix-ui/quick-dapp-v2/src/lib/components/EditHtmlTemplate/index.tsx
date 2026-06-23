@@ -486,12 +486,22 @@ window.addEventListener('unhandledrejection', function(e) {
       return;
     }
 
+    const targetMode = activeDapp.mode || (activeDapp.inlineMode ? 'inline' : 'workspace');
+    const targetSourceRoot = targetMode === 'inline' ? '/frontend' : '/';
+
     // Gather current DApp file list for context
     let fileList: string[] = [];
     try {
-      const srcFiles = await plugin.call('fileManager', 'readdir', 'src');
+      const sourceDir = targetMode === 'inline' ? 'frontend/src' : 'src';
+      const sourcePrefix = `${sourceDir}/`;
+      const srcFiles = await plugin.call('fileManager', 'readdir', sourceDir);
       if (srcFiles) {
-        fileList = Object.keys(srcFiles).map(f => f.replace(/^src\//, 'src/'));
+        fileList = Object.keys(srcFiles).map((filePath) => {
+          const normalized = filePath.replace(/^\/+/, '');
+          return normalized.startsWith(sourcePrefix)
+            ? normalized
+            : `${sourcePrefix}${normalized.replace(/^src\//, '')}`;
+        });
       }
     } catch (e) {
       console.warn('[QuickDapp] Could not read DApp files:', e);
@@ -500,8 +510,6 @@ window.addEventListener('unhandledrejection', function(e) {
     // Build rich context prompt
     const dappName = activeDapp.config?.title || activeDapp.name || 'Untitled';
     const contractInfo = activeDapp.contract;
-    const targetMode = activeDapp.mode || (activeDapp.inlineMode ? 'inline' : 'workspace');
-    const targetSourceRoot = targetMode === 'inline' ? '/frontend' : '/';
     const promptParts = [
       `DApp update target context:`,
       `Use the target details below exactly. Do not infer or substitute a different workspace.`,
