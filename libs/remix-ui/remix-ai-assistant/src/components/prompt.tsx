@@ -13,16 +13,14 @@ import { AutocompletePanel, AVAILABLE_COMMANDS, Command } from './AutocompletePa
 
 const AUDIT_COMMAND_TEXT = 'audit a contract'
 
-// Extract the name of a completed slash command (text up to the ':') so we can
-// surface a contextual hint for it. Returns null when no command/colon is present.
 const getActiveCommandName = (text: string): string | null => {
   const lastSpaceSlash = text.lastIndexOf(' /')
   const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : text.startsWith('/') ? 0 : -1
   if (slashStart === -1) return null
   const afterSlash = text.slice(slashStart + 1)
-  const colonIdx = afterSlash.indexOf(':')
-  if (colonIdx === -1) return null
-  return afterSlash.slice(0, colonIdx).trim() || null
+  const spaceIdx = afterSlash.indexOf(' ')
+  if (spaceIdx === -1) return null
+  return afterSlash.slice(0, spaceIdx).trim() || null
 }
 
 const getSlashWord = (text: string): string | null => {
@@ -32,16 +30,9 @@ const getSlashWord = (text: string): string | null => {
   if (slashStart === -1) return null
 
   const afterSlash = text.slice(slashStart)
+  if (/\s/.test(afterSlash)) return null
 
-  // If there's already a colon, the command is complete
-  if (afterSlash.includes(':')) return null
-
-  // Extract the word after the slash (until space or end)
-  const nextSpace = afterSlash.indexOf(' ')
-  const word = nextSpace === -1 ? afterSlash : afterSlash.slice(0, nextSpace)
-
-  // Return the word to show autocomplete
-  return word
+  return afterSlash
 }
 
 // A shortcut prompt is either a plain prompt string (always available) or an
@@ -213,10 +204,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   // Handle autocomplete visibility
   useEffect(() => {
-    // Don't show autocomplete if input ends with ": " (completed command)
-    const endsWithCommandColon = input.trimEnd().endsWith(':')
     const hasSlashWord = !!getSlashWord(input)
-    const shouldShow = hasSlashWord && !isStreaming && !endsWithCommandColon
+    const shouldShow = hasSlashWord && !isStreaming
 
     setShowAutocomplete(shouldShow)
     // Reset selected index when hiding or showing the panel
@@ -306,7 +295,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     } else {
       const lastSpaceSlash = input.lastIndexOf(' /')
       const slashStart = lastSpaceSlash !== -1 ? lastSpaceSlash + 1 : input.startsWith('/') ? 0 : input.length
-      setInput(input.slice(0, slashStart) + '/' + command.name + ': ')
+      setInput(input.slice(0, slashStart) + '/' + command.name + ' ')
     }
     textareaRef?.current?.focus()
   }, [input, setInput, setShowAutocomplete, getMissingFeature, onUpgradeRequired, handleLoadAuditChecklist, hasAuditorPermission])
@@ -406,8 +395,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
 
   const toolCommands = actionCommands.filter(cmd => cmd.category === 'Tools')
 
-  // Contextual hint for a just-inserted command (e.g. "/compile: ") so the user
-  // knows what to type after the colon.
+  // Contextual hint for a just-inserted command (e.g. "/compile ") so the user
   const activeCommandHint = useMemo(() => {
     const name = getActiveCommandName(input)
     if (!name) return null
@@ -499,14 +487,10 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   data-id={`shortcut-prompt-${i}`}
                 >
                   <span>
-                    {promptText.startsWith('/') ? (
-                      <span>
-                        <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
-                          {promptText.substring(0, promptText.indexOf(':') + 1)}
-                        </span>
-                        {promptText.substring(promptText.indexOf(':') + 1)}
-                      </span>
-                    ) : promptText}
+                    <span style={{ color: 'var(--custom-ai-color)', fontWeight: 600 }}>
+                      {promptText.indexOf(' ') === -1 ? promptText : promptText.substring(0, promptText.indexOf(' '))}
+                    </span>
+                    {promptText.indexOf(' ') === -1 ? '' : promptText.substring(promptText.indexOf(' '))}
                   </span>
                   {isLocked && (
                     <span
