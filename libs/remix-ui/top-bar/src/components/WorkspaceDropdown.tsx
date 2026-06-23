@@ -262,7 +262,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
     return (
       <Dropdown
         as={ButtonGroup}
-        style={{ minWidth: '70%' }}
+        style={{ minWidth: 320, flex: '1 1 auto' }}
         className="d-flex rounded-md"
         id="workspacesSelect"
         data-id="workspacesSelect"
@@ -296,7 +296,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
       as={ButtonGroup}
       show={dropdownOpen}
       onToggle={(open) => { if (isDropdownLocked && open) return; setDropdownOpen(open) }}
-      style={{ minWidth: '70%' }}
+      style={{ minWidth: 320, flex: '1 1 auto' }}
       className="d-flex rounded-md"
       id="workspacesSelect"
       data-id="workspacesSelect"
@@ -417,7 +417,7 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                     container={document.body}
                     popperConfig={{
                       modifiers: [
-                        { name: "offset", options: { offset: [8, 22] } },
+                        { name: "offset", options: { offset: [8, 22]} },
                         { name: "preventOverflow", options: { boundary: "viewport", padding: 8 } },
                         { name: 'flip', options: { enabled: false } }
                       ],
@@ -432,46 +432,46 @@ export const WorkspacesDropdown: React.FC<WorkspacesDropdownProps> = ({ menuItem
                       data-id="workspacesubMenuOverlay"
                     >
                       <div className="fws-submenu">
-                          <Dropdown.Item
-                            as="button"
-                            className="d-flex align-items-center gap-2 px-2 py-1 rounded"
-                            data-id="workspacesubMenuRename"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              renameCurrentWorkspace(item.name)
-                              setOpenSubmenuId(null)
-                            }}
-                          >
-                            <i className="far fa-edit fws-action-icon text-body-secondary" />
-                            <span>Rename</span>
-                          </Dropdown.Item>
-                          <Dropdown.Item
-                            as="button"
-                            className="d-flex align-items-center gap-2 px-2 py-1 rounded"
-                            data-id="workspacesubMenuDownload"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              downloadCurrentWorkspace()
-                              setCurrentMenuItemName(item.name)
-                              setOpenSubmenuId(null)
-                            }}
-                          >
-                            <i className="fas fa-download fws-action-icon text-body-secondary" />
-                            <span>Download</span>
-                          </Dropdown.Item>
-                          <Dropdown.Item
-                            as="button"
-                            className="fws-danger-item d-flex align-items-center gap-2 px-2 py-1 rounded text-danger"
-                            data-id="workspacesubMenuDelete"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteCurrentWorkspace(item.name)
-                              setOpenSubmenuId(null)
-                            }}
-                          >
-                            <i className="fas fa-trash fws-action-icon" />
-                            <span>Delete</span>
-                          </Dropdown.Item>
+                        <Dropdown.Item
+                          as="button"
+                          className="d-flex align-items-center gap-2 px-2 py-1 rounded"
+                          data-id="workspacesubMenuRename"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            renameCurrentWorkspace(item.name)
+                            setOpenSubmenuId(null)
+                          }}
+                        >
+                          <i className="far fa-edit fws-action-icon text-body-secondary" />
+                          <span>Rename</span>
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                          as="button"
+                          className="d-flex align-items-center gap-2 px-2 py-1 rounded"
+                          data-id="workspacesubMenuDownload"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            downloadCurrentWorkspace()
+                            setCurrentMenuItemName(item.name)
+                            setOpenSubmenuId(null)
+                          }}
+                        >
+                          <i className="fas fa-download fws-action-icon text-body-secondary" />
+                          <span>Download</span>
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                          as="button"
+                          className="fws-danger-item d-flex align-items-center gap-2 px-2 py-1 rounded text-danger"
+                          data-id="workspacesubMenuDelete"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteCurrentWorkspace(item.name)
+                            setOpenSubmenuId(null)
+                          }}
+                        >
+                          <i className="fas fa-trash fws-action-icon" />
+                          <span>Delete</span>
+                        </Dropdown.Item>
                       </div>
                     </section>
                   </Overlay>

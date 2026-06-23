@@ -1,7 +1,7 @@
 import { ViewPlugin } from '@remixproject/engine-web'
 import React, { useState, useReducer, useEffect, useContext, useMemo } from 'react' // eslint-disable-line
 import Fuse from 'fuse.js'
-import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredentialsDescription } from '@remix-ui/helper'
+import { EtherscanConfigDescription, GitHubCredentialsDescription, SindriCredentialsDescription, TheGraphConfigDescription } from '@remix-ui/helper'
 import { AppConfig, FeatureGroup } from '@remix-api'
 import { AppContext, useAuth } from '@remix-ui/app'
 import { API_KEYS_ALLOWED_PLANS } from '@remix/remix-ai-core'
@@ -294,6 +294,15 @@ const settingsSections: SettingsSection[] = [
           toggleUIDescription: <EtherscanConfigDescription />,
           toggleUIOptions: [{
             name: 'etherscan-access-token',
+            type: 'password'
+          }]
+        }, {
+          name: 'thegraph-config',
+          label: 'settings.thegraphTokenTitle',
+          type: 'toggle',
+          toggleUIDescription: <TheGraphConfigDescription />,
+          toggleUIOptions: [{
+            name: 'thegraph-access-token',
             type: 'password'
           }]
         }]
