@@ -251,21 +251,6 @@ export class RemixFilesystemBackend {
         normalizedPath.startsWith('/frontend/') ||
         normalizedPath.startsWith('/dapp/') ||
         /[-_.]dapp\.(html|jsx?|tsx?|css)$/i.test(normalizedPath)
-      if (activeQuickDappContext) {
-        remixAILogger.log('[QD_STATUS_TRACE] file_write_start', {
-          rawPath: path,
-          normalizedPath,
-          currentWorkspaceName,
-          workspaceName: activeQuickDappContext.workspaceName,
-          operation: activeQuickDappContext.operation,
-          isInlineMode: activeQuickDappContext.isInlineMode,
-          sourceRoot: activeQuickDappContext.sourceRoot,
-          isQuickDappCandidatePath,
-          hasWeb3DappContent,
-          shouldEnforceQuickDappRouting,
-          contentLength: typeof content === 'string' ? content.length : 0
-        })
-      }
       const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, isQuickDappCandidatePath || hasWeb3DappContent)
       if (workspaceMismatch) return workspaceMismatch
       const pathMismatch = this.getQuickDappPathMismatch(normalizedPath, shouldEnforceQuickDappRouting)
@@ -292,14 +277,6 @@ export class RemixFilesystemBackend {
       }
 
       const result = await this.requestWriteApproval(normalizedPath, oldContent, content, 'write_file')
-      if (activeQuickDappContext) {
-        remixAILogger.log('[QD_STATUS_TRACE] file_write_approval_result', {
-          normalizedPath,
-          workspaceName: activeQuickDappContext.workspaceName,
-          approved: result.approved,
-          timedOut: !!result.timedOut
-        })
-      }
 
       if (!result.approved) {
         if (result.timedOut) {
@@ -311,13 +288,6 @@ export class RemixFilesystemBackend {
       const finalContent = result.modifiedContent || content
 
       await this.writeFileInternal(normalizedPath, finalContent)
-      if (activeQuickDappContext) {
-        remixAILogger.log('[QD_STATUS_TRACE] file_write_complete', {
-          normalizedPath,
-          workspaceName: activeQuickDappContext.workspaceName,
-          operation: activeQuickDappContext.operation
-        })
-      }
 
       return { success: true }
     } catch (error) {

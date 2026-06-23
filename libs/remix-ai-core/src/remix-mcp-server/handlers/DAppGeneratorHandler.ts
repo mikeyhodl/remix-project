@@ -547,23 +547,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
     try {
       remixAILogger.log('[GenerateDApp] Received args:', args)
       const isDesktop = isElectron()
-      const requestedFrontendMode = args.frontendMode
       const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
-      let currentWorkspaceForTrace = ''
-      try {
-        const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
-        currentWorkspaceForTrace = currentWs?.name || ''
-      } catch { /* best-effort trace */ }
-      remixAILogger.log('[QD_STATUS_TRACE] generate_tool_start', {
-        requestedFrontendMode,
-        resolvedTargetMode: targetMode,
-        currentWorkspace: currentWorkspaceForTrace,
-        setupOptionsConfirmed: args.setupOptionsConfirmed,
-        setupOptionsSummary: args.setupOptionsSummary,
-        contractName: args.contractName,
-        contractAddress: args.contractAddress
-      })
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -831,7 +816,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
       // Notify React UI that a new DApp is being created (sets processing spinner on card)
       const progressPayload = { status: 'preparing', contractAddress: args.contractAddress, workspaceName: dappOps.getWorkspaceName(), slug: progressSlug || dappOps.getSlug() }
-      remixAILogger.log('[QD_STATUS_TRACE] generate_emit_generation_progress', progressPayload)
       plugin.emit('generationProgress', progressPayload)
 
       // Return concise context to the agent for file generation.
@@ -995,7 +979,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
   /**
    * Auto-resolve contract info from workspace dapp.config.json
    */
-  private async resolveContractInfo(dappOps: DappOperations, args: UpdateDAppArgs): Promise<{
+  private async resolveContractInfo(dappOps: DappOperations, args: UpdateDAppArgs, configOverride?: any): Promise<{
     address: string, abi: any[], chainId: string | number
   }> {
     // Use provided args if available (with validation)
@@ -1010,7 +994,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
     // Auto-resolve from workspace config
     remixAILogger.log('[QuickDapp] Auto-resolving contract info from config...')
     try {
-      const config = await dappOps.readConfig()
+      const config = configOverride || await dappOps.readConfig()
       const resolved = this.validateContractInfo({
         address: args.contractAddress || config.contract?.address,
         abi: args.contractAbi || config.contract?.abi,
@@ -1047,7 +1031,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
   /**
    * [QuickDapp] Read DApp source files from workspace recursively.
-   * Only includes index.html and src/** files.
+   * Only includes index.html and src/** files relative to the DApp source root.
    * Skips metadata (.deploys, .states, dapp.config.json), binary, and hidden files.
    */
   // Directories to completely skip — these contain QuickDapp metadata, not source code
@@ -1055,44 +1039,74 @@ export class UpdateDAppHandler extends BaseToolHandler {
   // Files to skip at root level
   private static readonly SKIP_FILES = new Set(['dapp.config.json', 'preview.png'])
 
-  private async readWorkspaceFiles(plugin: Plugin, currentPath: string, files: Record<string, string>): Promise<void> {
+  private getScannedFilePath(currentPath: string, filePath: string): string {
+    if (filePath.startsWith('/')) return filePath
+
+    const normalizedCurrentPath = currentPath.replace(/\/+$/, '')
+    if (!normalizedCurrentPath || normalizedCurrentPath === '/') return filePath
+
+    const normalizedCurrentWithoutSlash = normalizedCurrentPath.replace(/^\/+/, '')
+    const normalizedFilePath = filePath.replace(/^\/+/, '')
+    if (
+      normalizedFilePath === normalizedCurrentWithoutSlash ||
+      normalizedFilePath.startsWith(`${normalizedCurrentWithoutSlash}/`)
+    ) {
+      return filePath
+    }
+
+    return `${normalizedCurrentPath}/${normalizedFilePath}`
+  }
+
+  private getSourceRelativePath(filePath: string, sourceRoot: string): string {
+    const normalizePath = (path: string): string => path.replace(/^\/+/, '').replace(/\/+$/, '')
+    const normalizedFilePath = normalizePath(filePath)
+    const normalizedSourceRoot = normalizePath(sourceRoot)
+
+    if (!normalizedSourceRoot) return normalizedFilePath
+    if (normalizedFilePath === normalizedSourceRoot) return ''
+    if (normalizedFilePath.startsWith(`${normalizedSourceRoot}/`)) {
+      return normalizedFilePath.substring(normalizedSourceRoot.length + 1)
+    }
+
+    return normalizedFilePath
+  }
+
+  private async readWorkspaceFiles(plugin: Plugin, currentPath: string, files: Record<string, string>, sourceRoot = currentPath): Promise<void> {
     try {
       const dirContents = await plugin.call('fileManager' as any, 'readdir', currentPath)
       for (const [filePath, fileData] of Object.entries(dirContents as Record<string, any>)) {
-        // Normalize path for checks
-        const normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath
-        const topSegment = normalizedPath.split('/')[0]
+        const scannedPath = this.getScannedFilePath(currentPath, filePath)
+        const sourceRelativePath = this.getSourceRelativePath(scannedPath, sourceRoot)
+        const topSegment = sourceRelativePath.split('/')[0]
 
         // Skip metadata directories entirely
         if (fileData.isDirectory) {
           if (UpdateDAppHandler.SKIP_DIRS.has(topSegment)) {
             continue
           }
-          await this.readWorkspaceFiles(plugin, filePath, files)
+          await this.readWorkspaceFiles(plugin, scannedPath, files, sourceRoot)
         } else {
           // Skip metadata files
-          if (UpdateDAppHandler.SKIP_FILES.has(normalizedPath)) continue
+          if (UpdateDAppHandler.SKIP_FILES.has(sourceRelativePath)) continue
           // Skip binary files
-          if (/\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|mp4|webm|mp3|zip|tar|gz|wasm)$/i.test(filePath)) continue
-          // Only include source files (index.html + src/**)
-          const isSourceFile = normalizedPath === 'index.html' ||
-            normalizedPath.startsWith('src/') ||
-            filePath === '/index.html' ||
-            filePath.startsWith('/src/')
+          if (/\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|mp4|webm|mp3|zip|tar|gz|wasm)$/i.test(scannedPath)) continue
+          // Only include source files (index.html + src/**) relative to the DApp source root.
+          const isSourceFile = sourceRelativePath === 'index.html' ||
+            sourceRelativePath.startsWith('src/')
           if (!isSourceFile) continue
 
           try {
-            const content = await plugin.call('fileManager' as any, 'readFile', filePath)
+            const content = await plugin.call('fileManager' as any, 'readFile', scannedPath)
             // Safety: skip if content is undefined, null, or not a string
             if (content === undefined || content === null || typeof content !== 'string') {
-              remixAILogger.warn(`[QuickDapp] Skipping file with invalid content: ${filePath} (type: ${typeof content})`)
+              remixAILogger.warn(`[QuickDapp] Skipping file with invalid content: ${scannedPath} (type: ${typeof content})`)
               continue
             }
-            let virtualPath = filePath
+            let virtualPath = scannedPath
             if (!virtualPath.startsWith('/')) virtualPath = '/' + virtualPath
             files[virtualPath] = content
           } catch (e) {
-            remixAILogger.warn(`[QuickDapp] Skipping unreadable file: ${filePath}`)
+            remixAILogger.warn(`[QuickDapp] Skipping unreadable file: ${scannedPath}`)
           }
         }
       }
@@ -1107,19 +1121,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
       remixAILogger.log('[QuickDapp] UpdateDAppHandler.execute() START', {
         address: args.contractAddress,
         workspace: args.workspaceName,
-        descriptionType: typeof args.description,
-        descriptionLength: typeof args.description === 'string' ? args.description.length : Array.isArray(args.description) ? args.description.length : 0
-      })
-      let currentWorkspaceBeforeUpdate = ''
-      try {
-        const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
-        currentWorkspaceBeforeUpdate = currentWs?.name || ''
-      } catch { /* best-effort trace */ }
-      remixAILogger.log('[QD_STATUS_TRACE] update_tool_start', {
-        targetWorkspace: args.workspaceName,
-        currentWorkspaceBeforeUpdate,
-        contractAddress: args.contractAddress,
-        chainId: args.chainId,
         descriptionType: typeof args.description,
         descriptionLength: typeof args.description === 'string' ? args.description.length : Array.isArray(args.description) ? args.description.length : 0
       })
@@ -1140,12 +1141,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
       const targetMode = targetConfigLookup.mode
       const sourceSummary = targetConfigLookup.sourceSummary
-      remixAILogger.log('[QD_STATUS_TRACE] update_target_config_resolved', {
-        targetWorkspace,
-        targetMode,
-        configPath: targetConfigLookup.configPath,
-        sourceSummary
-      })
       if (targetMode === 'workspace' && !isDedicatedDappWorkspace(targetWorkspace)) {
         remixAILogger.warn('[QuickDapp] update_dapp rejected non-DApp workspace name before switch', {
           targetWorkspace,
@@ -1174,14 +1169,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
       dappOps = new DappOperations(targetMode, targetWorkspace, plugin)
       const isInlineMode = dappOps.isInline()
-      remixAILogger.log('[QD_STATUS_TRACE] update_mode_resolved', {
-        targetWorkspace,
-        resolvedWorkspaceName: dappOps.getWorkspaceName(),
-        isInlineMode,
-        sourceRoot: dappOps.getSourceRoot(),
-        configPath: targetConfigLookup.configPath,
-        sourceSummary
-      })
       setQuickDappWorkspaceLock({
         workspaceName: dappOps.getWorkspaceName(),
         operation: 'update',
@@ -1193,32 +1180,26 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
       // Switch to target workspace
       try {
-        remixAILogger.log('[QD_STATUS_TRACE] update_switch_start', {
-          targetWorkspace: dappOps.getWorkspaceName()
-        })
         await switchToWorkspaceIfNeeded(plugin, dappOps.getWorkspaceName())
-        let currentWorkspaceAfterSwitch = ''
-        try {
-          const currentWs = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
-          currentWorkspaceAfterSwitch = currentWs?.name || ''
-        } catch { /* best-effort trace */ }
-        remixAILogger.log('[QD_STATUS_TRACE] update_switch_done', {
-          targetWorkspace,
-          currentWorkspaceAfterSwitch
-        })
       } catch (e: any) {
         remixAILogger.error('[QuickDapp] Failed to switch workspace:', e?.message)
         clearQuickDappWorkspaceLock(dappOps.getWorkspaceName())
         return this.createErrorResult(`Failed to switch to workspace ${targetWorkspace}: ${e.message}`)
       }
 
-      let configSlug: string | undefined
-      try {
-        const config = await dappOps.readConfig()
-        configSlug = config.slug
-        remixAILogger.log(`[QuickDapp][UPDATE] Read slug from config: ${configSlug}`)
-      } catch (e: any) {
-        remixAILogger.warn('[QuickDapp] Could not read config for slug:', e?.message)
+      let configSlug: string | undefined = typeof targetConfigLookup.config?.slug === 'string'
+        ? targetConfigLookup.config.slug
+        : undefined
+      if (configSlug) {
+        remixAILogger.log(`[QuickDapp][UPDATE] Read slug from target config: ${configSlug}`)
+      } else {
+        try {
+          const config = await dappOps.readConfig()
+          configSlug = config.slug
+          remixAILogger.log(`[QuickDapp][UPDATE] Read slug from config: ${configSlug}`)
+        } catch (e: any) {
+          remixAILogger.warn('[QuickDapp] Could not read config for slug:', e?.message)
+        }
       }
       const slugToUse = configSlug || dappOps.getSlug()
       setQuickDappWorkspaceLock({
@@ -1235,14 +1216,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
         await this.readWorkspaceFiles(plugin, dappOps.getSourceRoot(), currentFiles)
         fileNames = Object.keys(currentFiles)
         remixAILogger.log(`[QuickDapp] Found ${fileNames.length} files in workspace`)
-        remixAILogger.log('[QD_STATUS_TRACE] update_source_scanned', {
-          workspaceName: dappOps.getWorkspaceName(),
-          sourceRoot: dappOps.getSourceRoot(),
-          fileCount: fileNames.length,
-          fileNames,
-          hasFrontendFiles: fileNames.some((name) => name.startsWith('/frontend/') || name.startsWith('frontend/')),
-          hasRootSrcFiles: fileNames.some((name) => name.startsWith('/src/') || name.startsWith('src/'))
-        })
       } catch (e: any) {
         remixAILogger.warn('[QuickDapp] Failed to list files:', e?.message)
       }
@@ -1253,14 +1226,12 @@ export class UpdateDAppHandler extends BaseToolHandler {
       }
 
       // Auto-resolve contract info from config
-      const contractResolved = await this.resolveContractInfo(dappOps, args)
+      const contractResolved = await this.resolveContractInfo(dappOps, args, targetConfigLookup.config)
 
       // Emit UI events
       const updateStartPayload = { workspaceName: dappOps.getWorkspaceName(), slug: slugToUse }
       const progressPayload = { status: 'preparing', contractAddress: contractResolved.address, workspaceName: dappOps.getWorkspaceName(), slug: slugToUse }
-      remixAILogger.log('[QD_STATUS_TRACE] update_emit_dapp_update_start', updateStartPayload)
       plugin.emit('dappUpdateStart', updateStartPayload)
-      remixAILogger.log('[QD_STATUS_TRACE] update_emit_generation_progress', progressPayload)
       plugin.emit('generationProgress', progressPayload)
       markQuickDappGenerationContext({
         workspaceName: dappOps.getWorkspaceName(),
@@ -1268,13 +1239,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
         sourceRoot: dappOps.getSourceRoot(),
         contractAddress: contractResolved.address,
         operation: 'update'
-      })
-      remixAILogger.log('[QD_STATUS_TRACE] update_context_marked', {
-        workspaceName: dappOps.getWorkspaceName(),
-        isInlineMode,
-        sourceRoot: dappOps.getSourceRoot(),
-        slug: slugToUse,
-        contractAddress: contractResolved.address
       })
 
       // Build a concise file list (names only — no content in the main agent's context).
@@ -1288,13 +1252,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
       // Build path examples based on mode
       const examplePaths = dappOps.resolvePath('src/App.jsx')
       const correctPathExample = `Correct: ${examplePaths}`
-
-      remixAILogger.log('[QD_STATUS_TRACE] update_tool_ready_for_file_writes', {
-        workspaceName: dappOps.getWorkspaceName(),
-        slug: slugToUse,
-        isInlineMode,
-        fileCount: fileNames.length
-      })
 
       return this.createSuccessResult({
         success: true,
@@ -1340,10 +1297,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
 
     } catch (error: any) {
       remixAILogger.error('[QuickDapp] UpdateDAppHandler FAILED:', error)
-      remixAILogger.error('[QD_STATUS_TRACE] update_tool_error', {
-        workspaceName: dappOps?.getWorkspaceName() || args.workspaceName,
-        message: error?.message
-      })
       if (dappOps?.getWorkspaceName()) {
         clearQuickDappWorkspaceLock(dappOps.getWorkspaceName())
         clearQuickDappGenerationContext(dappOps.getWorkspaceName())
@@ -1403,32 +1356,18 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
 
     try {
       remixAILogger.log(`[QuickDapp] FinalizeDAppGeneration: workspaceName=${workspaceName}, isUpdate=${!!isUpdate}`)
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_tool_start', {
-        workspaceName,
-        contractAddress,
-        isUpdate: !!isUpdate
-      })
 
       const targetConfigLookup = await readDappConfigFromWorkspace(plugin, workspaceName)
       const targetMode = targetConfigLookup ? targetConfigLookup.mode : (workspaceName?.startsWith('inline-') ? 'inline' : 'workspace')
       dappOps = new DappOperations(targetMode, workspaceName, plugin)
       const isInlineMode = dappOps.isInline()
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_target_resolved', {
-        workspaceName: dappOps.getWorkspaceName(),
-        targetMode,
-        isInlineMode,
-        configPath: targetConfigLookup?.configPath
-      })
 
       // Ensure we're in the correct workspace
       await switchToWorkspaceIfNeeded(plugin, dappOps.getWorkspaceName())
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_switch_done', {
-        workspaceName: dappOps.getWorkspaceName()
-      })
 
       // Update config status — defensively restore sourceWorkspace if agent overwrote it
       try {
-        const config = await dappOps.readConfig()
+        const config = targetConfigLookup?.config || await dappOps.readConfig()
         configSlug = config.slug
         remixAILogger.log(`[QuickDapp][FINALIZE] Read slug from config: ${configSlug}`)
 
@@ -1467,19 +1406,14 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
           remixAILogger.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
         }
 
-        await dappOps.writeConfig(config)
+        if (targetConfigLookup?.configPath) {
+          await plugin.call('fileManager', 'writeFile', targetConfigLookup.configPath, JSON.stringify(config, null, 2))
+        } else {
+          await dappOps.writeConfig(config)
+        }
         remixAILogger.log('[QuickDapp] Config updated to created')
-        remixAILogger.log('[QD_STATUS_TRACE] finalize_config_updated', {
-          workspaceName: dappOps.getWorkspaceName(),
-          slug: configSlug,
-          isUpdate: !!isUpdate
-        })
       } catch (configErr) {
         remixAILogger.warn('[QuickDapp] Config update failed (non-critical):', configErr)
-        remixAILogger.warn('[QD_STATUS_TRACE] finalize_config_update_failed', {
-          workspaceName: dappOps.getWorkspaceName(),
-          message: (configErr as any)?.message
-        })
       }
       const slugToUse = configSlug || dappOps.getSlug()
       remixAILogger.log(`[QuickDapp][FINALIZE] Using slug for event: ${slugToUse}`)
@@ -1497,10 +1431,8 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         isUpdate: !!isUpdate,
         isInlineMode
       }
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_emit_dapp_generated', generatedPayload)
       plugin.emit('dappGenerated', generatedPayload)
       remixAILogger.log('[QuickDapp] dappGenerated emitted')
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_emit_dapp_generated_done', generatedPayload)
 
       // Note: In agent-driven flow, file writes are already approved via HITL.
       // No separate review card (onDappUpdateCompleted) is needed.
@@ -1511,23 +1443,10 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         await plugin.call('quick-dapp-v2' as any, 'openDapp', dappOps.getWorkspaceName())
         await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
         remixAILogger.log('[QuickDapp] Auto-open complete')
-        remixAILogger.log('[QD_STATUS_TRACE] finalize_auto_open_done', {
-          workspaceName: dappOps.getWorkspaceName(),
-          slug: slugToUse
-        })
       } catch (e: any) {
         remixAILogger.warn('[QuickDapp] Auto-open failed (non-critical):', e?.message)
-        remixAILogger.warn('[QD_STATUS_TRACE] finalize_auto_open_failed', {
-          workspaceName: dappOps.getWorkspaceName(),
-          slug: slugToUse,
-          message: e?.message
-        })
       }
       clearQuickDappGenerationContext(dappOps.getWorkspaceName())
-      remixAILogger.log('[QD_STATUS_TRACE] finalize_context_cleared', {
-        workspaceName: dappOps.getWorkspaceName(),
-        slug: slugToUse
-      })
 
       return this.createSuccessResult({
         success: true,
@@ -1536,10 +1455,6 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
       })
     } catch (error: any) {
       remixAILogger.error('[QuickDapp] finalize_dapp_generation failed:', error)
-      remixAILogger.error('[QD_STATUS_TRACE] finalize_tool_error', {
-        workspaceName: dappOps?.getWorkspaceName() || workspaceName,
-        message: error?.message
-      })
       plugin.emit('dappGenerationError', {
         workspaceName: dappOps?.getWorkspaceName() || workspaceName,
         error: error.message

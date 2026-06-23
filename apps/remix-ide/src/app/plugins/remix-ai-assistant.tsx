@@ -431,11 +431,6 @@ export class RemixAIAssistant extends ViewPlugin {
 
   chatPipe = (message: string, isEditorCodeAnalysis: boolean = false) => {
     remixAILogger.log('[QuickDapp] chatPipe received, length:', message?.length)
-    remixAILogger.log('[QD_STATUS_TRACE] assistant_chat_pipe', {
-      length: message?.length || 0,
-      isEditorCodeAnalysis,
-      preview: typeof message === 'string' ? message.slice(0, 500) : ''
-    })
     // Show right side panel if it's hidden
     this.call('rightSidePanel', 'isPanelHidden').then((isPanelHidden) => {
       if (isPanelHidden) {

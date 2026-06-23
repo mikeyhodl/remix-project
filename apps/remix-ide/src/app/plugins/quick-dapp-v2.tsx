@@ -46,26 +46,11 @@ export class QuickDappV2 extends ViewPlugin {
     // Listen to remixAI events from DApp MCP tools
     this.on('remixAI', 'dappGenerated', async (data: any) => {
       remixAILogger.log('[QuickDapp] dappGenerated received', { slug: data?.slug, isUpdate: data?.isUpdate })
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_dapp_generated_received', {
-        workspaceName: data?.workspaceName,
-        slug: data?.slug,
-        isUpdate: data?.isUpdate
-      })
       this.event.emit('dappGenerated', data)
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_dapp_generated_forwarded', {
-        workspaceName: data?.workspaceName,
-        slug: data?.slug,
-        isUpdate: data?.isUpdate
-      })
     })
 
     this.on('remixAI', 'dappGenerationError', (data: any) => {
       remixAILogger.log('[QuickDapp] dappGenerationError received', { slug: data?.slug })
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_generation_error_received', {
-        workspaceName: data?.workspaceName,
-        slug: data?.slug,
-        error: data?.error
-      })
       this.event.emit('dappGenerationError', data)
     })
 
@@ -76,32 +61,12 @@ export class QuickDappV2 extends ViewPlugin {
 
     this.on('remixAI', 'generationProgress', (data: any) => {
       remixAILogger.log('[QuickDapp] generationProgress:', data?.status, data?.slug)
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_generation_progress_received', {
-        status: data?.status,
-        workspaceName: data?.workspaceName,
-        slug: data?.slug,
-        filename: data?.filename
-      })
       this.event.emit('generationProgress', data)
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_generation_progress_forwarded', {
-        status: data?.status,
-        workspaceName: data?.workspaceName,
-        slug: data?.slug,
-        filename: data?.filename
-      })
     })
 
     this.on('remixAI', 'dappUpdateStart', (data: any) => {
       remixAILogger.log('[QuickDapp] dappUpdateStart:', data?.slug)
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_update_start_received', {
-        workspaceName: data?.workspaceName,
-        slug: data?.slug
-      })
       this.event.emit('dappUpdateStart', data)
-      remixAILogger.log('[QD_STATUS_TRACE] bridge_update_start_forwarded', {
-        workspaceName: data?.workspaceName,
-        slug: data?.slug
-      })
     })
   }
 
