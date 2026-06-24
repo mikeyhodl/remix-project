@@ -2394,9 +2394,10 @@ const Hero: React.FC<{
   const showIncluded = hasUnlimitedIncluded || includedTotal > 0
   // Total available = paid + included (what the CEO wants to see as the headline)
   const totalAvailable = hasUnlimitedIncluded ? null : paidRemaining + includedRemaining
-  // Only show the blue paid chip when there are also included credits — otherwise
-  // the total already equals just the paid amount and the chip would be redundant.
-  const showPaidChip = paidRemaining > 0 && showIncluded
+  // Only show the blue paid chip when there are also *remaining* included credits
+  // (or unlimited) — otherwise the total equals just the paid amount and the chip
+  // would duplicate the headline number.
+  const showPaidChip = paidRemaining > 0 && (includedRemaining > 0 || hasUnlimitedIncluded)
 
   // Credits don't expire and top-ups stack, so a "% of cycle" gauge would
   // misrepresent the model. We only surface a forward-looking line: when
