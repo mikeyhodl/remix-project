@@ -78,7 +78,7 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     id: 'deploy',
     label: 'Deploy',
     prompts: [
-      { text: '/deploy: deploy this contract to Sepolia testnet', requiredFeatures: [Features.AI_SOLCODER]},
+      { text: '/deploy this contract to Sepolia testnet', requiredFeatures: [Features.AI_SOLCODER]},
       { text: 'How do I verify my contract on Etherscan?', requiredFeatures: [Features.AI_SOLCODER]},
       { text: 'What network should I use for testing?', requiredFeatures: [Features.AI_SOLCODER]},
     ],
@@ -231,13 +231,13 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
     if (handleLoadAuditChecklist) {
       cmds.push({
         name: 'audit',
-        description: hasAuditorPermission ? 'Audit a contract' : 'Coming soon',
+        description: 'Audit a contract',
         requiredFeatures: [Features.AI_AUDITOR],
         category: 'Tools',
-        action: hasAuditorPermission ? () => {
+        action: () => {
           handleLoadAuditChecklist()
-          setInput(`/${AUDIT_COMMAND_TEXT}: `)
-        } : undefined,
+          setInput('Audit a contract. Ask me which contract file to audit')
+        },
         disabled: !hasAuditorPermission
       })
       cmds.push({
@@ -245,7 +245,8 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
         description: 'Load audit checklist',
         category: 'Tools',
         action: handleLoadAuditChecklist,
-        requiredFeatures: [Features.AI_AUDITOR]
+        requiredFeatures: [Features.AI_AUDITOR],
+        disabled: !hasAuditorPermission
       })
     }
     if (handleGasOptimisationAudit) cmds.push({ name: 'gas-audit', description: 'Gas optimisation audit', category: 'Tools', action: handleGasOptimisationAudit, requiredFeatures: [Features.AI_AUDITOR] })
@@ -396,6 +397,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
   // Contextual hint for a just-inserted command (e.g. "/compile ") so the user
   const activeCommandHint = useMemo(() => {
     const name = getActiveCommandName(input)
+    console.log(name)
     if (!name) return null
     const cmd = AVAILABLE_COMMANDS.find(c => c.name.toLowerCase() === name.toLowerCase())
     return cmd?.hint ?? null
