@@ -22,6 +22,45 @@ interface QueryResult {
   executionTime: number
 }
 
+type SubgraphEndpointKind = 'local' | 'thegraph-gateway' | 'generic-graphql'
+type SubgraphValidationError = 'missing-endpoint' | 'missing-query' | 'invalid-query' | 'invalid-variables-json'
+type SubgraphValidationWarning = 'missing-network' | 'missing-description' | 'missing-sample-result' | 'endpoint-needs-api-key' | 'local-endpoint'
+
+interface SubgraphFileValidation {
+  canGenerateDapp: boolean
+  errors: SubgraphValidationError[]
+  warnings: SubgraphValidationWarning[]
+  missingFields: string[]
+}
+
+interface SubgraphFileContext {
+  source: 'subgraph-file'
+  filePath: string
+  resultFilePath?: string
+  endpoint?: string
+  endpointKind?: SubgraphEndpointKind
+  endpointNeedsApiKey: boolean
+  apiKeySource: 'remix-settings' | 'runtime-input' | 'none'
+  apiKeyPresent: boolean
+  subgraphId?: string
+  network?: string
+  description?: string
+  query: string
+  variables?: Record<string, any>
+  operationName?: string
+  operationType?: 'query' | 'mutation' | 'subscription'
+  sampleResult?: any
+  validation: SubgraphFileValidation
+}
+
+interface EndpointAnalysis {
+  endpoint?: string
+  endpointKind?: SubgraphEndpointKind
+  endpointNeedsApiKey: boolean
+  apiKeySource: 'remix-settings' | 'runtime-input' | 'none'
+  subgraphId?: string
+}
+
 const profile = {
   name: 'thegraph',
   displayName: 'The Graph',
@@ -30,7 +69,7 @@ const profile = {
   maintainedBy: 'Remix',
   permission: true,
   events: ['queryExecuted'],
-  methods: ['runSubgraphFile', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
+  methods: ['runSubgraphFile', 'getSubgraphFileContext', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
 }
 
 /**
@@ -108,6 +147,70 @@ export class TheGraphPlugin extends Plugin {
       await this.call('terminal', 'log', { type: 'error', value: errorMsg })
       throw error
     }
+  }
+
+  /**
+   * Build a sanitized, generation-ready context from a .subgraph file.
+   * This never returns The Graph API key values.
+   */
+  async getSubgraphFileContext(pathOrCmd: string | { path: string[] }): Promise<SubgraphFileContext> {
+    const path = typeof pathOrCmd === 'string' ? pathOrCmd : pathOrCmd.path[0]
+
+    const content = await this.call('fileManager', 'readFile', path)
+    const parsed = parseGraphQLFile(content)
+    const variablesParseError = this.getVariablesParseError(content)
+    const endpoint = parsed.metadata.endpoint || this.settings.defaultEndpoint
+    const endpointInfo = this.analyzeEndpoint(endpoint)
+    const apiKeyPresent = await this.hasTheGraphApiKey()
+    const validation = this.validateSubgraphContext({
+      endpoint: endpointInfo.endpoint,
+      query: parsed.query,
+      network: parsed.metadata.network,
+      description: parsed.metadata.description,
+      endpointKind: endpointInfo.endpointKind,
+      endpointNeedsApiKey: endpointInfo.endpointNeedsApiKey,
+      variablesParseError
+    })
+    const resultContext = await this.readSampleResult(path)
+
+    if (!resultContext.sampleResult) {
+      this.addWarning(validation, 'missing-sample-result')
+    }
+
+    const context: SubgraphFileContext = {
+      source: 'subgraph-file',
+      filePath: path,
+      resultFilePath: resultContext.resultFilePath,
+      endpoint: endpointInfo.endpoint,
+      endpointKind: endpointInfo.endpointKind,
+      endpointNeedsApiKey: endpointInfo.endpointNeedsApiKey,
+      apiKeySource: endpointInfo.apiKeySource,
+      apiKeyPresent,
+      subgraphId: endpointInfo.subgraphId,
+      network: parsed.metadata.network,
+      description: parsed.metadata.description,
+      query: parsed.query,
+      variables: parsed.metadata.variables,
+      operationName: parsed.operationName,
+      operationType: parsed.operationType,
+      sampleResult: resultContext.sampleResult,
+      validation
+    }
+
+    console.log('[TheGraph:QD:Context]', {
+      filePath: context.filePath,
+      endpointKind: context.endpointKind,
+      endpointNeedsApiKey: context.endpointNeedsApiKey,
+      apiKeyPresent: context.apiKeyPresent,
+      operationName: context.operationName,
+      queryLength: context.query.length,
+      variablesKeys: Object.keys(context.variables || {}),
+      canGenerateDapp: context.validation.canGenerateDapp,
+      errors: context.validation.errors,
+      warnings: context.validation.warnings
+    })
+
+    return context
   }
 
   /**
@@ -241,5 +344,187 @@ export class TheGraphPlugin extends Plugin {
   async setDefaultEndpoint(endpoint: string): Promise<void> {
     this.settings.defaultEndpoint = endpoint
     await this.saveSettings(this.settings)
+  }
+
+  private analyzeEndpoint(endpoint?: string): EndpointAnalysis {
+    if (!endpoint || !endpoint.trim()) {
+      return {
+        endpoint: undefined,
+        endpointNeedsApiKey: false,
+        apiKeySource: 'none'
+      }
+    }
+
+    const trimmedEndpoint = endpoint.trim()
+    const gatewayWithKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/([^/]+)\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithoutKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithKeyMatch = trimmedEndpoint.match(gatewayWithKeyPattern)
+    const gatewayWithoutKeyMatch = trimmedEndpoint.match(gatewayWithoutKeyPattern)
+
+    if (gatewayWithoutKeyMatch) {
+      const subgraphId = gatewayWithoutKeyMatch[1]
+      return {
+        endpoint: `https://gateway.thegraph.com/api/subgraphs/id/${subgraphId}`,
+        endpointKind: 'thegraph-gateway',
+        endpointNeedsApiKey: true,
+        apiKeySource: 'remix-settings',
+        subgraphId
+      }
+    }
+
+    if (gatewayWithKeyMatch) {
+      const subgraphId = gatewayWithKeyMatch[2]
+      return {
+        endpoint: `https://gateway.thegraph.com/api/subgraphs/id/${subgraphId}`,
+        endpointKind: 'thegraph-gateway',
+        endpointNeedsApiKey: true,
+        apiKeySource: 'remix-settings',
+        subgraphId
+      }
+    }
+
+    const endpointKind = this.isLocalEndpoint(trimmedEndpoint) ? 'local' : 'generic-graphql'
+    const endpointNeedsApiKey = this.hasEndpointPlaceholder(trimmedEndpoint)
+
+    return {
+      endpoint: trimmedEndpoint,
+      endpointKind,
+      endpointNeedsApiKey,
+      apiKeySource: endpointNeedsApiKey ? 'remix-settings' : 'none'
+    }
+  }
+
+  private validateSubgraphContext(args: {
+    endpoint?: string
+    query: string
+    network?: string
+    description?: string
+    endpointKind?: SubgraphEndpointKind
+    endpointNeedsApiKey: boolean
+    variablesParseError?: string
+  }): SubgraphFileValidation {
+    const errors: SubgraphValidationError[] = []
+    const warnings: SubgraphValidationWarning[] = []
+    const missingFields: string[] = []
+
+    if (!args.endpoint) {
+      errors.push('missing-endpoint')
+      missingFields.push('endpoint')
+    }
+
+    if (!args.query.trim()) {
+      errors.push('missing-query')
+      missingFields.push('query')
+    } else {
+      const queryValidation = validateGraphQLSyntax(args.query)
+      if (!queryValidation.valid) {
+        errors.push('invalid-query')
+      }
+    }
+
+    if (args.variablesParseError) {
+      errors.push('invalid-variables-json')
+      missingFields.push('variables')
+    }
+
+    if (!args.network) {
+      warnings.push('missing-network')
+    }
+
+    if (!args.description) {
+      warnings.push('missing-description')
+    }
+
+    if (args.endpointNeedsApiKey) {
+      warnings.push('endpoint-needs-api-key')
+    }
+
+    if (args.endpointKind === 'local') {
+      warnings.push('local-endpoint')
+    }
+
+    return {
+      canGenerateDapp: errors.length === 0,
+      errors,
+      warnings,
+      missingFields
+    }
+  }
+
+  private addWarning(validation: SubgraphFileValidation, warning: SubgraphValidationWarning): void {
+    if (!validation.warnings.includes(warning)) {
+      validation.warnings.push(warning)
+    }
+  }
+
+  private getVariablesParseError(content: string): string | undefined {
+    const variablesMatch = content.match(/^#\s*@variables:\s*(.+)$/m)
+    if (!variablesMatch) return undefined
+
+    try {
+      JSON.parse(variablesMatch[1].trim())
+      return undefined
+    } catch (e: any) {
+      return e?.message || 'Invalid variables JSON'
+    }
+  }
+
+  private async readSampleResult(path: string): Promise<{ resultFilePath?: string; sampleResult?: any }> {
+    const resultPath = path.replace(/\.subgraph$/i, '.result.json')
+    if (resultPath === path) return {}
+
+    try {
+      const resultContent = await this.call('fileManager', 'readFile', resultPath)
+      const sampleResult = this.truncateSampleResult(JSON.parse(resultContent))
+      return {
+        resultFilePath: resultPath,
+        sampleResult
+      }
+    } catch {
+      return {}
+    }
+  }
+
+  private truncateSampleResult(sampleResult: any, maxChars = 12000): any {
+    try {
+      const serialized = JSON.stringify(sampleResult)
+      if (!serialized || serialized.length <= maxChars) {
+        return sampleResult
+      }
+
+      return {
+        __truncated: true,
+        preview: serialized.slice(0, maxChars)
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  private hasEndpointPlaceholder(endpoint: string): boolean {
+    return /\[[^\]]*\]|\{[^}]*\}/g.test(endpoint)
+  }
+
+  private isLocalEndpoint(endpoint: string): boolean {
+    if (/^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(endpoint)) {
+      return true
+    }
+
+    try {
+      const parsed = new URL(endpoint)
+      return ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'].includes(parsed.hostname)
+    } catch {
+      return /^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(endpoint)
+    }
+  }
+
+  private async hasTheGraphApiKey(): Promise<boolean> {
+    try {
+      const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
+      return Boolean(apiKey)
+    } catch (e) {
+      console.warn('[TheGraph:QD:Context] Failed to check The Graph API key presence:', e)
+      return false
+    }
   }
 }
