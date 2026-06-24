@@ -4,7 +4,8 @@ import { diffLines } from 'diff'
 import { isArray } from 'lodash'
 import Editor, { DiffEditor, loader, Monaco } from '@monaco-editor/react'
 import { AppContext, AppModal, useAuth } from '@remix-ui/app'
-import { MatomoEvent, EditorEvent, AIEvent } from '@remix-api'
+import { DISCORD_URL, REMIX_WEBSITE_URL, REMIX_DOCS_URL } from '@remix-ui/helper'
+import { MatomoEvent, EditorEvent, AIEvent, Features } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ConsoleLogs, EventManager, QueryParams } from '@remix-project/remix-lib'
@@ -128,6 +129,7 @@ export type DecorationsReturn = {
 
 export type PluginType = {
   on: (plugin: string, event: string, listener: any) => void
+  off: (plugin: string, event: string) => void
   call: (plugin: string, method: string, arg1?: any, arg2?: any, arg3?: any, arg4?: any) => any
 }
 
@@ -194,7 +196,7 @@ export const EditorUI = (props: EditorUIProps) => {
     baseTrackEvent?.<T>(event)
   }
   const { features } = useAuth()
-  const hasContextualEditorFeature = features['ai:contextual-editor']?.is_enabled === true
+  const hasContextualEditorFeature = features[Features.AI_CONTEXTUAL_EDITOR]?.is_enabled === true
   const changedTypeMap = useRef<ChangeTypeMap>({})
   const pendingCustomDiff = useRef({})
   const currentBreakpointsRef = useRef<Record<string, Record<number, any>>>({})
@@ -219,10 +221,10 @@ export const EditorUI = (props: EditorUIProps) => {
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts' })}:\n
   \t\t\t\t\t\t\t\tCTRL + Alt + F : ${intl.formatMessage({ id: 'editor.editorKeyboardShortcuts.text1' })}\n
   \t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks' })}:\n
-  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: https://remix.live/\n
-  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text2' })}: https://remix-ide.readthedocs.io/en/latest/\n
+  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text1' })}: ${REMIX_WEBSITE_URL}/\n
+  \t\t\t\t\t\t\t\t${intl.formatMessage({ id: 'editor.importantLinks.text2' })}: ${REMIX_DOCS_URL}/en/latest/\n
   \t\t\t\t\t\t\t\tGithub: https://github.com/ethereum/remix-project\n
-  \t\t\t\t\t\t\t\tDiscord: https://discord.gg/MzhfCGstNA\n
+  \t\t\t\t\t\t\t\tDiscord: ${DISCORD_URL}\n
   \t\t\t\t\t\t\t\tSubstack: https://ethereumremix.substack.com\n
   \t\t\t\t\t\t\t\tX: https://x.com/ethereumremix\n
   `
@@ -422,6 +424,32 @@ export const EditorUI = (props: EditorUIProps) => {
       }
       lastHoverPositionRef.current = null
     })
+  }, [])
+
+  // Listen for code analysis popover setting changes
+  useEffect(() => {
+    const handleCodeAnalysisPopoverSettingChange = (isEnabled: boolean) => {
+      // If disabled, immediately close any open popover
+      if (!isEnabled) {
+        setTooltipData(null)
+        // Clear any pending hover timeouts
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current)
+          hoverTimeoutRef.current = null
+        }
+        lastHoverPositionRef.current = null
+      }
+    }
+
+    props.plugin.on('settings', 'codeAnalysisPopoverChoiceUpdated', handleCodeAnalysisPopoverSettingChange)
+
+    return () => {
+      try {
+        props.plugin.off('settings', 'codeAnalysisPopoverChoiceUpdated')
+      } catch (e) {
+        // ignore
+      }
+    }
   }, [])
 
   /**
@@ -1024,8 +1052,8 @@ export const EditorUI = (props: EditorUIProps) => {
 
           // Start new timeout for this position
           hoverTimeoutRef.current = setTimeout(() => {
-            openContextualTooltip(position, editorRef, monacoRef, setTooltipData, trackMatomoEvent)
-          }, 1000) // 1.0 seconds
+            openContextualTooltip(position, editorRef, monacoRef, setTooltipData, trackMatomoEvent, props.plugin)
+          }, 2500) // 2.5 seconds
         }
       }
     })

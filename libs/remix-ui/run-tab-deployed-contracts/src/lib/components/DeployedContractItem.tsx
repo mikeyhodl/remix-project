@@ -16,6 +16,7 @@ import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import BN from 'bn.js'
 import { TrackingContext } from '@remix-ide/tracking'
 import { useAuth } from '@remix-ui/app'
+import { Features } from '@remix-api'
 import isElectron from 'is-electron'
 
 const txHelper = remixLib.execution.txHelper
@@ -35,7 +36,8 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
   const { features } = useAuth()
-  const hasQuickdappAccess = features?.['dapp:quickdapp']?.is_enabled
+  const hasQuickdappAccess = features?.[Features.DAPP_QUICKDAPP]?.is_enabled
+  const hasRegisterEnsAccess = features?.[Features.REGISTER_ENS]?.is_enabled === true
   const isDesktop = isElectron()
   const [networkName, setNetworkName] = useState<string>('')
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
@@ -581,6 +583,17 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
   const handleNameContract = async () => {
     if (onKebabMenuToggle) {
       onKebabMenuToggle(false)
+    }
+    if (!hasRegisterEnsAccess) {
+      try {
+        await plugin.call('planManager' as any, 'open' as any, {
+          reason: 'feature-required',
+          requiredFeature: Features.REGISTER_ENS
+        })
+      } catch {
+        await plugin.call('notification', 'toast', 'Your current plan does not include ENS contract naming.')
+      }
+      return
     }
     setShowEnsNaming(true)
     if (!isExpanded) setIsExpanded(true)

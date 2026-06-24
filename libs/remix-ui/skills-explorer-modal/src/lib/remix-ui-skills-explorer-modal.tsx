@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@remix-ui/app'
+import { Features } from '@remix-api'
 import { CustomTooltip } from '@remix-ui/helper'
 import JSZip from 'jszip'
 import './remix-ui-skills-explorer-modal.css'
@@ -29,8 +30,8 @@ export interface RemixUiSkillsExplorerModalProps {
 
 export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProps) {
   const { features } = useAuth()
-  const hasBasicSkills = !!features['skills:basic']
-  const hasAdvancedSkills = !!features['skills:advanced']
+  const hasBasicSkills = !!features[Features.SKILLS_BASIC]
+  const hasAdvancedSkills = !!features[Features.SKILLS_ADVANCED]
   const { isOpen, onClose, plugin } = props
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -503,13 +504,12 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
                       <div className="category-description mb-4">
                         Select one or more Ethereum development skills to add to your workspace
                       </div>
-
                       {!hasAdvancedSkills && (
-                        <div className="alert alert-info mb-3" role="alert">
+                        <div onClick={() => plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.SKILLS_ADVANCED }) } className="alert alert-info mb-3" role="alert" style={{ cursor: 'pointer' }}>
                           <i className="fa-solid fa-info-circle me-2"></i>
                           {hasBasicSkills
-                            ? "You have access to basic skills. More skills coming soon."
-                            : "Basic skills are available to all users. More skills coming soon."}
+                            ? "You have access to basic skills. Upgrade to access all skills."
+                            : "Basic skills are available to all users. Upgrade to access all skills."}
                         </div>
                       )}
 
