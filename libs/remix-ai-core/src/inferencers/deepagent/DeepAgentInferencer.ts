@@ -34,6 +34,7 @@ import { createModelInstance } from './ModelFactory'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
 import { CONVERSATION_THREAD_PREFIX, DAPP_MAX_TOKENS } from '@remix/remix-ai-core'
+import { Features } from '@remix-api'
 import { flattenJSON, renderTree } from './helpers/project'
 import { clearAllQuickDappWorkspaceLocks } from '@remix-ui/helper'
 import { clearAllQuickDappGenerationContexts } from '../../helpers/quickDappGenerationContext'
@@ -240,7 +241,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const snapshot = await pluginAny.call?.('assistantState', 'getSnapshot')
       const features = snapshot?.permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
 
-      const hasBasicMcp = features?.['mcp:basicExternal']?.is_enabled === true
+      const hasBasicMcp = features?.[Features.MCP_BASIC_EXTERNAL]?.is_enabled === true
       const configuredServers = Array.isArray(pluginAny?.mcpServers)
         ? pluginAny.mcpServers.map((s: any) => s?.name).filter(Boolean)
         : []
@@ -859,7 +860,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const checkpointer = new IndexedDBCheckpointSaver()
       const hasSkillsPermission = await (async () => {
         try {
-          return !!(await (this.plugin as any).call?.('assistantState', 'hasFeature', 'ai:skills'))
+          return !!(await (this.plugin as any).call?.('assistantState', 'hasFeature', Features.AI_SKILLS))
         } catch {
           return false
         }
