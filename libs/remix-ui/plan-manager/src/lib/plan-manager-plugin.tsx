@@ -545,7 +545,6 @@ export class PlanManagerPlugin extends ViewPlugin {
         message: confirmMessage,
         eyebrow: 'Plan switch',
         icon: 'fas fa-arrow-right-arrow-left',
-        accent: pickAccent(planId),
         highlights: this.buildSwitchHighlights({
           fromPlanName: selectPlanState(snap).planName,
           toPlanName: itemLabel,
@@ -613,7 +612,6 @@ export class PlanManagerPlugin extends ViewPlugin {
         variant: 'danger',
         eyebrow: 'Cancel subscription',
         icon: 'fas fa-circle-xmark',
-        accent: '#e75b89',
         highlights: [
           { label: 'Current plan', value: planState.planName, tone: 'default' },
           ...(periodEndDate ? [{ label: 'Access until', value: periodEndDate, tone: 'positive' as const }] : []),
@@ -2396,9 +2394,10 @@ const Hero: React.FC<{
   const showIncluded = hasUnlimitedIncluded || includedTotal > 0
   // Total available = paid + included (what the CEO wants to see as the headline)
   const totalAvailable = hasUnlimitedIncluded ? null : paidRemaining + includedRemaining
-  // Only show the blue paid chip when there are also included credits — otherwise
-  // the total already equals just the paid amount and the chip would be redundant.
-  const showPaidChip = paidRemaining > 0 && showIncluded
+  // Only show the blue paid chip when there are also *remaining* included credits
+  // (or unlimited) — otherwise the total equals just the paid amount and the chip
+  // would duplicate the headline number.
+  const showPaidChip = paidRemaining > 0 && (includedRemaining > 0 || hasUnlimitedIncluded)
 
   // Credits don't expire and top-ups stack, so a "% of cycle" gauge would
   // misrepresent the model. We only surface a forward-looking line: when
@@ -2762,15 +2761,12 @@ const PlanCard: React.FC<{
   const showTrial = trialDays > 0 && isTrialEligible && !isPlanActive && !isFree
   const trialCredits = Number(plan.trialCredits) || 0
   const disabled = isPlanActive || isFree || anyPurchasing
-  const accent = pickAccent(plan.id)
 
   return (
     <article
-      className={`pm-plan ${isPlanActive ? 'is-current' : ''} ${isSubscriptionCurrent ? 'is-subscription-current' : ''} ${isAccessActive ? 'is-access-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
-      style={{ '--pm-accent': accent } as React.CSSProperties}
+      className={`pm-plan ${isPlanActive ? 'is-current' : ''} ${isFree ? 'is-free' : ''} ${isSubscriptionCurrent ? 'is-subscription-current' : ''} ${isAccessActive ? 'is-access-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
     >
       <div className="pm-plan__badges">
-        {isRecommended && !isPlanActive && <div className="pm-plan__ribbon">Recommended</div>}
         {showUnifiedCurrent && <div className="pm-plan__current">Current</div>}
         {!showUnifiedCurrent && isSubscriptionCurrent && <div className="pm-plan__current pm-plan__current--subscription">Subscription</div>}
         {!showUnifiedCurrent && isAccessActive && (
@@ -2783,6 +2779,12 @@ const PlanCard: React.FC<{
         <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
           <i className="fas fa-gift"></i>
           <span>{trialDays}-day free trial</span>
+        </div>
+      )}
+
+      {isRecommended && !isPlanActive && (
+        <div className="pm-plan__ribbon">
+          <i className="fas fa-star" aria-hidden></i> Recommended
         </div>
       )}
 
@@ -3261,12 +3263,16 @@ const TopUpSection: React.FC<{
               onClick={() => { if (!disabled) onPurchase(t.id) }}
               title={isUnavailable ? 'Pricing not available right now' : undefined}
             >
-              {isPopular ? <div className="pm-topup__pop">Best value</div> : null}
+              {isPopular && (
+                <div className="pm-topup__pop">
+                  <i className="fas fa-star" aria-hidden></i> Best value
+                </div>
+              )}
+              <div className="pm-topup__price">{price}</div>
               <div className="pm-topup__credits">
                 <span className="pm-topup__credits-num">{credits.toLocaleString()}</span>
                 <span className="pm-topup__credits-unit">credits</span>
               </div>
-              <div className="pm-topup__price">{price}</div>
               <div className="pm-topup__perk">{credits > 0 ? `$${perK} per 1k credits` : 'Pricing unavailable'}</div>
               <span className="pm-topup__buy">
                 {isPurchasing
@@ -3457,7 +3463,7 @@ const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
       </div>
 
       <div className="pm-usage__tokens">
-        {formatCompactNumber(totals.calls)} calls | {formatCompactNumber(totals.totalTokens)} tokens | {formatUsd(totals.costUsd)} provider cost
+        {formatCompactNumber(totals.calls)} calls · {formatCompactNumber(totals.totalTokens)} tokens · {formatUsd(totals.costUsd)} provider cost
       </div>
 
       <div className="pm-usage__list">
@@ -3484,7 +3490,7 @@ const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
               </div>
 
               <div className="pm-usage__tokens">
-                {formatCompactNumber(row.calls)} calls | {formatCompactNumber(row.totalTokens)} tokens | {formatUsd(row.costUsd)}
+                {formatCompactNumber(row.calls)} calls · {formatCompactNumber(row.totalTokens)} tokens · {formatUsd(row.costUsd)}
               </div>
             </article>
           )
@@ -4504,12 +4510,6 @@ function formatMoney(amount: unknown, currency: string = 'USD'): string {
   }
 }
 
-const PLAN_ACCENTS = ['#2fbfb1', '#5b9cf5', '#9b7dff', '#f59f5b', '#e75b89']
-function pickAccent(planId: string): string {
-  let h = 0
-  for (let i = 0; i < planId.length; i++) h = (h * 31 + planId.charCodeAt(i)) >>> 0
-  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
-}
 
 function buildUsageRange(days: number): { from: string; to: string } {
   const to = new Date()
@@ -4530,10 +4530,17 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+const USAGE_ACCENTS = [
+  'var(--custom-primary)',
+  'var(--bs-success)',
+  'var(--bs-warning)',
+  'var(--bs-info)',
+  'var(--bs-danger)',
+]
 function pickUsageAccent(seed: string): string {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
+  return USAGE_ACCENTS[h % USAGE_ACCENTS.length]
 }
 
 function buildUsageRows(report: UsageReport | null): UsageDisplayRow[] {
