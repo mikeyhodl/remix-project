@@ -3262,12 +3262,16 @@ const TopUpSection: React.FC<{
               onClick={() => { if (!disabled) onPurchase(t.id) }}
               title={isUnavailable ? 'Pricing not available right now' : undefined}
             >
-              {isPopular ? <div className="pm-topup__pop">Best value</div> : null}
+              {isPopular && (
+                <div className="pm-topup__pop">
+                  <i className="fas fa-star" aria-hidden></i> Best value
+                </div>
+              )}
+              <div className="pm-topup__price">{price}</div>
               <div className="pm-topup__credits">
                 <span className="pm-topup__credits-num">{credits.toLocaleString()}</span>
                 <span className="pm-topup__credits-unit">credits</span>
               </div>
-              <div className="pm-topup__price">{price}</div>
               <div className="pm-topup__perk">{credits > 0 ? `$${perK} per 1k credits` : 'Pricing unavailable'}</div>
               <span className="pm-topup__buy">
                 {isPurchasing
@@ -3458,7 +3462,7 @@ const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
       </div>
 
       <div className="pm-usage__tokens">
-        {formatCompactNumber(totals.calls)} calls | {formatCompactNumber(totals.totalTokens)} tokens | {formatUsd(totals.costUsd)} provider cost
+        {formatCompactNumber(totals.calls)} calls · {formatCompactNumber(totals.totalTokens)} tokens · {formatUsd(totals.costUsd)} provider cost
       </div>
 
       <div className="pm-usage__list">
@@ -3485,7 +3489,7 @@ const UsageSection: React.FC<{ plugin: PlanManagerPlugin }> = ({ plugin }) => {
               </div>
 
               <div className="pm-usage__tokens">
-                {formatCompactNumber(row.calls)} calls | {formatCompactNumber(row.totalTokens)} tokens | {formatUsd(row.costUsd)}
+                {formatCompactNumber(row.calls)} calls · {formatCompactNumber(row.totalTokens)} tokens · {formatUsd(row.costUsd)}
               </div>
             </article>
           )
