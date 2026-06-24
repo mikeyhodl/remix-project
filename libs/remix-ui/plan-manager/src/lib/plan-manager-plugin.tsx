@@ -4510,7 +4510,6 @@ function formatMoney(amount: unknown, currency: string = 'USD'): string {
   }
 }
 
-
 function buildUsageRange(days: number): { from: string; to: string } {
   const to = new Date()
   const from = new Date(to.getTime())

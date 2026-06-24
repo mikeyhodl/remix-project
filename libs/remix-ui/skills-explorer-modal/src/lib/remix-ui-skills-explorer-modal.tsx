@@ -222,6 +222,12 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
       }
 
       setUploading(false)
+      try {
+        const summary = `Added the **${parsedSkill.folderName}** skill to \`skills/${parsedSkill.folderName}/\`. I'll apply it automatically when a task matches — or mention its name in your prompt.`
+        await plugin.call('remixaiassistant', 'handleExternalMessage', summary)
+      } catch (e) {
+        // assistant panel unavailable — skill is still added
+      }
       onClose()
     } catch (err) {
       setUploading(false)
@@ -357,6 +363,15 @@ export function RemixUiSkillsExplorerModal(props: RemixUiSkillsExplorerModalProp
       setError(errors.join('\n'))
       setWizardStep('confirm')
     } else {
+      try {
+        const names = skills.filter(s => selectedSkills.has(s.id)).map(s => s.name)
+        const list = names.length ? names.map(n => `**${n}**`).join(', ') : `${selectedSkills.size} skill(s)`
+        const single = names.length === 1
+        const summary = `Added ${list} to \`skills/\`. I'll apply ${single ? 'it' : 'them'} automatically when a task matches — or mention ${single ? 'its name' : 'a skill by name'} in your prompt.`
+        await plugin.call('remixaiassistant', 'handleExternalMessage', summary)
+      } catch (e) {
+        // assistant panel unavailable — skills are still added
+      }
       onClose()
     }
   }
