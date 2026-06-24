@@ -4,7 +4,6 @@ import { useIntl } from 'react-intl'
 import { DeployedContract } from '../types'
 import { TrackingContext } from '@remix-ide/tracking'
 import { UdappEvent } from '@remix-api'
-import { useAuth } from '@remix-ui/app'
 
 interface ContractKebabMenuProps {
   show: boolean
@@ -53,8 +52,6 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
   onClear
 }) => {
   const intl = useIntl()
-  const { features } = useAuth()
-  const hasRegisterContract = features['ens:register-contract']?.is_enabled === true
   const { trackMatomoEvent } = useContext(TrackingContext)
   const menuItems: Array<{
     id: string
@@ -72,7 +69,7 @@ export const ContractKebabMenu: React.FC<ContractKebabMenuProps> = ({
       action: 'deployedContractCreateDapp' as const,
       onClick: () => onCreateDapp(contract)
     },
-    hasRegisterContract && onNameContract && {
+    onNameContract && {
       id: 'nameContract',
       label: 'Name Contract (ENS)',
       icon: 'fas fa-link',
