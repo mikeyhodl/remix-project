@@ -545,7 +545,6 @@ export class PlanManagerPlugin extends ViewPlugin {
         message: confirmMessage,
         eyebrow: 'Plan switch',
         icon: 'fas fa-arrow-right-arrow-left',
-        accent: pickAccent(planId),
         highlights: this.buildSwitchHighlights({
           fromPlanName: selectPlanState(snap).planName,
           toPlanName: itemLabel,
@@ -613,7 +612,6 @@ export class PlanManagerPlugin extends ViewPlugin {
         variant: 'danger',
         eyebrow: 'Cancel subscription',
         icon: 'fas fa-circle-xmark',
-        accent: '#e75b89',
         highlights: [
           { label: 'Current plan', value: planState.planName, tone: 'default' },
           ...(periodEndDate ? [{ label: 'Access until', value: periodEndDate, tone: 'positive' as const }] : []),
@@ -2762,12 +2760,10 @@ const PlanCard: React.FC<{
   const showTrial = trialDays > 0 && isTrialEligible && !isPlanActive && !isFree
   const trialCredits = Number(plan.trialCredits) || 0
   const disabled = isPlanActive || isFree || anyPurchasing
-  const accent = pickAccent(plan.id)
 
   return (
     <article
       className={`pm-plan ${isPlanActive ? 'is-current' : ''} ${isFree ? 'is-free' : ''} ${isSubscriptionCurrent ? 'is-subscription-current' : ''} ${isAccessActive ? 'is-access-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
-      style={{ '--pm-accent': accent } as React.CSSProperties}
     >
       <div className="pm-plan__badges">
         {isRecommended && !isPlanActive && <div className="pm-plan__ribbon">Recommended</div>}
@@ -4504,12 +4500,6 @@ function formatMoney(amount: unknown, currency: string = 'USD'): string {
   }
 }
 
-const PLAN_ACCENTS = ['#2fbfb1', '#5b9cf5', '#9b7dff', '#f59f5b', '#e75b89']
-function pickAccent(planId: string): string {
-  let h = 0
-  for (let i = 0; i < planId.length; i++) h = (h * 31 + planId.charCodeAt(i)) >>> 0
-  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
-}
 
 function buildUsageRange(days: number): { from: string; to: string } {
   const to = new Date()
@@ -4530,10 +4520,17 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+const USAGE_ACCENTS = [
+  'var(--custom-primary)',
+  'var(--bs-success)',
+  'var(--bs-warning)',
+  'var(--bs-info)',
+  'var(--bs-danger)',
+]
 function pickUsageAccent(seed: string): string {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return PLAN_ACCENTS[h % PLAN_ACCENTS.length]
+  return USAGE_ACCENTS[h % USAGE_ACCENTS.length]
 }
 
 function buildUsageRows(report: UsageReport | null): UsageDisplayRow[] {

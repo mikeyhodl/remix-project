@@ -679,7 +679,6 @@
 }
 
 .pm-plan {
-  --pm-accent: var(--custom-primary);
   position: relative;
   background: var(--bs-secondary-bg);
   border: 0.5px solid var(--bs-border-color);
