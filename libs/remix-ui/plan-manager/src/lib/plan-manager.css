@@ -691,15 +691,26 @@
   transition: border-color .2s ease;
 }
 
-.pm-plan:hover {
+.pm-plan:not(.is-current):not(.is-free):hover {
   border-color: color-mix(in srgb, var(--custom-primary) 50%, transparent);
 }
 
 .pm-plan.is-current {
+  cursor: default;
   border-color: color-mix(in srgb, var(--custom-primary) 60%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--custom-primary) 30%, transparent),
     0 24px 60px -20px color-mix(in srgb, var(--custom-primary) 30%, transparent);
+}
+
+.pm-plan.is-free {
+  cursor: default;
+}
+.pm-plan.is-free:not(.is-current) {
+  opacity: 0.5;
+}
+.pm-plan.is-free:not(.is-current) .pm-plan__btn {
+  opacity: 1;
 }
 
 
@@ -1049,7 +1060,7 @@
   flex: none;
   width: 52px;
   height: 52px;
-  border-radius: 16px;
+  border-radius: var(--bs-border-radius-lg);
   display: grid;
   place-items: center;
   font-size: 22px;
@@ -1258,7 +1269,7 @@
   font-family: var(--bs-font-sans-serif);
   font-weight: 600;
   font-size: 24px;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   margin: 0 0 4px;
 }
 
@@ -1443,7 +1454,7 @@
   font-weight: 600;
   font-size: 32px;
   line-height: 1;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   color: var(--bs-heading-color);
   font-variant-numeric: tabular-nums;
 }
@@ -1470,7 +1481,7 @@
   padding: 16px 18px;
   background: var(--custom-onsurface-layer-1);
   border: 0.5px solid var(--bs-border-color);
-  border-radius: 14px;
+  border-radius: var(--bs-border-radius-lg);
   transition: border-color .2s ease;
 }
 
@@ -1648,7 +1659,7 @@
   align-items: center;
   padding: 22px 28px;
   margin: 18px 28px 0;
-  border-radius: 16px;
+  border-radius: var(--bs-border-radius-lg);
   border: 1px solid color-mix(in srgb, var(--pm-state) 35%, transparent);
   background: color-mix(in srgb, var(--pm-state) 8%, var(--custom-onsurface-layer-1));
   overflow: hidden;
@@ -1681,7 +1692,7 @@
 
 .pm-alert__icon {
   width: 48px; height: 48px;
-  border-radius: 14px;
+  border-radius: var(--bs-border-radius-lg);
   background: color-mix(in srgb, var(--pm-state) 16%, transparent);
   border: 0.5px solid color-mix(in srgb, var(--pm-state) 45%, transparent);
   color: var(--pm-state);
@@ -2025,7 +2036,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 22px;
-  border-radius: 16px;
+  border-radius: var(--bs-border-radius-lg);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--bs-border-color);
 }
@@ -2503,7 +2514,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bs-secondary-color);
+  color: var(--bs-body-color);
   margin: 0;
 }
 .pm-verify__input {
