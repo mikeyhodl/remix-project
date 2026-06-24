@@ -696,10 +696,8 @@
 
 .pm-plan.is-current {
   cursor: default;
+  background: color-mix(in srgb, var(--custom-primary) 6%, var(--bs-secondary-bg));
   border-color: color-mix(in srgb, var(--custom-primary) 60%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--custom-primary) 30%, transparent),
-    0 24px 60px -20px color-mix(in srgb, var(--custom-primary) 30%, transparent);
 }
 
 .pm-plan.is-free {
@@ -713,9 +711,11 @@
 }
 
 
-.pm-plan.is-recommended { border-color: color-mix(in srgb, var(--custom-primary) 35%, transparent); }
+.pm-plan.is-recommended {
+  background: color-mix(in srgb, var(--custom-primary) 4%, var(--bs-secondary-bg));
+  border-color: color-mix(in srgb, var(--custom-primary) 45%, transparent);
+}
 
-.pm-plan__ribbon,
 .pm-plan__current {
   position: absolute;
   top: 14px;
@@ -729,10 +729,20 @@
 }
 
 .pm-plan__ribbon {
-  background: color-mix(in srgb, var(--bs-info) 12%, transparent);
-  border: 0.5px solid color-mix(in srgb, var(--bs-info) 40%, transparent);
-  color: var(--bs-info);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  font-family: var(--bs-font-sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--bs-border-radius-sm);
+  background: color-mix(in srgb, var(--custom-primary) 12%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--custom-primary) 40%, transparent);
+  color: var(--custom-primary);
 }
+.pm-plan__ribbon i { font-size: 9px; }
 
 .pm-plan__current {
   background: color-mix(in srgb, var(--custom-primary) 18%, transparent);
@@ -743,7 +753,7 @@
 .pm-plan__name {
   font-family: var(--bs-font-sans-serif);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 18px;
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
@@ -759,9 +769,8 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 12px 0 14px;
-  border-top: 0.5px dashed var(--bs-border-color);
-  border-bottom: 0.5px dashed var(--bs-border-color);
+  padding: 14px 0 2px;
+  border-top: 0.5px solid var(--bs-border-color);
 }
 
 .pm-plan__price-num {
@@ -803,13 +812,8 @@
 
 .pm-plan__features i {
   flex-shrink: 0;
-  margin-top: 4px;
-  font-size: 9px;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--custom-primary) 18%, transparent);
+  margin-top: 3px;
+  font-size: 10px;
   color: var(--custom-primary);
 }
 

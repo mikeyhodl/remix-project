@@ -2766,7 +2766,6 @@ const PlanCard: React.FC<{
       className={`pm-plan ${isPlanActive ? 'is-current' : ''} ${isFree ? 'is-free' : ''} ${isSubscriptionCurrent ? 'is-subscription-current' : ''} ${isAccessActive ? 'is-access-current' : ''} ${isRecommended ? 'is-recommended' : ''} ${isPurchasing ? 'is-purchasing' : ''}`}
     >
       <div className="pm-plan__badges">
-        {isRecommended && !isPlanActive && <div className="pm-plan__ribbon">Recommended</div>}
         {showUnifiedCurrent && <div className="pm-plan__current">Current</div>}
         {!showUnifiedCurrent && isSubscriptionCurrent && <div className="pm-plan__current pm-plan__current--subscription">Subscription</div>}
         {!showUnifiedCurrent && isAccessActive && (
@@ -2779,6 +2778,12 @@ const PlanCard: React.FC<{
         <div className="pm-plan__trial-badge" title={trialCredits ? `${trialCredits} credits included` : undefined}>
           <i className="fas fa-gift"></i>
           <span>{trialDays}-day free trial</span>
+        </div>
+      )}
+
+      {isRecommended && !isPlanActive && (
+        <div className="pm-plan__ribbon">
+          <i className="fas fa-star" aria-hidden></i> Recommended
         </div>
       )}
 
