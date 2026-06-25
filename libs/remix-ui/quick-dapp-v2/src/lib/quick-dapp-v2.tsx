@@ -84,7 +84,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
         const newDapp = await dappManager.createDapp(
           contractData.name,
           contractData,
-          payload.isBaseMiniApp || false
+          payload.isBaseMiniApp || false,
+          payload.graphContext
         );
 
         dispatch({ type: 'SET_ACTIVE_DAPP', payload: newDapp });

@@ -69,7 +69,7 @@ const profile = {
   maintainedBy: 'Remix',
   permission: true,
   events: ['queryExecuted'],
-  methods: ['runSubgraphFile', 'getSubgraphFileContext', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
+  methods: ['runSubgraphFile', 'getSubgraphFileContext', 'createDappFromSubgraphFile', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
 }
 
 /**
@@ -101,7 +101,7 @@ export class TheGraphPlugin extends Plugin {
    * @param pathOrCmd - Either a file path string or a context menu command object
    */
   async runSubgraphFile(pathOrCmd: string | { path: string[] }): Promise<QueryResult> {
-    const path = typeof pathOrCmd === 'string' ? pathOrCmd : pathOrCmd.path[0]
+    const path = this.getPathFromCommand(pathOrCmd)
 
     try {
       await this.call('terminal', 'log', {
@@ -154,7 +154,7 @@ export class TheGraphPlugin extends Plugin {
    * This never returns The Graph API key values.
    */
   async getSubgraphFileContext(pathOrCmd: string | { path: string[] }): Promise<SubgraphFileContext> {
-    const path = typeof pathOrCmd === 'string' ? pathOrCmd : pathOrCmd.path[0]
+    const path = this.getPathFromCommand(pathOrCmd)
 
     const content = await this.call('fileManager', 'readFile', path)
     const parsed = parseGraphQLFile(content)
@@ -197,7 +197,9 @@ export class TheGraphPlugin extends Plugin {
       validation
     }
 
-    console.log('[TheGraph:QD:Context]', {
+    console.log('[TheGraph:QuickDapp]', {
+      stage: 'stage-1',
+      action: 'context',
       filePath: context.filePath,
       endpointKind: context.endpointKind,
       endpointNeedsApiKey: context.endpointNeedsApiKey,
@@ -211,6 +213,82 @@ export class TheGraphPlugin extends Plugin {
     })
 
     return context
+  }
+
+  /**
+   * Open RemixAI with a QuickDapp handoff prompt for the selected .subgraph file.
+   * Incomplete subgraph files are routed to a repair prompt instead of generation.
+   */
+  async createDappFromSubgraphFile(pathOrCmd: string | { path: string[] }): Promise<void> {
+    const path = this.getPathFromCommand(pathOrCmd)
+
+    try {
+      console.log('[TheGraph:QuickDapp]', {
+        stage: 'stage-2',
+        action: 'handoff-start',
+        entrypoint: 'context-menu',
+        filePath: path
+      })
+
+      const context = await this.getSubgraphFileContext(path)
+      const promptKind = context.validation.canGenerateDapp ? 'quickdapp-setup' : 'subgraph-fix'
+      const prompt = context.validation.canGenerateDapp
+        ? this.buildCreateDappFromSubgraphPrompt(context)
+        : this.buildSubgraphFixPrompt(context)
+
+      console.log('[TheGraph:QuickDapp]', {
+        stage: 'stage-2',
+        action: 'handoff-ready',
+        entrypoint: 'context-menu',
+        filePath: context.filePath,
+        promptKind,
+        promptLength: prompt.length,
+        canGenerateDapp: context.validation.canGenerateDapp,
+        errors: context.validation.errors,
+        warnings: context.validation.warnings,
+        missingFields: context.validation.missingFields,
+        endpointKind: context.endpointKind,
+        endpointNeedsApiKey: context.endpointNeedsApiKey,
+        apiKeyPresent: context.apiKeyPresent
+      })
+
+      await this.openRemixAiAssistant()
+      await this.call('remixaiassistant' as any, 'chatPipe', prompt)
+
+      console.log('[TheGraph:QuickDapp]', {
+        stage: 'stage-2',
+        action: 'handoff-sent',
+        entrypoint: 'context-menu',
+        filePath: context.filePath,
+        promptKind
+      })
+    } catch (error: any) {
+      const message = error?.message || 'Failed to create DApp from subgraph file.'
+      console.error('[TheGraph:QuickDapp]', {
+        stage: 'stage-2',
+        action: 'handoff-error',
+        entrypoint: 'context-menu',
+        filePath: path,
+        error: message
+      })
+
+      try {
+        await this.call('terminal', 'log', {
+          type: 'error',
+          value: `[TheGraph] ${message}`
+        })
+      } catch {
+        // Best effort only.
+      }
+
+      try {
+        await this.call('notification' as any, 'toast', 'Error opening RemixAI for this subgraph file.')
+      } catch {
+        // Best effort only.
+      }
+
+      throw error
+    }
   }
 
   /**
@@ -344,6 +422,111 @@ export class TheGraphPlugin extends Plugin {
   async setDefaultEndpoint(endpoint: string): Promise<void> {
     this.settings.defaultEndpoint = endpoint
     await this.saveSettings(this.settings)
+  }
+
+  private getPathFromCommand(pathOrCmd: string | { path: string[] }): string {
+    const path = typeof pathOrCmd === 'string' ? pathOrCmd : pathOrCmd?.path?.[0]
+
+    if (!path) {
+      throw new Error('No subgraph file path provided')
+    }
+
+    return path
+  }
+
+  private async openRemixAiAssistant(): Promise<void> {
+    try {
+      await this.call('manager' as any, 'activatePlugin', 'remix-ai-assistant')
+    } catch {
+      // The assistant may already be active.
+    }
+
+    try {
+      await this.call('rightSidePanel' as any, 'focusPanel')
+    } catch {
+      // Focusing the panel is best effort.
+    }
+  }
+
+  private buildCreateDappFromSubgraphPrompt(context: SubgraphFileContext): string {
+    const graphContext = this.getPromptGraphContext(context)
+
+    return [
+      'I want to create a QuickDapp that uses the selected The Graph .subgraph file as an independent read-only data source.',
+      '',
+      'IMPORTANT HANDOFF RULES:',
+      '- The .subgraph file is already selected and validated. Do not ask me whether I want to use a subgraph, and do not ask me to select it again.',
+      '- The Graph query may be unrelated to the contract ABI. Treat it as a separate read-only GraphQL data source.',
+      '- The contract network/provider rules still come from the deployed contract. Do not infer the wallet network from graphContext.network.',
+      '- Do not put The Graph API key values into generated source files, config files, or chat output.',
+      '',
+      'STEP 1 - ASK FOR SETUP OPTIONS:',
+      'Ask me once: "How should I create your DApp?"',
+      '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
+      '- Base mini-app: No (default) or Yes',
+      '- Design: defaults, style notes, or a Figma URL',
+      '',
+      'Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, or any other design subquestions.',
+      'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
+      '',
+      'STEP 2 - CONTRACT CONTEXT:',
+      'After I answer, check the current Remix environment and deployed contracts. If no contract is deployed or selected, ask me to compile/deploy/select a contract. Subgraph-only QuickDapp generation is not part of this MVP.',
+      '',
+      'STEP 3 - GENERATE DAPP:',
+      'When the contract and setup options are confirmed, call generate_dapp with the normal contract details and include graphContext exactly from the GRAPH_CONTEXT_JSON below.',
+      '',
+      'GRAPH_CONTEXT_JSON:',
+      '```json',
+      JSON.stringify(graphContext, null, 2),
+      '```',
+      '',
+      'Start by asking STEP 1 only, then STOP.'
+    ].join('\n')
+  }
+
+  private buildSubgraphFixPrompt(context: SubgraphFileContext): string {
+    const graphContext = this.getPromptGraphContext(context)
+
+    return [
+      'I tried to create a QuickDapp from the selected The Graph .subgraph file, but the subgraph context is incomplete.',
+      '',
+      'Do not call generate_dapp, do not compile/deploy contracts, and do not write files yet.',
+      'Ask me only for the missing or invalid .subgraph fields listed below. Do not ask QuickDapp setup options until this subgraph context is valid.',
+      '',
+      `File: ${context.filePath}`,
+      `Errors: ${context.validation.errors.join(', ') || 'none'}`,
+      `Missing fields: ${context.validation.missingFields.join(', ') || 'none'}`,
+      `Warnings: ${context.validation.warnings.join(', ') || 'none'}`,
+      '',
+      'CURRENT_SUBGRAPH_CONTEXT_JSON:',
+      '```json',
+      JSON.stringify(graphContext, null, 2),
+      '```',
+      '',
+      'Ask for the smallest correction needed, then STOP.'
+    ].join('\n')
+  }
+
+  private getPromptGraphContext(context: SubgraphFileContext): Record<string, any> {
+    return JSON.parse(JSON.stringify({
+      source: context.source,
+      filePath: context.filePath,
+      resultFilePath: context.resultFilePath,
+      endpoint: context.endpoint,
+      endpointKind: context.endpointKind,
+      endpointNeedsApiKey: context.endpointNeedsApiKey,
+      apiKeySource: context.apiKeySource,
+      apiKeyPresent: context.apiKeyPresent,
+      subgraphId: context.subgraphId,
+      network: context.network,
+      description: context.description,
+      query: context.query,
+      variables: context.variables || {},
+      operationName: context.operationName,
+      operationType: context.operationType,
+      sampleResult: context.sampleResult,
+      validation: context.validation
+    }))
   }
 
   private analyzeEndpoint(endpoint?: string): EndpointAnalysis {
@@ -523,7 +706,11 @@ export class TheGraphPlugin extends Plugin {
       const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
       return Boolean(apiKey)
     } catch (e) {
-      console.warn('[TheGraph:QD:Context] Failed to check The Graph API key presence:', e)
+      console.warn('[TheGraph:QuickDapp]', {
+        stage: 'stage-1',
+        action: 'api-key-presence-check-failed',
+        error: e
+      })
       return false
     }
   }

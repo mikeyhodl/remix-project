@@ -40,5 +40,28 @@ export interface DappConfig {
     isBaseMiniApp?: boolean;
   };
 
+  dataSources?: {
+    theGraph?: QuickDappGraphContext[];
+  };
+
   thumbnailPath?: string;
+}
+
+export interface QuickDappGraphContext {
+  source: 'subgraph-file' | 'remixai-chat' | 'manual';
+  filePath?: string;
+  resultFilePath?: string;
+  endpoint: string;
+  endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql';
+  endpointNeedsApiKey?: boolean;
+  apiKeySource?: 'remix-settings' | 'runtime-input' | 'none';
+  apiKeyPresent?: boolean;
+  subgraphId?: string;
+  network?: string;
+  description?: string;
+  query: string;
+  variables?: Record<string, any>;
+  operationName?: string;
+  operationType?: 'query' | 'mutation' | 'subscription';
+  sampleResult?: any;
 }

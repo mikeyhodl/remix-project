@@ -351,6 +351,26 @@ export interface GenerateDAppArgs {
   confirmOverwrite?: boolean
   setupOptionsConfirmed?: boolean
   setupOptionsSummary?: string
+  graphContext?: QuickDappGraphContext
+}
+
+export interface QuickDappGraphContext {
+  source: 'subgraph-file' | 'remixai-chat' | 'manual'
+  filePath?: string
+  resultFilePath?: string
+  endpoint: string
+  endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql'
+  endpointNeedsApiKey?: boolean
+  apiKeySource?: 'remix-settings' | 'runtime-input' | 'none'
+  apiKeyPresent?: boolean
+  subgraphId?: string
+  network?: string
+  description?: string
+  query: string
+  variables?: Record<string, any>
+  operationName?: string
+  operationType?: 'query' | 'mutation' | 'subscription'
+  sampleResult?: any
 }
 
 export interface UpdateDAppArgs {
@@ -377,7 +397,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
+  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph only when a graphContext is already provided by The Graph handoff. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -438,7 +458,48 @@ export class GenerateDAppHandler extends BaseToolHandler {
       },
       setupOptionsSummary: {
         type: 'string',
-        description: 'Required when setupOptionsConfirmed=true. Short summary of the setup choices confirmed by the user, e.g. "Location workspace, Base mini-app no, Design defaults".'
+        description: 'Required when setupOptionsConfirmed=true. Short summary of the setup choices confirmed by the user, e.g. "Location workspace, Base mini-app no, Design defaults, Subgraph none".'
+      },
+      graphContext: {
+        type: 'object',
+        description: 'Optional complete The Graph data source context. Only provide this when supplied by The Graph .subgraph handoff or another validated source. Never include actual API key values.',
+        properties: {
+          source: {
+            type: 'string',
+            enum: ['subgraph-file', 'remixai-chat', 'manual']
+          },
+          filePath: { type: 'string' },
+          resultFilePath: { type: 'string' },
+          endpoint: {
+            type: 'string',
+            description: 'GraphQL endpoint without actual API key values.'
+          },
+          endpointKind: {
+            type: 'string',
+            enum: ['local', 'thegraph-gateway', 'generic-graphql']
+          },
+          endpointNeedsApiKey: { type: 'boolean' },
+          apiKeySource: {
+            type: 'string',
+            enum: ['remix-settings', 'runtime-input', 'none']
+          },
+          apiKeyPresent: { type: 'boolean' },
+          subgraphId: { type: 'string' },
+          network: {
+            type: 'string',
+            description: 'Informational metadata only. Must not override the contract chainId.'
+          },
+          description: { type: 'string' },
+          query: { type: 'string' },
+          variables: { type: 'object' },
+          operationName: { type: 'string' },
+          operationType: {
+            type: 'string',
+            enum: ['query', 'mutation', 'subscription']
+          },
+          sampleResult: {}
+        },
+        required: ['source', 'endpoint', 'query']
       }
     },
     required: ['description', 'contractName', 'contractAddress', 'chainId']
@@ -454,6 +515,17 @@ export class GenerateDAppHandler extends BaseToolHandler {
 
     if (!args.contractAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       return 'Invalid contract address format'
+    }
+    if (args.graphContext) {
+      if (!args.graphContext.endpoint?.trim()) {
+        return 'graphContext.endpoint is required when graphContext is provided'
+      }
+      if (!args.graphContext.query?.trim()) {
+        return 'graphContext.query is required when graphContext is provided'
+      }
+      if (/gateway\.thegraph\.com\/api\/[^/]+\/subgraphs\/id\//i.test(args.graphContext.endpoint)) {
+        return 'graphContext.endpoint must not include a The Graph API key'
+      }
     }
     if (args.contractAbi) {
       if (!Array.isArray(args.contractAbi)) {
@@ -549,6 +621,18 @@ export class GenerateDAppHandler extends BaseToolHandler {
       const isDesktop = isElectron()
       const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
+      if (args.graphContext) {
+        remixAILogger.log('[TheGraph:QuickDapp]', {
+          stage: 'stage-3',
+          action: 'generate-dapp-graph-context',
+          source: args.graphContext.source,
+          filePath: args.graphContext.filePath,
+          endpointKind: args.graphContext.endpointKind,
+          endpointNeedsApiKey: args.graphContext.endpointNeedsApiKey,
+          operationName: args.graphContext.operationName,
+          queryLength: args.graphContext.query?.length || 0
+        })
+      }
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -559,22 +643,25 @@ export class GenerateDAppHandler extends BaseToolHandler {
           optionsToAsk: isDesktop
             ? [
               'Base mini-app: No (default) or Yes',
-              'Design: defaults, style notes, or a Figma URL'
+              'Design: defaults, style notes, or a Figma URL',
+              'Subgraph: None (default) or use the selected .subgraph from The Graph handoff'
             ]
             : [
               'Location: Workspace (default) or Inline in /frontend',
               'Base mini-app: No (default) or Yes',
-              'Design: defaults, style notes, or a Figma URL'
+              'Design: defaults, style notes, or a Figma URL',
+              'Subgraph: None (default) or use the selected .subgraph from The Graph handoff'
             ],
           defaults: {
             location: isDesktop ? 'inline' : 'workspace',
             isBaseMiniApp: false,
-            design: 'defaults'
+            design: 'defaults',
+            subgraph: 'none'
           },
           fixedLocation: isDesktop ? 'inline' : undefined,
           nextAction: isDesktop
-            ? 'Ask only Base mini-app and Design, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, and any figmaUrl/figmaToken.'
-            : 'Ask only those setup options and then STOP. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, and any figmaUrl/figmaToken.'
+            ? 'Ask only Base mini-app, Design, and Subgraph, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Subgraph defaults to None. If the user wants a .subgraph but no graphContext is provided, ask them to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, any figmaUrl/figmaToken, and graphContext only if it was already provided.'
+            : 'Ask only those setup options and then STOP. Subgraph defaults to None. If the user wants a .subgraph but no graphContext is provided, ask them to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, any figmaUrl/figmaToken, and graphContext only if it was already provided.'
         })
       }
 
@@ -587,7 +674,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
           requiresUserInput: true,
           reason: 'figma_token_required',
           message: 'Ask the user for their Figma Personal Access Token before generating files.',
-          preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl'],
+          preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl', 'graphContext'],
           originalRequest: {
             description: args.description,
             contractName: args.contractName,
@@ -597,9 +684,10 @@ export class GenerateDAppHandler extends BaseToolHandler {
             isBaseMiniApp: !!args.isBaseMiniApp,
             setupOptionsConfirmed: true,
             setupOptionsSummary: args.setupOptionsSummary,
-            figmaUrl: args.figmaUrl
+            figmaUrl: args.figmaUrl,
+            graphContext: args.graphContext
           },
-          nextAction: 'Ask only for the Figma token and then STOP. After the user provides the token, call generate_dapp again with the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, figmaUrl, and the new figmaToken.'
+          nextAction: 'Ask only for the Figma token and then STOP. After the user provides the token, call generate_dapp again with the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, figmaUrl, graphContext if present, and the new figmaToken.'
         })
       }
 
@@ -622,7 +710,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             defaults: {
               continueWithoutFigma: false
             },
-            preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary'],
+            preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'graphContext'],
             originalRequest: {
               description: args.description,
               contractName: args.contractName,
@@ -632,10 +720,11 @@ export class GenerateDAppHandler extends BaseToolHandler {
               isBaseMiniApp: !!args.isBaseMiniApp,
               setupOptionsConfirmed: true,
               setupOptionsSummary: args.setupOptionsSummary,
-              figmaUrl: args.figmaUrl
+              figmaUrl: args.figmaUrl,
+              graphContext: args.graphContext
             },
             nextAction:
-              'Tell the user the Figma fetch failed and ask for exactly one of: a corrected Figma token, a corrected Figma URL, or explicit confirmation to continue with defaults/no Figma. On the next generate_dapp call, preserve the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, and setupOptionsSummary. If the user gives a corrected token, reuse the same figmaUrl. If the user gives a corrected URL, use that URL. If the user chooses defaults/no Figma, omit figmaUrl and figmaToken. Do NOT create a workspace, call write_file, or generate a default design unless the user explicitly chooses defaults.'
+              'Tell the user the Figma fetch failed and ask for exactly one of: a corrected Figma token, a corrected Figma URL, or explicit confirmation to continue with defaults/no Figma. On the next generate_dapp call, preserve the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, and graphContext if present. If the user gives a corrected token, reuse the same figmaUrl. If the user gives a corrected URL, use that URL. If the user chooses defaults/no Figma, omit figmaUrl and figmaToken. Do NOT create a workspace, call write_file, or generate a default design unless the user explicitly chooses defaults.'
           })
         }
         figmaDesign = figmaResult
@@ -719,7 +808,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
             address: args.contractAddress,
             abi: args.contractAbi,
             chainId: args.chainId,
-            isBaseMiniApp: args.isBaseMiniApp
+            isBaseMiniApp: args.isBaseMiniApp,
+            graphContext: args.graphContext
           })
           dappOps = new DappOperations('workspace', wsResult.workspaceName, plugin, args.contractName)
           progressSlug = wsResult.slug || wsResult.workspaceName
@@ -801,6 +891,9 @@ export class GenerateDAppHandler extends BaseToolHandler {
               template: 'custom',
               isBaseMiniApp: !!args.isBaseMiniApp
             },
+            dataSources: args.graphContext ? {
+              theGraph: [args.graphContext]
+            } : undefined,
             status: 'creating',
             createdAt: timestamp,
             updatedAt: timestamp,
@@ -832,6 +925,23 @@ export class GenerateDAppHandler extends BaseToolHandler {
       // Build optional Figma context line for subagent
       const figmaLine = figmaDesign
         ? `\nFIGMA: Design preflight succeeded for "${figmaDesign.fileName}"${figmaDesign.nodeId ? ` (node ${figmaDesign.nodeId})` : ''}. Use the simplified design data below as the visual reference. Do NOT call fetch_figma_design again for this URL unless the user explicitly asks.\nFIGMA DESIGN DATA:\n${figmaDesign.designData}\n`
+        : ''
+      const graphLine = args.graphContext
+        ? `\nTHE GRAPH DATA SOURCE:\n` +
+        `- This DApp must query The Graph using the provided GraphQL query.\n` +
+        `- The Graph query is independent from the smart contract ABI. Do not assume the query entities match the contract.\n` +
+        `- The DApp network and wallet rules are still determined by the contract chainId. The Graph network metadata is informational only.\n` +
+        `- Create a small GraphQL client/helper, for example src/graphClient.js or src/hooks/useGraphQuery.js.\n` +
+        `- Use browser fetch with POST { query, variables }.\n` +
+        `- Show loading, error, empty, and success states.\n` +
+        `- Render data according to the sample result shape when provided.\n` +
+        `- Never hardcode an actual The Graph API key in generated source files.\n` +
+        `- If endpointNeedsApiKey is true, read the key from window.__QUICK_DAPP_GRAPH_CONFIG__ or an equivalent QuickDapp runtime config injected by Remix.\n` +
+        `- If no injected key is available, provide a runtime key input fallback and store only the user-entered fallback key in localStorage.\n` +
+        `- If the endpoint is localhost/local graph node, keep it configurable in the UI because deployed IPFS users may need a different endpoint.\n` +
+        `- Do not use ethers provider, RPC provider, or wallet calls to fetch GraphQL data.\n` +
+        `- Preserve contract wallet rules separately from GraphQL fetch rules.\n\n` +
+        `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
         : ''
 
       const isInlineMode = dappOps.isInline()
@@ -887,6 +997,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             `- Avoid position: absolute. Create separate component files for distinct sections.\n` +
             `- Adapt Figma dimensions to fluid/responsive code.\n`
             : '') +
+          `${graphLine}` +
           `\n${QUICKDAPP_BUILD_RULES}\n` +
           `\n${QUICKDAPP_DESIGN_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
@@ -1663,7 +1774,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_dapp',
-      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes and Design defaults/style notes/Figma URL. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
+      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph only when graphContext is already provided by The Graph handoff. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
       inputSchema: new GenerateDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
