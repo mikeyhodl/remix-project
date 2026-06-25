@@ -191,8 +191,7 @@
   z-index: 1050;
   font-family: 'Nunito Sans', sans-serif;
   color: var(--bs-body-color);
-  --hm-accent: #64c4ff;
-  --hm-accent-rgb: 100, 196, 255;
+  --hm-accent: var(--custom-primary);
   --hm-hover-bg: rgba(var(--bs-body-color-rgb), 0.1);
 }
 
@@ -231,7 +230,7 @@
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  background: rgba(var(--hm-accent-rgb), 0.10);
+  background: color-mix(in srgb, var(--hm-accent) 10%, transparent);
   color: var(--hm-accent);
   flex-shrink: 0;
 }
@@ -298,18 +297,18 @@
 .hm-about-link:hover { text-decoration: underline; }
 
 .hm-row-cta {
-  background: rgba(var(--hm-accent-rgb), 0.08);
-  border: 1px solid rgba(var(--hm-accent-rgb), 0.30);
+  background: color-mix(in srgb, var(--hm-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hm-accent) 30%, transparent);
   margin: 4px 8px;
   padding: 10px 12px;
   border-radius: 6px;
 }
 .hm-row-cta:hover {
-  background: rgba(var(--hm-accent-rgb), 0.14);
-  border-color: rgba(var(--hm-accent-rgb), 0.55);
+  background: color-mix(in srgb, var(--hm-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--hm-accent) 55%, transparent);
 }
 .hm-row-icon-cta {
-  background: rgba(var(--hm-accent-rgb), 0.18);
+  background: color-mix(in srgb, var(--hm-accent) 18%, transparent);
   color: var(--hm-accent);
   width: 28px;
   height: 28px;
