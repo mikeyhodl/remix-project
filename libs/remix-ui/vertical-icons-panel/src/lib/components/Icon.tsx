@@ -94,7 +94,7 @@ const Icon = ({ iconRecord, verticalIconPlugin, contextMenuAction, theme }: Icon
         ></div>
         <CustomTooltip
           placement={name === 'settings' ? 'right' : name === 'search' ? 'top' : name === 'udapp' ? 'bottom' : 'top'}
-          tooltipText={title}
+          tooltipText={title === 'Help & Guides' ? `${title.split('&')[1]}` : title}
           delay={{ show: 1000, hide: 0 }}
         >
           {
