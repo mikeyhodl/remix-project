@@ -1,5 +1,6 @@
 import React, { Fragment, useContext, useEffect, useReducer, useRef, useState } from 'react'
 import { Plugin } from '@remixproject/engine'
+//@ts-ignore
 import './remix-ui-vertical-icons-panel.css'
 import IconList from './components/IconList'
 import Home from './components/Home'
