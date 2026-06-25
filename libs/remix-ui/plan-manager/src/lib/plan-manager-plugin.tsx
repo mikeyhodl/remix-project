@@ -95,6 +95,7 @@ export class PlanManagerPlugin extends ViewPlugin {
   // ./paddle-singleton (formerly @remix-ui/billing).
   private paddle: Paddle | null = null
   private paddleEventHandler: ((e: PaddleEventData) => void) | null = null
+  private paddleTheme: 'dark' | 'light' = 'dark'
 
   constructor() {
     super(profile)
@@ -143,6 +144,15 @@ export class PlanManagerPlugin extends ViewPlugin {
     // listener since the legacy BillingManager was removed.
     this.paddleEventHandler = (event: PaddleEventData) => this.handlePaddleEvent(event)
     onPaddleEvent(this.paddleEventHandler)
+
+    // Sync app theme so the Paddle checkout iframe matches the IDE.
+    try {
+      const theme = await this.call('theme', 'currentTheme').catch(() => null) as { quality: 'dark' | 'light' } | null
+      if (theme?.quality) this.paddleTheme = theme.quality
+      this.on('theme', 'themeChanged', (t: { quality: 'dark' | 'light' }) => {
+        if (t?.quality === 'dark' || t?.quality === 'light') this.paddleTheme = t.quality
+      })
+    } catch { /* theme plugin unavailable */ }
 
     // Bridge auth events. Re-fired on token refresh so we tolerate noise.
     const onAuthChange = (s: { isAuthenticated: boolean; token?: string; user?: { id?: number } }) => {
@@ -860,7 +870,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         openCheckoutWithTransaction(paddleInstance, transactionId, {
           settings: {
             displayMode: 'inline',
-            theme: 'dark',
+            theme: this.paddleTheme,
             variant: 'one-page',
             frameTarget: 'paddle-checkout-container',
             frameInitialHeight: 700,
