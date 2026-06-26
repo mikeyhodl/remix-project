@@ -16,11 +16,11 @@
  */
 
 import { ViewPlugin } from '@remixproject/engine-web'
-import React, { useEffect, useMemo, useSyncExternalStore } from 'react'
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { PluginViewWrapper, DISCORD_URL } from '@remix-ui/helper'
 // Paddle singleton lives next to this plugin now — `@remix-ui/billing` was
 // removed when Plan Manager became the sole billing surface.
-import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent } from './paddle-singleton'
+import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent, previewPrices } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, FeatureGroup, UsageReport } from '@remix-api'
 import { Features, FEATURE_LABELS } from '@remix-api'
@@ -481,6 +481,220 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   /**
+   * Resolve a cart line to its Paddle external price id (`pri_...`).
+   * Looks the product up in the catalog, matches the chosen internal price
+   * (or the default), then reads the Paddle provider linkage. Falls back to
+   * the product's top-level provider price id. Returns `null` when nothing
+   * maps — callers should skip the preview rather than show a partial total.
+   */
+  private resolvePaddlePriceId(item: CartItem): string | null {
+    const snap = this.store.getSnapshot()
+    const catalog: any[] = item.productType === 'subscription_plan'
+      ? snap.catalogPlans
+      : snap.catalogPackages
+    const product: any = catalog.find((p: any) => p.id === item.slug)
+    if (!product) return null
+    const prices: any[] = Array.isArray(product.prices) ? product.prices : []
+    const price = (typeof item.priceId === 'number'
+      ? prices.find((pr: any) => pr.id === item.priceId)
+      : null)
+      ?? prices.find((pr: any) => pr.is_default)
+      ?? prices[0]
+      ?? null
+    const fromPrice = price?.providers?.find((pr: any) => pr.slug === 'paddle')?.external_price_id
+    if (fromPrice) return fromPrice
+    // Top-level providers are stored in mapped form (`priceId` is external).
+    const fromTop = product.providers?.find((pr: any) => pr.slug === 'paddle')?.priceId
+    return fromTop ?? null
+  }
+
+  /**
+   * Preview the cart's localized, discounted totals via Paddle PricePreview.
+   *
+   * Resolves every cart line to its Paddle price id and forwards the
+   * subscription's intro-discount id (if any). Paddle localizes to the
+   * visitor's region (auto IP geo-location) and applies the discount's own
+   * `restrictTo` — so this transparently handles the discount living on the
+   * subscription only OR the whole cart. Returns `null` when Paddle is
+   * unavailable or the cart can't be fully mapped, letting the UI fall back
+   * to the static USD estimate.
+   */
+  async previewCartPrices(cart?: CartItem[]): Promise<CartPricePreview | null> {
+    const snap = this.store.getSnapshot()
+    const items = cart ?? snap.cartItems
+    if (!items || items.length === 0) return null
+
+    const resolved = items.map(item => ({ item, paddlePriceId: this.resolvePaddlePriceId(item) }))
+    if (resolved.some(r => !r.paddlePriceId)) {
+      planManagerLogger.log('[PlanManager] previewCartPrices: missing Paddle price id for a cart item — skipping preview')
+      return null
+    }
+
+    // The intro discount is attached to the subscription plan. We pass its
+    // Paddle id and let Paddle decide which line items it applies to.
+    const planItem = items.find(i => i.productType === 'subscription_plan')
+    const planObj: any = planItem ? snap.catalogPlans.find((p: any) => p.id === planItem.slug) : null
+    const introDiscount: any = (planObj?.introDiscounts ?? [])[0] ?? null
+    const discountId: string | undefined = introDiscount?.paddleDiscountId ?? undefined
+
+    if (!this.paddle && !getPaddle()) {
+      await this.initPaddleSingleton()
+    }
+    const paddle = this.paddle ?? getPaddle()
+    if (!paddle) {
+      planManagerLogger.log('[PlanManager] previewCartPrices: Paddle not available')
+      return null
+    }
+
+    try {
+      const result: any = await previewPrices(paddle, {
+        items: resolved.map(r => ({ priceId: r.paddlePriceId as string, quantity: 1 })),
+        discountId
+      })
+      return normalizePricePreview(result, resolved)
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager] previewCartPrices failed', err)
+      return null
+    }
+  }
+
+  /**
+   * Preview localized list prices for a set of products (no discount).
+   * Used to render the upsell grid's per-package prices in the visitor's
+   * currency. Returns a `slug → localized price` map (pre-tax subtotal),
+   * or `null` when Paddle is unavailable / nothing maps.
+   */
+  async previewProductPrices(
+    items: Array<{ slug: string; productType: CartItem['productType']; priceId?: number }>
+  ): Promise<Record<string, string> | null> {
+    if (!items || items.length === 0) return null
+    const resolved = items
+      .map(it => ({ slug: it.slug, paddlePriceId: this.resolvePaddlePriceId(it as CartItem) }))
+      .filter((r): r is { slug: string; paddlePriceId: string } => !!r.paddlePriceId)
+    if (resolved.length === 0) return null
+
+    if (!this.paddle && !getPaddle()) {
+      await this.initPaddleSingleton()
+    }
+    const paddle = this.paddle ?? getPaddle()
+    if (!paddle) return null
+
+    try {
+      const result: any = await previewPrices(paddle, {
+        items: resolved.map(r => ({ priceId: r.paddlePriceId, quantity: 1 }))
+      })
+      const byPriceId = new Map<string, string>()
+      resolved.forEach(r => byPriceId.set(r.paddlePriceId, r.slug))
+      const out: Record<string, string> = {}
+      const currencyCode: string = result?.data?.currencyCode ?? 'USD'
+      const lineItems: any[] = result?.data?.details?.lineItems ?? []
+      lineItems.forEach((li: any) => {
+        const pid = li?.price?.id
+        const slug = pid ? byPriceId.get(pid) : undefined
+        // Format with Intl (not Paddle's `formattedTotals`) for consistency
+        // across the UI and to avoid Paddle's locale-ambiguous strings
+        // (e.g. CLP renders as "$18.393" which reads like ~18 dollars).
+        if (slug) out[slug] = formatPaddleMinor(Number(li?.totals?.subtotal ?? 0) || 0, currencyCode)
+      })
+      return out
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager] previewProductPrices failed', err)
+      return null
+    }
+  }
+
+  /**
+   * Preview localized list prices for the WHOLE catalog in one batched
+   * Paddle PricePreview call. Collects every Paddle price id across all plan
+   * cadences (month/year) + credit packages and returns a
+   * `paddlePriceId → { rawMinor, currencyCode, formatted }` map so the plan
+   * cards and top-up grid can render the visitor's local currency.
+   *
+   * No discount is forwarded — the overview shows several plans each with
+   * their own intro discount, so the cards apply the (percentage) discount
+   * client-side off the localized base. Returns `null` when Paddle is
+   * unavailable / nothing maps, letting the UI fall back to static USD.
+   */
+  async previewCatalogPrices(): Promise<CatalogPricePreview | null> {
+    const snap = this.store.getSnapshot()
+    const products: any[] = [...(snap.catalogPlans ?? []), ...(snap.catalogPackages ?? [])]
+
+    const priceIds = new Set<string>()
+    products.forEach((product: any) => {
+      const prices: any[] = Array.isArray(product?.prices) ? product.prices : []
+      let matched = false
+      prices.forEach((pr: any) => {
+        const pid = pr?.providers?.find((p: any) => p.slug === 'paddle')?.external_price_id
+        if (pid) { priceIds.add(pid); matched = true }
+      })
+      if (!matched) {
+        // Products without per-price providers expose the (mapped) external id at top level.
+        const top = product?.providers?.find((p: any) => p.slug === 'paddle')?.priceId
+        if (top) priceIds.add(top)
+      }
+    })
+    if (priceIds.size === 0) return null
+
+    if (!this.paddle && !getPaddle()) {
+      await this.initPaddleSingleton()
+    }
+    const paddle = this.paddle ?? getPaddle()
+    if (!paddle) {
+      planManagerLogger.log('[PlanManager] previewCatalogPrices: Paddle not available')
+      return null
+    }
+
+    try {
+      const result: any = await previewPrices(paddle, {
+        items: Array.from(priceIds).map(priceId => ({ priceId, quantity: 1 }))
+      })
+      const currencyCode: string = result?.data?.currencyCode ?? 'USD'
+      const byPaddlePriceId: Record<string, LocalizedCatalogPrice> = {}
+      const lineItems: any[] = result?.data?.details?.lineItems ?? []
+      // Diagnostics: surface exactly what Paddle returns for this region so we
+      // can compare Paddle's own `formattedTotals` (locale-aware on their side)
+      // against our `Intl.NumberFormat` output. They diverge for currencies
+      // that share the `$` glyph (e.g. CAD → Paddle "$" vs Intl "CA$").
+      // Enable with: localStorage.setItem('plan-manager-debug','1') then reload.
+      planManagerLogger.log('[PlanManager:price] previewCatalogPrices result', {
+        currencyCode,
+        countryCode: result?.data?.address?.countryCode ?? result?.data?.customerIpAddress ?? '(auto-geo)',
+        lineItems: lineItems.map((li: any) => {
+          const rawMinor = Number(li?.totals?.subtotal ?? 0) || 0
+          return {
+            priceId: li?.price?.id,
+            productName: li?.product?.name,
+            rawMinorSubtotal: rawMinor,
+            paddleFormatted: li?.formattedTotals?.subtotal,
+            intlFormatted: formatPaddleMinor(rawMinor, currencyCode)
+          }
+        }),
+        rawData: result?.data
+      })
+      lineItems.forEach((li: any) => {
+        const pid = li?.price?.id
+        if (!pid) return
+        const rawMinor = Number(li?.totals?.subtotal ?? 0) || 0
+        byPaddlePriceId[pid] = {
+          paddlePriceId: pid,
+          rawMinor,
+          currencyCode,
+          // Always format with Intl for consistency (struck base, computed
+          // discount, and the checkout breakdown all use formatPaddleMinor).
+          // Paddle's own `formattedTotals` is locale-ambiguous for currencies
+          // that share the `$` glyph (CAD "$28.34" vs Intl "CA$28.34") or use
+          // `.` as a thousands separator (CLP "$18.393" == 18,393 CLP).
+          formatted: formatPaddleMinor(rawMinor, currencyCode)
+        }
+      })
+      return { currencyCode, byPaddlePriceId }
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager] previewCatalogPrices failed', err)
+      return null
+    }
+  }
+
+  /**
    * Change the active paid subscription to a different paid plan.
    * Flow: POST /billing/subscription/preview-change → in-panel confirm with
    * proration totals → PATCH /billing/subscription → refresh account data.
@@ -913,6 +1127,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     case 'checkout.loaded' as any:
     case 'checkout.customer.updated' as any:
     case 'checkout.updated' as any: {
+      console.log('[PlanManager] Paddle checkout update', event.name, event.data)
       const breakdown = this.parseCheckoutBreakdown(event)
       if (breakdown) this.store.send({ type: 'CHECKOUT_BREAKDOWN', breakdown })
       break
@@ -1058,7 +1273,12 @@ export class PlanManagerPlugin extends ViewPlugin {
                 amount: Number(d.amount) || 0,
                 currency: d.currency ?? null,
                 recur: d.recur === true,
-                maxRecurringIntervals: d.max_recurring_intervals ?? null
+                maxRecurringIntervals: d.max_recurring_intervals ?? null,
+                // Paddle discount id + restriction info, used to reproduce the
+                // checkout's localized/discounted totals via PricePreview.
+                paddleDiscountId: d.paddle_raw?.id ?? null,
+                restrictTo: d.paddle_raw?.restrictTo ?? d.paddle_raw?.restrict_to ?? null,
+                paddleRaw: d.paddle_raw ?? null
               }))
               : [],
             introCreditPackages: Array.isArray(p.intro_credit_packages) && p.intro_credit_packages.length > 0
@@ -1500,6 +1720,21 @@ const PlanManagerOverlay: React.FC<{
   const checkoutResult = selectCheckoutResult(snap)
   const purchasingProductId = selectPurchasingProductId(snap)
 
+  // Localized list prices for the plan cards + top-up grid. One batched
+  // Paddle PricePreview call covering every visible price; the cards fall
+  // back to static USD until (and unless) this resolves.
+  const [catalogPrices, setCatalogPrices] = useState<CatalogPricePreview | null>(null)
+  const catalogPriceKey = useMemo(
+    () => [...visiblePlans, ...visiblePackages].map((p: any) => p.id).join('|'),
+    [visiblePlans, visiblePackages]
+  )
+  useEffect(() => {
+    if (!snap.isOpen || !catalogPriceKey) return
+    let cancelled = false
+    void plugin.previewCatalogPrices().then(res => { if (!cancelled) setCatalogPrices(res) })
+    return () => { cancelled = true }
+  }, [plugin, snap.isOpen, snap.isAuthenticated, catalogPriceKey])
+
   // Section visibility — driven by `ui:show-*` features on /permissions.
   // When all are absent we collapse to a minimal "Signed in as <plan>"
   // identity card (PlanIdentityCard) below. See selectUiVisibility for
@@ -1781,6 +2016,7 @@ const PlanManagerOverlay: React.FC<{
               <UpgradePromoBanner
                 planCtx={planCtx}
                 plans={visiblePlans}
+                localizedPrices={catalogPrices?.byPaddlePriceId ?? null}
                 onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
               />
             )}
@@ -1808,7 +2044,18 @@ const PlanManagerOverlay: React.FC<{
                   : null
                 const productName = plan?.name ?? pkg?.name ?? pending.itemLabel ?? 'Your order'
                 const priceCents = plan?.priceUsd ?? pkg?.priceUsd ?? 0
-                const priceFormatted = `$${(priceCents / 100).toFixed(2)}`
+                // Localized headline price for this product (from the batched
+                // catalog preview), matching the localized Paddle breakdown
+                // below. Falls back to USD until/unless the preview resolves.
+                const productObj: any = plan ?? pkg
+                const productCartItem = snap.cartItems.find(i => i.slug === (plan?.id ?? pkg?.id))
+                const productPrices: any[] = Array.isArray(productObj?.prices) ? productObj.prices : []
+                const productSelectedPrice = (typeof productCartItem?.priceId === 'number'
+                  ? productPrices.find((pr: any) => pr.id === productCartItem.priceId)
+                  : null) ?? productPrices.find((pr: any) => pr.is_default) ?? productPrices[0] ?? null
+                const productPaddleId = paddlePriceIdOf(productSelectedPrice, productObj)
+                const productLocalized = productPaddleId ? catalogPrices?.byPaddlePriceId?.[productPaddleId] ?? null : null
+                const priceFormatted = productLocalized ? productLocalized.formatted : `$${(priceCents / 100).toFixed(2)}`
                 const billingLabel = plan
                   ? `per ${plan.billingInterval === 'year' ? 'year' : 'month'}`
                   : 'one-time'
@@ -1827,11 +2074,21 @@ const PlanManagerOverlay: React.FC<{
                 let discountedPriceFormatted: string | null = null
                 if (introDiscount && priceCents > 0) {
                   const isPct = introDiscount.discountType === 'percentage'
-                  const discountedCents = isPct
-                    ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
-                    : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
-                  if (discountedCents < priceCents) {
-                    discountedPriceFormatted = `$${(discountedCents / 100).toFixed(2)}`
+                  // Localize the crossed price for percentage discounts (exact
+                  // off the localized base). Fixed-amount discounts are USD, so
+                  // when localized we keep the base price only (no currency mix).
+                  if (productLocalized) {
+                    if (isPct) {
+                      const dm = Math.max(0, Math.floor(productLocalized.rawMinor * (1 - introDiscount.amount / 100)))
+                      if (dm < productLocalized.rawMinor) discountedPriceFormatted = formatPaddleMinor(dm, productLocalized.currencyCode)
+                    }
+                  } else {
+                    const discountedCents = isPct
+                      ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
+                      : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
+                    if (discountedCents < priceCents) {
+                      discountedPriceFormatted = `$${(discountedCents / 100).toFixed(2)}`
+                    }
                   }
                   const unit = plan?.billingInterval === 'year' ? 'year' : 'month'
                   const intervals = introDiscount.maxRecurringIntervals
@@ -1892,7 +2149,7 @@ const PlanManagerOverlay: React.FC<{
                         {introOfferLabel && (
                           <div className="pm-inline-checkout__intro-offer" title={introDiscount?.name ?? undefined}>
                             <i className="fas fa-tags" aria-hidden></i>
-                            <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+                            <span>{introDiscount?.name ? `${introDiscount.name}` : introOfferLabel}</span>
                           </div>
                         )}
 
@@ -1906,12 +2163,21 @@ const PlanManagerOverlay: React.FC<{
                                 <span className="pm-inline-checkout__addon-free">FREE</span>
                               </div>
                             ))}
-                            {cartAddons.map(addon => (
-                              <div key={addon.slug} className="pm-inline-checkout__addon-row">
-                                <span><i className="fas fa-bolt"></i> {addon.name}</span>
-                                <span>${(addon.priceCents / 100).toFixed(2)}</span>
-                              </div>
-                            ))}
+                            {cartAddons.map(addon => {
+                              const addonPkg: any = snap.catalogPackages.find(p => p.id === addon.slug)
+                              const addonPrices: any[] = Array.isArray(addonPkg?.prices) ? addonPkg.prices : []
+                              const addonPrice = (typeof addon.priceId === 'number'
+                                ? addonPrices.find((pr: any) => pr.id === addon.priceId)
+                                : null) ?? addonPrices.find((pr: any) => pr.is_default) ?? addonPrices[0] ?? null
+                              const addonPaddleId = paddlePriceIdOf(addonPrice, addonPkg)
+                              const addonLoc = addonPaddleId ? catalogPrices?.byPaddlePriceId?.[addonPaddleId] ?? null : null
+                              return (
+                                <div key={addon.slug} className="pm-inline-checkout__addon-row">
+                                  <span><i className="fas fa-bolt"></i> {addon.name}</span>
+                                  <span>{addonLoc ? addonLoc.formatted : `$${(addon.priceCents / 100).toFixed(2)}`}</span>
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
 
@@ -1988,6 +2254,7 @@ const PlanManagerOverlay: React.FC<{
                   isTrialEligible={snap.isTrialEligible}
                   purchasingId={purchasingProductId}
                   requiredFeature={intent?.requiredFeature ?? null}
+                  localizedPrices={catalogPrices?.byPaddlePriceId ?? null}
                   onSubscribe={(planId, priceId) => plugin.subscribeToPlan(planId, priceId)}
                   onCancel={() => plugin.cancelSubscription()}
                   onReactivate={() => plugin.reactivateSubscription()}
@@ -1998,6 +2265,7 @@ const PlanManagerOverlay: React.FC<{
                 <TopUpSection
                   packages={visiblePackages}
                   purchasingId={purchasingProductId}
+                  localizedPrices={catalogPrices?.byPaddlePriceId ?? null}
                   onPurchase={(packageId) => plugin.purchaseCredits(packageId)}
                 />
               )}
@@ -2299,7 +2567,9 @@ const UpgradePromoBanner: React.FC<{
   planCtx: ReturnType<typeof selectPlanState>
   plans: ReturnType<typeof selectVisiblePlans>
   onUpgrade: () => void
-}> = ({ planCtx, plans, onUpgrade }) => {
+  /** Localized list prices keyed by Paddle price id; null = USD fallback. */
+  localizedPrices: Record<string, LocalizedCatalogPrice> | null
+}> = ({ planCtx, plans, onUpgrade, localizedPrices }) => {
   // Pick the top-tier plan (highest monthly price).
   const topPlan = React.useMemo(() => {
     if (!plans || plans.length === 0) return null
@@ -2308,15 +2578,32 @@ const UpgradePromoBanner: React.FC<{
 
   // ── Pricing ──────────────────────────────────────────────────────────
   const priceCents = topPlan?.priceUsd ?? 0
+  // Localized list price for the top plan (batched Paddle PricePreview),
+  // with USD fallback until it resolves / when Paddle is unavailable.
+  const topPrices: any[] = Array.isArray(topPlan?.prices) ? topPlan.prices : []
+  const topSelectedPrice = topPrices.find((pr: any) => pr.is_default) ?? topPrices[0] ?? null
+  const topPaddleId = paddlePriceIdOf(topSelectedPrice, topPlan)
+  const localized = topPaddleId ? localizedPrices?.[topPaddleId] ?? null : null
+
   const introDiscount = (topPlan?.introDiscounts ?? [])[0] ?? null
-  let discountedCents: number | null = null
+  let discountedPriceLabel: string | null = null
   let introOfferLabel: string | null = null
   if (introDiscount && priceCents > 0) {
     const isPct = introDiscount.discountType === 'percentage'
-    const dc = isPct
-      ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
-      : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
-    if (dc < priceCents) discountedCents = dc
+    // Localize the discounted price for percentage offers (exact off the
+    // localized base). Fixed-amount discounts are USD, so when localized we
+    // keep the base price only rather than mixing currencies.
+    if (localized) {
+      if (isPct) {
+        const dm = Math.max(0, Math.floor(localized.rawMinor * (1 - introDiscount.amount / 100)))
+        if (dm < localized.rawMinor) discountedPriceLabel = formatPaddleMinor(dm, localized.currencyCode)
+      }
+    } else {
+      const dc = isPct
+        ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
+        : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
+      if (dc < priceCents) discountedPriceLabel = `$${(dc / 100).toFixed(2)}`
+    }
     const unit = topPlan?.billingInterval === 'year' ? 'year' : 'month'
     const intervals = introDiscount.maxRecurringIntervals
     const duration = !introDiscount.recur || !intervals || intervals === 1
@@ -2325,9 +2612,10 @@ const UpgradePromoBanner: React.FC<{
     introOfferLabel = isPct
       ? `${Math.round(introDiscount.amount)}% off ${duration}`
       : `$${introDiscount.amount.toFixed(2)} off ${duration}`
+
+    introOfferLabel = introDiscount.name ? `${introDiscount.name}` : introOfferLabel
   }
-  const fullPriceLabel = priceCents > 0 ? `$${(priceCents / 100).toFixed(2)}` : null
-  const discountedPriceLabel = discountedCents != null ? `$${(discountedCents / 100).toFixed(2)}` : null
+  const fullPriceLabel = localized ? localized.formatted : (priceCents > 0 ? `$${(priceCents / 100).toFixed(2)}` : null)
   const cadence = topPlan?.billingInterval === 'year' ? 'per year' : 'per month'
 
   // ── Free credits ─────────────────────────────────────────────────────
@@ -2717,7 +3005,9 @@ const PlanCard: React.FC<{
   onSubscribe: (planId: string, priceId?: number) => void
   onCancel: () => void
   onReactivate: () => void
-}> = ({ plan, isSubscriptionCurrent, accessGroup, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel, onReactivate }) => {
+  /** Localized list prices keyed by Paddle price id; null = USD fallback. */
+  localizedPrices: Record<string, LocalizedCatalogPrice> | null
+}> = ({ plan, isSubscriptionCurrent, accessGroup, isRecommended, isPurchasing, anyPurchasing, isTrialEligible, cancelledNotice, onSubscribe, onCancel, onReactivate, localizedPrices }) => {
   const pricesArr: any[] = Array.isArray(plan.prices) ? plan.prices : []
   const activePrices = pricesArr.filter((pr: any) => pr.is_active !== false)
   const hasMonthly = activePrices.some((pr: any) => pr.billing_interval === 'month')
@@ -2731,13 +3021,28 @@ const PlanCard: React.FC<{
   const selectedInterval: string = selectedPrice?.billing_interval ?? plan.billingInterval ?? 'month'
   const selectedPriceId: number | undefined = typeof selectedPrice?.id === 'number' ? selectedPrice.id : undefined
 
+  // Localized list price for the selected cadence (from the batched Paddle
+  // PricePreview). When absent we fall back to the static USD `price_cents`.
+  const selectedPaddleId = paddlePriceIdOf(selectedPrice, plan)
+  const localized = selectedPaddleId ? localizedPrices?.[selectedPaddleId] ?? null : null
+
   const planSavings = computeYearlySavings(plan)
   const monthlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'month')
   const yearlyPrice = activePrices.find((pr: any) => pr.billing_interval === 'year')
   let savingsBadge: string | null = null
   if (planSavings && planSavings.percent > 0 && monthlyPrice && yearlyPrice && cadence === 'year') {
-    const dollarsSaved = Math.max(0, (monthlyPrice.price_cents * 12 - yearlyPrice.price_cents) / 100)
-    const dollarLabel = dollarsSaved >= 1 ? `$${dollarsSaved.toFixed(dollarsSaved % 1 === 0 ? 0 : 2)}` : null
+    // Prefer localized savings (both cadences localized) for currency
+    // consistency; otherwise fall back to the USD computation.
+    const mLoc = localizedPrices?.[paddlePriceIdOf(monthlyPrice, plan) ?? ''] ?? null
+    const yLoc = localizedPrices?.[paddlePriceIdOf(yearlyPrice, plan) ?? ''] ?? null
+    let dollarLabel: string | null = null
+    if (mLoc && yLoc) {
+      const savedMinor = Math.max(0, mLoc.rawMinor * 12 - yLoc.rawMinor)
+      if (savedMinor > 0) dollarLabel = formatPaddleMinor(savedMinor, mLoc.currencyCode)
+    } else {
+      const dollarsSaved = Math.max(0, (monthlyPrice.price_cents * 12 - yearlyPrice.price_cents) / 100)
+      if (dollarsSaved >= 1) dollarLabel = `$${dollarsSaved.toFixed(dollarsSaved % 1 === 0 ? 0 : 2)}`
+    }
     const parts: string[] = []
     if (dollarLabel) parts.push(`Save ${dollarLabel} / yr`)
     else parts.push(`Save ${planSavings.percent}%`)
@@ -2745,7 +3050,11 @@ const PlanCard: React.FC<{
     savingsBadge = parts.join(' · ')
   }
 
-  const priceLabel = selectedPriceCents === 0 ? 'Free' : `$${(selectedPriceCents / 100).toFixed(2)}`
+  const priceLabel = selectedPriceCents === 0
+    ? 'Free'
+    : localized
+      ? localized.formatted
+      : `$${(selectedPriceCents / 100).toFixed(2)}`
   const cadenceLabel = selectedPriceCents === 0
     ? 'forever'
     : selectedInterval === 'year' ? 'per year' : 'per month'
@@ -2760,11 +3069,22 @@ const PlanCard: React.FC<{
   let introOfferLabel: string | null = null
   if (introDiscount && !isFree && selectedPriceCents > 0) {
     const isPct = introDiscount.discountType === 'percentage'
-    const discountedCents = isPct
-      ? Math.max(0, Math.floor(selectedPriceCents * (1 - introDiscount.amount / 100)))
-      : Math.max(0, selectedPriceCents - Math.round(introDiscount.amount * 100))
-    if (discountedCents < selectedPriceCents) {
-      discountedPriceLabel = `$${(discountedCents / 100).toFixed(2)}`
+    // Localize the crossed price only for percentage discounts (exact off the
+    // localized base). Fixed-amount discounts are USD-denominated, so when a
+    // localized currency is in play we keep the base price localized and skip
+    // the crossed price rather than mixing currencies.
+    if (localized) {
+      if (isPct) {
+        const discountedMinor = Math.max(0, Math.floor(localized.rawMinor * (1 - introDiscount.amount / 100)))
+        if (discountedMinor < localized.rawMinor) discountedPriceLabel = formatPaddleMinor(discountedMinor, localized.currencyCode)
+      }
+    } else {
+      const discountedCents = isPct
+        ? Math.max(0, Math.floor(selectedPriceCents * (1 - introDiscount.amount / 100)))
+        : Math.max(0, selectedPriceCents - Math.round(introDiscount.amount * 100))
+      if (discountedCents < selectedPriceCents) discountedPriceLabel = `$${(discountedCents / 100).toFixed(2)}`
+    }
+    if (discountedPriceLabel) {
       const intervals = introDiscount.maxRecurringIntervals
       const unit = selectedInterval === 'year' ? 'year' : 'month'
       const duration = !introDiscount.recur || !intervals
@@ -2859,7 +3179,7 @@ const PlanCard: React.FC<{
       {introOfferLabel && (
         <div className="pm-plan__intro-offer" title={introDiscount?.name ?? undefined}>
           <i className="fas fa-tags" aria-hidden></i>
-          <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+          <span>{introDiscount?.name ? `${introDiscount.name}` : introOfferLabel}</span>
         </div>
       )}
       {(plan.introCreditPackages ?? []).length > 0 && (
@@ -2940,6 +3260,142 @@ const PlanCard: React.FC<{
   )
 }
 
+/**
+ * One line of a localized cart price preview (per Paddle line item).
+ * Amounts are in the currency's minor units (e.g. cents); the `formatted*`
+ * strings are localized for display.
+ */
+interface CartPreviewLine {
+  paddlePriceId: string
+  slug: string
+  name: string
+  quantity: number
+  formattedSubtotal: string
+  formattedDiscount: string
+  formattedTotal: string
+  rawSubtotal: number
+  rawDiscount: number
+  rawTotal: number
+  hasDiscount: boolean
+}
+
+/** Aggregated, localized totals for the whole cart from Paddle PricePreview. */
+interface CartPricePreview {
+  currencyCode: string
+  lineItems: CartPreviewLine[]
+  rawSubtotal: number
+  rawDiscount: number
+  rawTax: number
+  rawTotal: number
+  formattedSubtotal: string
+  formattedDiscount: string
+  formattedTax: string
+  formattedTotal: string
+  hasDiscount: boolean
+  hasTax: boolean
+}
+
+/**
+ * Format an amount given in a currency's minor units (Paddle convention)
+ * into a localized currency string. Reads the currency's fraction digits so
+ * zero-decimal currencies (e.g. JPY) render correctly.
+ */
+function formatPaddleMinor(minor: number, currencyCode: string): string {
+  try {
+    const fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode })
+    const digits = fmt.resolvedOptions().maximumFractionDigits ?? 2
+    return fmt.format(minor / Math.pow(10, digits))
+  } catch {
+    return `${(minor / 100).toFixed(2)} ${currencyCode}`
+  }
+}
+
+/** A single product's localized list price from the batched catalog preview. */
+interface LocalizedCatalogPrice {
+  paddlePriceId: string
+  /** Pre-tax subtotal in the currency's minor units. */
+  rawMinor: number
+  currencyCode: string
+  /** Localized, formatted subtotal string for display. */
+  formatted: string
+}
+
+/** Localized list prices for the whole catalog, keyed by Paddle price id. */
+interface CatalogPricePreview {
+  currencyCode: string
+  byPaddlePriceId: Record<string, LocalizedCatalogPrice>
+}
+
+/** Extract a raw price object's Paddle external price id (falls back to the product's mapped top-level id). */
+function paddlePriceIdOf(price: any, product: any): string | null {
+  const fromPrice = price?.providers?.find((pr: any) => pr.slug === 'paddle')?.external_price_id
+  if (fromPrice) return fromPrice
+  return product?.providers?.find((pr: any) => pr.slug === 'paddle')?.priceId ?? null
+}
+
+/**
+ * Normalize a raw Paddle PricePreview response into {@link CartPricePreview}.
+ * Paddle returns per-line totals only, so the grand totals are summed from
+ * the line items and formatted with {@link formatPaddleMinor}. `resolved`
+ * maps each Paddle price id back to its cart item for display names.
+ */
+function normalizePricePreview(
+  result: any,
+  resolved: Array<{ item: CartItem; paddlePriceId: string | null }>
+): CartPricePreview | null {
+  const data = result?.data
+  const lineItemsRaw: any[] = data?.details?.lineItems ?? []
+  if (lineItemsRaw.length === 0) return null
+  const currencyCode: string = data?.currencyCode ?? 'USD'
+
+  const byPriceId = new Map<string, CartItem>()
+  resolved.forEach(r => { if (r.paddlePriceId) byPriceId.set(r.paddlePriceId, r.item) })
+
+  const lineItems: CartPreviewLine[] = lineItemsRaw.map((li: any) => {
+    const priceId: string = li?.price?.id ?? ''
+    const cartItem = byPriceId.get(priceId)
+    const totals = li?.totals ?? {}
+    const rawSubtotal = Number(totals.subtotal ?? 0) || 0
+    const rawDiscount = Number(totals.discount ?? 0) || 0
+    const rawTotal = Number(totals.total ?? 0) || 0
+    return {
+      paddlePriceId: priceId,
+      slug: cartItem?.slug ?? priceId,
+      name: cartItem?.name ?? li?.product?.name ?? li?.price?.name ?? 'Item',
+      quantity: Number(li?.quantity ?? 1) || 1,
+      // Format with Intl (not Paddle's `formattedTotals`) for currency-display
+      // consistency and to avoid locale-ambiguous strings (e.g. CLP "$18.393").
+      formattedSubtotal: formatPaddleMinor(rawSubtotal, currencyCode),
+      formattedDiscount: formatPaddleMinor(rawDiscount, currencyCode),
+      formattedTotal: formatPaddleMinor(rawTotal, currencyCode),
+      rawSubtotal,
+      rawDiscount,
+      rawTotal,
+      hasDiscount: rawDiscount > 0
+    }
+  })
+
+  const rawSubtotal = lineItems.reduce((s, l) => s + l.rawSubtotal, 0)
+  const rawDiscount = lineItems.reduce((s, l) => s + l.rawDiscount, 0)
+  const rawTax = lineItemsRaw.reduce((s: number, li: any) => s + (Number(li?.totals?.tax ?? 0) || 0), 0)
+  const rawTotal = lineItems.reduce((s, l) => s + l.rawTotal, 0)
+
+  return {
+    currencyCode,
+    lineItems,
+    rawSubtotal,
+    rawDiscount,
+    rawTax,
+    rawTotal,
+    formattedSubtotal: formatPaddleMinor(rawSubtotal, currencyCode),
+    formattedDiscount: formatPaddleMinor(rawDiscount, currencyCode),
+    formattedTax: formatPaddleMinor(rawTax, currencyCode),
+    formattedTotal: formatPaddleMinor(rawTotal, currencyCode),
+    hasDiscount: rawDiscount > 0,
+    hasTax: rawTax > 0
+  }
+}
+
 // ─── Cart upsell step ───────────────────────────────────────────────
 // Shown after the user picks a paid plan. Offers credit packages to
 // bundle into a single Paddle transaction (multi-item checkout).
@@ -2953,36 +3409,96 @@ const CartUpsellStep: React.FC<{
   const addedSlugs = new Set(cart.filter(i => i.productType === 'credit_package').map(i => i.slug))
   const cartTotal = cart.reduce((sum, item) => sum + item.priceCents, 0)
 
-  // Look up intro discount from the plan catalog to show promo banner.
+  // Look up intro discount from the plan catalog to merchandise the promo.
   const planObj = planItem ? plans.find((p: any) => p.id === planItem.slug) : null
   const introDiscount = (planObj?.introDiscounts ?? [])[0] ?? null
 
-  // Compute the discounted first-payment price so we can show the crossed-out
-  // regular price and the actual amount the user pays today.
-  // Credit packages are one-time and not subject to the subscription discount.
+  // ── Static USD fallback ───────────────────────────────────────────────
+  // Used while the localized Paddle preview is loading, or when Paddle is
+  // unavailable. Mirrors the old hardcoded math so the cart is never blank.
   const planPriceCents = planItem?.priceCents ?? 0
   const nonPlanCents = cartTotal - planPriceCents
-  let discountedFirstPaymentCents: number | null = null
-  let renewalLabel: string | null = null // "then $X.XX/mo after first 3 months"
+  let fallbackDiscountedCents: number | null = null
   if (introDiscount && planPriceCents > 0) {
     const isPct = introDiscount.discountType === 'percentage'
     const discountedPlanCents = isPct
       ? Math.max(0, Math.floor(planPriceCents * (1 - introDiscount.amount / 100)))
       : Math.max(0, planPriceCents - Math.round(introDiscount.amount * 100))
     if (discountedPlanCents < planPriceCents) {
-      discountedFirstPaymentCents = discountedPlanCents + nonPlanCents
-      const interval = planItem?.billingInterval ?? 'month'
-      const intervals = introDiscount.maxRecurringIntervals
-      const durationLabel = !introDiscount.recur || !intervals
-        ? `first ${interval}`
-        : intervals === 1
-          ? `first ${interval}`
-          : `first ${intervals} ${interval}s`
-      renewalLabel = `then $${(planPriceCents / 100).toFixed(2)}/${interval} after ${durationLabel}`
+      fallbackDiscountedCents = discountedPlanCents + nonPlanCents
     }
   }
-  const hasDiscount = discountedFirstPaymentCents !== null && discountedFirstPaymentCents < cartTotal
-  const checkoutDisplayCents = hasDiscount ? discountedFirstPaymentCents! : cartTotal
+
+  // ── Localized Paddle price preview ────────────────────────────────────
+  // Re-fetched whenever the cart contents change. Gives us the exact
+  // currency, discounts, and tax Paddle will charge at checkout.
+  const [preview, setPreview] = useState<CartPricePreview | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  // Stable signature so the effect only fires on real cart changes.
+  const cartKey = cart.map(i => `${i.slug}:${i.priceId ?? ''}`).join('|')
+  useEffect(() => {
+    let cancelled = false
+    setPreviewLoading(true)
+    plugin.previewCartPrices(cart)
+      .then(res => { if (!cancelled) setPreview(res) })
+      .catch(() => { if (!cancelled) setPreview(null) })
+      .finally(() => { if (!cancelled) setPreviewLoading(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
+
+  // Localized per-package prices for the upsell grid (no discount applied).
+  const [addonPrices, setAddonPrices] = useState<Record<string, string> | null>(null)
+  const addonKey = packages.map((p: any) => p.id).join('|')
+  useEffect(() => {
+    let cancelled = false
+    if (packages.length === 0) { setAddonPrices(null); return }
+    plugin.previewProductPrices(
+      packages.map((p: any) => ({ slug: p.id, productType: 'credit_package' as const }))
+    )
+      .then(res => { if (!cancelled) setAddonPrices(res) })
+      .catch(() => { if (!cancelled) setAddonPrices(null) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addonKey])
+
+  // Map preview lines back to slugs for per-row localized prices.
+  const previewBySlug = new Map<string, CartPreviewLine>()
+  preview?.lineItems.forEach(li => previewBySlug.set(li.slug, li))
+
+  const localized = preview !== null
+  const hasDiscount = localized
+    ? preview!.hasDiscount
+    : (fallbackDiscountedCents !== null && fallbackDiscountedCents < cartTotal)
+
+  // Renewal note — after the discounted intervals the plan bills full price.
+  let renewalLabel: string | null = null
+  if (introDiscount && hasDiscount && planItem) {
+    const interval = planItem.billingInterval ?? 'month'
+    const intervals = introDiscount.maxRecurringIntervals
+    const durationLabel = !introDiscount.recur || !intervals
+      ? `first ${interval}`
+      : intervals === 1 ? `first ${interval}` : `first ${intervals} ${interval}s`
+    const planLine = previewBySlug.get(planItem.slug)
+    const fullPlanPrice = planLine ? planLine.formattedSubtotal : `$${(planPriceCents / 100).toFixed(2)}`
+    renewalLabel = `then ${fullPlanPrice}/${interval} after ${durationLabel}`
+  }
+
+  // Display strings — prefer localized, fall back to USD.
+  const fmtItemSubtotal = (item: CartItem): string => {
+    const li = previewBySlug.get(item.slug)
+    return li ? li.formattedSubtotal : `$${(item.priceCents / 100).toFixed(2)}`
+  }
+  const subtotalStr = localized ? preview!.formattedSubtotal : `$${(cartTotal / 100).toFixed(2)}`
+  const discountStr = localized
+    ? preview!.formattedDiscount
+    : `$${(((fallbackDiscountedCents !== null ? cartTotal - fallbackDiscountedCents : 0)) / 100).toFixed(2)}`
+  const totalDueStr = localized
+    ? preview!.formattedTotal
+    : `$${((fallbackDiscountedCents ?? cartTotal) / 100).toFixed(2)}`
+  const discountPctLabel = introDiscount && introDiscount.discountType === 'percentage'
+    ? ` (${Math.round(introDiscount.amount)}%)`
+    : ''
 
   const addPackage = (pkg: any) => {
     plugin.store.send({
@@ -3026,7 +3542,7 @@ const CartUpsellStep: React.FC<{
             <li key={item.slug} className="pm-cart-upsell__item">
               <div className="pm-cart-upsell__item-info">
                 <span className="pm-cart-upsell__item-name">{item.name}</span>
-                <span className="pm-cart-upsell__item-price">${(item.priceCents / 100).toFixed(2)}</span>
+                <span className="pm-cart-upsell__item-price">{fmtItemSubtotal(item)}</span>
               </div>
               {item.productType === 'credit_package' && (
                 <button
@@ -3040,35 +3556,55 @@ const CartUpsellStep: React.FC<{
             </li>
           ))}
         </ul>
+
+        {/* Price breakdown — mirrors what Paddle will charge */}
+        {(hasDiscount || (localized && preview!.hasTax)) && (
+          <div className="pm-cart-upsell__breakdown">
+            {hasDiscount && (
+              <div className="pm-cart-upsell__breakdown-row pm-cart-upsell__breakdown-row--discount">
+                <span>Discount{discountPctLabel}</span>
+                <span>−{discountStr}</span>
+              </div>
+            )}
+            {localized && preview!.hasTax && (
+              <div className="pm-cart-upsell__breakdown-row">
+                <span>Tax</span>
+                <span>{preview!.formattedTax}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="pm-cart-upsell__total">
-          <span>Total</span>
+          <span>{hasDiscount ? 'Due today' : 'Total'}</span>
           <div className="pm-cart-upsell__total-right">
             {hasDiscount ? (
               <>
-                <span className="pm-cart-upsell__total-original">${(cartTotal / 100).toFixed(2)}</span>
-                <span className="pm-cart-upsell__total-discounted">${(discountedFirstPaymentCents! / 100).toFixed(2)}</span>
+                <span className="pm-cart-upsell__total-original">{subtotalStr}</span>
+                <span className="pm-cart-upsell__total-discounted">{totalDueStr}</span>
               </>
             ) : (
-              <span>${(cartTotal / 100).toFixed(2)}</span>
+              <span>{totalDueStr}</span>
             )}
           </div>
         </div>
         {renewalLabel && (
           <div className="pm-cart-upsell__renewal-note">{renewalLabel}</div>
         )}
+        {previewLoading && (
+          <div className="pm-cart-upsell__price-loading">
+            <i className="fas fa-spinner fa-spin"></i>
+            <span>Updating prices…</span>
+          </div>
+        )}
 
-        {/* Discount notice — anchored to the total so it's visually connected */}
+        {/* Discount notice — names the promo; the breakdown above shows the math */}
         {introDiscount && (
           <div className="pm-cart-upsell__discount-notice">
             <i className="fas fa-tags"></i>
             <div>
               <strong>{introDiscount.name}</strong>
-              <span>
-                {introDiscount.discountType === 'percentage'
-                  ? ` — ${Math.round(introDiscount.amount)}% off`
-                  : ` — $${introDiscount.amount.toFixed(2)} off`}
-                {' '}will be applied at checkout
-              </span>
+
             </div>
           </div>
         )}
@@ -3115,7 +3651,7 @@ const CartUpsellStep: React.FC<{
                   </span>
                   <span className="pm-cart-upsell__addon-label">AI credits</span>
                   <span className="pm-cart-upsell__addon-price">
-                    ${((pkg.priceUsd ?? 0) / 100).toFixed(2)}
+                    {addonPrices?.[pkg.id] ?? `$${((pkg.priceUsd ?? 0) / 100).toFixed(2)}`}
                   </span>
                   <span className="pm-cart-upsell__addon-action">
                     {isAdded ? <><i className="fas fa-check"></i> Added</> : <><i className="fas fa-plus"></i> Add</>}
@@ -3130,7 +3666,7 @@ const CartUpsellStep: React.FC<{
       {/* Proceed to checkout */}
       <button className="pm-cart-upsell__checkout-btn" onClick={proceed}>
         <i className="fas fa-lock"></i>
-        <span>Proceed to checkout — ${(checkoutDisplayCents / 100).toFixed(2)}</span>
+        <span>Proceed to checkout — {totalDueStr}</span>
       </button>
       <div className="pm-cart-upsell__note">
         <i className="fas fa-info-circle"></i>
@@ -3157,7 +3693,9 @@ const PlansSection: React.FC<{
   onReactivate: () => void
   /** When the active paid sub is set to cancel, show "will not renew" copy. */
   cancelledNotice: { expiresOn: string | null } | null
-}> = ({ plans, currentPlanId, userFeatureGroups, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, onReactivate, cancelledNotice }) => {
+  /** Localized list prices keyed by Paddle price id (from batched PricePreview); null = USD fallback. */
+  localizedPrices: Record<string, LocalizedCatalogPrice> | null
+}> = ({ plans, currentPlanId, userFeatureGroups, isTrialEligible, purchasingId, requiredFeature, onSubscribe, onCancel, onReactivate, cancelledNotice, localizedPrices }) => {
   if (plans.length === 0) {
     return (
       <div className="pm-empty">
@@ -3219,6 +3757,7 @@ const PlansSection: React.FC<{
             anyPurchasing={anyPurchasing}
             isTrialEligible={isTrialEligible}
             cancelledNotice={cancelledNotice}
+            localizedPrices={localizedPrices}
             onSubscribe={onSubscribe}
             onCancel={onCancel}
             onReactivate={onReactivate}
@@ -3250,7 +3789,9 @@ const TopUpSection: React.FC<{
   packages: any[]
   purchasingId: string | null
   onPurchase: (packageId: string) => void
-}> = ({ packages, purchasingId, onPurchase }) => {
+  /** Localized list prices keyed by Paddle price id; null = USD fallback. */
+  localizedPrices: Record<string, LocalizedCatalogPrice> | null
+}> = ({ packages, purchasingId, onPurchase, localizedPrices }) => {
   if (packages.length === 0) {
     return (
       <div className="pm-empty">
@@ -3273,8 +3814,18 @@ const TopUpSection: React.FC<{
           const credits = Number(t?.credits) || 0
           const priceCents = Number(t?.priceUsd) || 0
           const isPopular = t.popular === true || t.popular === 1 || t.popular === '1'
-          const price = `$${(priceCents / 100).toFixed(2)}`
-          const perK = credits > 0 ? ((priceCents / 100) / (credits / 1000)).toFixed(2) : '—'
+          // Localized price for this package (batched Paddle PricePreview),
+          // with USD fallback while it loads / when Paddle is unavailable.
+          const pkgPrices: any[] = Array.isArray(t?.prices) ? t.prices : []
+          const pkgPrice = pkgPrices.find((pr: any) => pr.is_default) ?? pkgPrices[0] ?? null
+          const pkgPaddleId = paddlePriceIdOf(pkgPrice, t)
+          const loc = pkgPaddleId ? localizedPrices?.[pkgPaddleId] ?? null : null
+          const price = loc ? loc.formatted : `$${(priceCents / 100).toFixed(2)}`
+          const perKLabel = credits <= 0
+            ? 'Pricing unavailable'
+            : loc
+              ? `${formatPaddleMinor(loc.rawMinor / (credits / 1000), loc.currencyCode)} per 1k credits`
+              : `$${((priceCents / 100) / (credits / 1000)).toFixed(2)} per 1k credits`
           const isPurchasing = purchasingId === t.id
           // Disable cards we can't price/buy meaningfully so the click handler
           // never sends a malformed purchase.
@@ -3298,7 +3849,7 @@ const TopUpSection: React.FC<{
                 <span className="pm-topup__credits-num">{credits.toLocaleString()}</span>
                 <span className="pm-topup__credits-unit">credits</span>
               </div>
-              <div className="pm-topup__perk">{credits > 0 ? `$${perK} per 1k credits` : 'Pricing unavailable'}</div>
+              <div className="pm-topup__perk">{perKLabel}</div>
               <span className="pm-topup__buy">
                 {isPurchasing
                   ? <><i className="fas fa-spinner fa-spin"></i> Opening…</>

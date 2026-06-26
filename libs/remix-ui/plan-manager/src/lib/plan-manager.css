@@ -768,7 +768,9 @@
 .pm-plan__price {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
+  row-gap: 2px;
   padding: 14px 0 2px;
   border-top: 0.5px solid var(--bs-border-color);
 }
@@ -921,8 +923,11 @@
 }
 .pm-plan__trial-badge i { font-size: 10px; }
 
-/* Strikethrough original price when an intro discount applies */
+/* Strikethrough original price when an intro discount applies. Takes its own
+   line so the larger discounted price has full card width — important for
+   longer non-$ currency strings (e.g. "THB 666.88", "CLP 18,393"). */
 .pm-plan__price-was {
+  flex-basis: 100%;
   font-size: 18px;
   font-variant-numeric: tabular-nums;
   color: var(--bs-secondary-color);
@@ -3161,6 +3166,37 @@
   font-size: 12px;
   color: var(--bs-secondary-color);
 }
+
+.pm-cart-upsell__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+}
+
+.pm-cart-upsell__breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--bs-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.pm-cart-upsell__breakdown-row--discount {
+  color: var(--bs-success);
+  font-weight: 500;
+}
+
+.pm-cart-upsell__price-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+}
+.pm-cart-upsell__price-loading > i { font-size: 10px; }
+
 
 .pm-cart-upsell__discount-notice,
 .pm-cart-upsell__bonus-notice {

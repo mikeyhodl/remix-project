@@ -292,6 +292,58 @@ export function isPaddleReady(): boolean {
   return !!cache.instance
 }
 
+/** A single item to price-preview — Paddle expects camelCase fields. */
+export interface PricePreviewItemInput {
+  priceId: string
+  quantity: number
+}
+
+/** Request shape for {@link previewPrices}. Mirrors Paddle.PricePreview(). */
+export interface PricePreviewInput {
+  items: PricePreviewItemInput[]
+  /** Paddle discount id (`dsc_...`). Paddle applies any `restrictTo` itself. */
+  discountId?: string
+  /** Override auto IP geo-location with an explicit address. */
+  address?: { countryCode: string; postalCode?: string }
+  /** Force a currency instead of letting Paddle localize. */
+  currencyCode?: string
+}
+
+/**
+ * Preview localized prices for a set of items.
+ *
+ * Thin wrapper over `Paddle.PricePreview()`. When `address`/`currencyCode`
+ * are omitted, Paddle auto-detects the visitor's location from their IP and
+ * returns prices (and discounts) localized to that region — which is exactly
+ * what the hosted checkout will charge. Returns the raw Paddle response so
+ * callers can read `data.currencyCode` and `data.details.lineItems[]`.
+ *
+ * @param paddle - Initialized Paddle instance (from `getPaddle()`)
+ * @param input - Items + optional discount/location
+ */
+export async function previewPrices(
+  paddle: Paddle,
+  input: PricePreviewInput
+): Promise<any> {
+  if (!paddle) {
+    throw new Error('Paddle not initialized')
+  }
+  if (!input.items || input.items.length === 0) {
+    throw new Error('PricePreview requires at least one item')
+  }
+  const request: Record<string, unknown> = {
+    items: input.items.map((i) => ({ priceId: i.priceId, quantity: i.quantity }))
+  }
+  if (input.discountId) request.discountId = input.discountId
+  if (input.address) request.address = input.address
+  if (input.currencyCode) request.currencyCode = input.currencyCode
+
+  // `PricePreview` exists on the runtime instance; the published types lag
+  // behind in some @paddle/paddle-js releases, so reach through `any`.
+  return (paddle as unknown as { PricePreview: (req: unknown) => Promise<any> })
+    .PricePreview(request)
+}
+
 /**
  * Reset Paddle singleton (useful for testing)
  */
@@ -301,3 +353,4 @@ export function resetPaddle(): void {
   cache.key = undefined
   cache.listeners = []
 }
+
