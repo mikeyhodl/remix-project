@@ -910,6 +910,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     case 'checkout.loaded' as any:
     case 'checkout.customer.updated' as any:
     case 'checkout.updated' as any: {
+      console.log('[PlanManager] Paddle checkout update', event.name, event.data)
       const breakdown = this.parseCheckoutBreakdown(event)
       if (breakdown) this.store.send({ type: 'CHECKOUT_BREAKDOWN', breakdown })
       break
@@ -1877,7 +1878,7 @@ const PlanManagerOverlay: React.FC<{
                         {introOfferLabel && (
                           <div className="pm-inline-checkout__intro-offer" title={introDiscount?.name ?? undefined}>
                             <i className="fas fa-tags" aria-hidden></i>
-                            <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+                            <span>{introDiscount?.name ? `${introDiscount.name}` : introOfferLabel}</span>
                           </div>
                         )}
 
@@ -2844,7 +2845,7 @@ const PlanCard: React.FC<{
       {introOfferLabel && (
         <div className="pm-plan__intro-offer" title={introDiscount?.name ?? undefined}>
           <i className="fas fa-tags" aria-hidden></i>
-          <span>{introDiscount?.name ? `${introDiscount.name} · ${introOfferLabel}` : introOfferLabel}</span>
+          <span>{introDiscount?.name ? `${introDiscount.name}` : introOfferLabel}</span>
         </div>
       )}
       {(plan.introCreditPackages ?? []).length > 0 && (
