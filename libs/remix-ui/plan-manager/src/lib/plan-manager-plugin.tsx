@@ -3444,7 +3444,6 @@ const CartUpsellStep: React.FC<{
       .catch(() => { if (!cancelled) setPreview(null) })
       .finally(() => { if (!cancelled) setPreviewLoading(false) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartKey])
 
   // Localized per-package prices for the upsell grid (no discount applied).
@@ -3459,7 +3458,6 @@ const CartUpsellStep: React.FC<{
       .then(res => { if (!cancelled) setAddonPrices(res) })
       .catch(() => { if (!cancelled) setAddonPrices(null) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addonKey])
 
   // Map preview lines back to slugs for per-row localized prices.
