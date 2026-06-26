@@ -920,6 +920,39 @@ export interface IntroDiscount {
   recur: boolean
   /** How many billing intervals the discount applies for (null = forever). */
   maxRecurringIntervals: number | null
+  /**
+   * Paddle discount id (`dsc_...`) to pass as `discountId` in a Paddle
+   * `PricePreview` request so the in-app cart can show the same localized,
+   * discounted totals the hosted checkout will charge.
+   */
+  paddleDiscountId?: string | null
+  /**
+   * Paddle product/price IDs (`pro_...` / `pri_...`) the discount is
+   * restricted to. When populated the discount only applies to those line
+   * items (e.g. the subscription); `null`/empty means it applies to the
+   * whole cart. Informational only — Paddle applies the restriction itself
+   * when we pass `discountId` to PricePreview.
+   */
+  restrictTo?: string[] | null
+  /** Raw Paddle discount object as synced from the backend, when available. */
+  paddleRaw?: IntroDiscountPaddleRaw | null
+}
+
+/**
+ * Raw Paddle discount payload echoed by the backend under
+ * `intro_discounts[].paddle_raw`. Only the fields we read are typed; the
+ * rest is preserved via the index signature.
+ */
+export interface IntroDiscountPaddleRaw {
+  id: string
+  type?: string
+  amount?: string
+  currencyCode?: string | null
+  recur?: boolean
+  maximumRecurringIntervals?: number | null
+  restrictTo?: string[] | null
+  enabledForCheckout?: boolean
+  [key: string]: unknown
 }
 
 /**
