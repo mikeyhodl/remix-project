@@ -256,6 +256,9 @@
             ],
             "@remix-ui/thegraph": [
               "libs/remix-ui/thegraph/src/index.ts"
+            ],
+            "@remix-project/remix-zkverify-core": [
+              "libs/remix-zkverify-core/src/index.ts"
             ]
         }
     }
