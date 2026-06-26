@@ -100,8 +100,13 @@ const PlanGuideModal: React.FC<PlanGuideModalProps> = ({ open, onClose, planName
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const replyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => () => { if (replyTimeout.current) clearTimeout(replyTimeout.current) }, [])
+
+  const scrollChatIntoView = useCallback(() => {
+    requestAnimationFrame(() => chatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }, [])
 
   const handleTry = useCallback((demo: PlanGuideDemo) => {
     if (onSendPrompt && demo.prompt) {
@@ -115,15 +120,17 @@ const PlanGuideModal: React.FC<PlanGuideModalProps> = ({ open, onClose, planName
     if (!demo.prompt) {
       setIsTyping(false)
       setMessages([{ role: 'assistant', content: demo.mockReply }])
+      scrollChatIntoView()
       return
     }
     setMessages([{ role: 'user', content: demo.prompt }])
     setIsTyping(true)
+    scrollChatIntoView()
     replyTimeout.current = setTimeout(() => {
       setIsTyping(false)
       setMessages((prev) => [...prev, { role: 'assistant', content: demo.mockReply }])
     }, 1600)
-  }, [onSendPrompt, closeOnTry, onClose])
+  }, [onSendPrompt, closeOnTry, onClose, scrollChatIntoView])
 
   if (!open) return null
 
@@ -166,7 +173,7 @@ const PlanGuideModal: React.FC<PlanGuideModalProps> = ({ open, onClose, planName
 
           {/* Simulated chat (demo only) */}
           {!onSendPrompt && (
-            <div style={{ margin: '0 24px 20px', borderRadius: 12, background: c.s1, border: '0.5px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+            <div ref={chatRef} style={{ margin: '0 24px 20px', borderRadius: 12, background: c.s1, border: '0.5px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', fontSize: 12, fontWeight: 500, color: c.tm }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.gn, animation: 'plgDot 2s ease-in-out infinite' }} />
                 RemixAI Assistant
