@@ -2,6 +2,8 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Form, Button, Alert, Card, Collapse, Spinner } from 'react-bootstrap';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useAuth } from '@remix-ui/app'
+import { Features } from '@remix-api'
 import { toPng } from 'html-to-image';
 import { AppContext } from '../../contexts';
 import { readDappFiles } from '../EditHtmlTemplate';
@@ -18,6 +20,8 @@ import EnsRegistrationModal from './EnsRegistrationModal';
 const REMIX_ENDPOINT_IPFS = endpointUrls.quickdappIpfs;
 
 function DeployPanel(): JSX.Element {
+  const { features } = useAuth()
+  const hasQuickdappPublishPermission = features[Features.DAPP_PUBLISH]?.is_enabled === true
   const intl = useIntl();
   const { appState, dispatch, dappManager, plugin } = useContext(AppContext);
   const { activeDapp } = appState;
@@ -117,6 +121,10 @@ function DeployPanel(): JSX.Element {
   };
 
   const handleIpfsDeploy = async () => {
+    if (!hasQuickdappPublishPermission) {
+      plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.DAPP_PUBLISH })
+      return
+    }
     if (!activeDapp) return;
     setDeployResult({ cid: '', gatewayUrl: '', error: '' });
     setIsDeploying(true);
@@ -347,7 +355,7 @@ function DeployPanel(): JSX.Element {
         </Collapse>
       </Card>
 
-      {displayCid && (
+      {(
         <Card className="mb-2">
           <Card.Header onClick={() => setIsEnsOpen(!isEnsOpen)} style={{ cursor: 'pointer' }} className="d-flex justify-content-between bg-transparent border-0" data-id="ens-section-header">
             Register ENS Name <i className={`fas ${isEnsOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
@@ -368,6 +376,10 @@ function DeployPanel(): JSX.Element {
                 {ensNameError && <small className="text-danger mt-1 d-block">{ensNameError}</small>}
               </Form.Group>
               <Button variant="secondary" className="w-100" onClick={() => {
+                if (!hasQuickdappPublishPermission) {
+                  plugin.call('planManager', 'open', { reason: 'feature-required', requiredFeature: Features.DAPP_PUBLISH })
+                  return
+                }
                 setEnsResult({ success: '', error: '', txHash: '', domain: '' });
                 trackMatomoEvent(plugin as any, {
                   category: 'quick-dapp-v2',
@@ -376,7 +388,7 @@ function DeployPanel(): JSX.Element {
                   isClick: true
                 });
                 setShowEnsModal(true);
-              }} disabled={!ensName || !!ensNameError}>{ensButtonText}</Button>
+              }} disabled={!displayCid || !ensName || !!ensNameError}>{ensButtonText}</Button>
               <EnsRegistrationModal
                 show={showEnsModal}
                 onHide={() => setShowEnsModal(false)}

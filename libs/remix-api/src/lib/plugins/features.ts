@@ -102,6 +102,9 @@ export const MCP_OPENZEPPELIN = 'mcp:openzeppelin' as const
 /** QuickDapp generation access. */
 export const DAPP_QUICKDAPP = 'dapp:quickdapp' as const
 
+/** QuickDapp puvlish access. */
+export const DAPP_PUBLISH = 'dapp:publish' as const
+
 // ─── Contract Features ──────────────────────────────────────────────────────────
 
 /** ENS contract naming access. */
@@ -176,6 +179,7 @@ export const Features = {
 
   // DApp
   DAPP_QUICKDAPP,
+  DAPP_PUBLISH,
 
   // Contract
   REGISTER_ENS,
@@ -232,6 +236,7 @@ export const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
   [MCP_OPENZEPPELIN]:       'OpenZeppelin',
   // DApp
   [DAPP_QUICKDAPP]:         'QuickDapp Generator',
+  [DAPP_PUBLISH]:           'QuickDapp Publish',
   // Contract
   [REGISTER_ENS]:           'ENS Contract Naming',
   // Skills
