@@ -316,7 +316,7 @@ const STARTER_DEMOS: PlanGuideDemo[] = [
   {
     key: 'ens', name: 'Name with ENS/Enscribe', color: '#f0a030',
     desc: 'Give your deployed contracts a human-readable ENS / Enscribe name.',
-    mockReply: `You now have access to <span class="plg-hl">ENS / Enscribe</span> naming. Give your deployed contracts a human-readable name like <span class="plg-hl">mytoken.eth</span> so they\'re reachable by name instead of a raw address.
+    mockReply: `You now have access to <span class="plg-hl">ENS / Enscribe</span> naming. Give your deployed contracts a human-readable name like <span class="plg-hl">mytoken.eth</span> so they're reachable by name instead of a raw address.
     <video width="500" height="300" controls autoPlay muted style="border:none;outline:none; margin-left:-33px;margin-top:5px" }}>
   <source src="https://github.com/remix-project-org/remix-dynamics/raw/refs/heads/main/gifs/ens-registration.mp4" type="video/mp4">
   Your browser does not support the video tag.
@@ -325,7 +325,7 @@ const STARTER_DEMOS: PlanGuideDemo[] = [
   {
     key: 'cloud', name: 'Cloud Workspaces', color: '#5b9cf5',
     desc: 'Sync your projects to the cloud and open any workspace from any device.',
-    mockReply: `You now have access to <span class="plg-hl">cloud workspaces</span>. Sync your projects to your cloud account and open any workspace from any device — sign in anywhere and it\'ll be waiting for you.<video width="500" height="300" controls autoPlay muted style="border:none;outline:none; margin-left:-33px;margin-top:5px" }}>
+    mockReply: `You now have access to <span class="plg-hl">cloud workspaces</span>. Sync your projects to your cloud account and open any workspace from any device — sign in anywhere and it'll be waiting for you.<video width="500" height="300" controls autoPlay muted style="border:none;outline:none; margin-left:-33px;margin-top:5px" }}>
   <source src="https://github.com/remix-project-org/remix-dynamics/raw/refs/heads/main/gifs/cloud-workspace.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>`
@@ -340,7 +340,7 @@ const PRO_DEMOS: PlanGuideDemo[] = [
     mockReply: `<video width="500" height="300" controls autoPlay muted style="border:none;outline:none; margin-left:-33px;margin-top:5px" }}>
   <source src="https://github.com/remix-project-org/remix-dynamics/raw/refs/heads/main/gifs/audit-contract.mp4" type="video/mp4">
   Your browser does not support the video tag.
-</video>` 
+</video>`
   },
   {
     key: 'gas', name: 'Gas Consumption Checks', color: '#6bdb8a',
