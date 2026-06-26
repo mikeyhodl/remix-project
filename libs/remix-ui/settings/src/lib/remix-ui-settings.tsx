@@ -396,6 +396,7 @@ export const RemixUiSettings = (props: RemixUiSettingsProps) => {
               ...subSection,
               options: subSection.options.filter(option => {
                 // Filter out code analysis popover if user doesn't have the feature
+                //@ts-ignore
                 if (!hasContextualEditor && option.name === 'editor/code-analysis-popover') {
                   return false
                 }
