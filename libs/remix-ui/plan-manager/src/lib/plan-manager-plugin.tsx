@@ -586,11 +586,15 @@ export class PlanManagerPlugin extends ViewPlugin {
       const byPriceId = new Map<string, string>()
       resolved.forEach(r => byPriceId.set(r.paddlePriceId, r.slug))
       const out: Record<string, string> = {}
+      const currencyCode: string = result?.data?.currencyCode ?? 'USD'
       const lineItems: any[] = result?.data?.details?.lineItems ?? []
       lineItems.forEach((li: any) => {
         const pid = li?.price?.id
         const slug = pid ? byPriceId.get(pid) : undefined
-        if (slug) out[slug] = li?.formattedTotals?.subtotal ?? ''
+        // Format with Intl (not Paddle's `formattedTotals`) for consistency
+        // across the UI and to avoid Paddle's locale-ambiguous strings
+        // (e.g. CLP renders as "$18.393" which reads like ~18 dollars).
+        if (slug) out[slug] = formatPaddleMinor(Number(li?.totals?.subtotal ?? 0) || 0, currencyCode)
       })
       return out
     } catch (err) {
@@ -647,6 +651,26 @@ export class PlanManagerPlugin extends ViewPlugin {
       const currencyCode: string = result?.data?.currencyCode ?? 'USD'
       const byPaddlePriceId: Record<string, LocalizedCatalogPrice> = {}
       const lineItems: any[] = result?.data?.details?.lineItems ?? []
+      // Diagnostics: surface exactly what Paddle returns for this region so we
+      // can compare Paddle's own `formattedTotals` (locale-aware on their side)
+      // against our `Intl.NumberFormat` output. They diverge for currencies
+      // that share the `$` glyph (e.g. CAD → Paddle "$" vs Intl "CA$").
+      // Enable with: localStorage.setItem('plan-manager-debug','1') then reload.
+      planManagerLogger.log('[PlanManager:price] previewCatalogPrices result', {
+        currencyCode,
+        countryCode: result?.data?.address?.countryCode ?? result?.data?.customerIpAddress ?? '(auto-geo)',
+        lineItems: lineItems.map((li: any) => {
+          const rawMinor = Number(li?.totals?.subtotal ?? 0) || 0
+          return {
+            priceId: li?.price?.id,
+            productName: li?.product?.name,
+            rawMinorSubtotal: rawMinor,
+            paddleFormatted: li?.formattedTotals?.subtotal,
+            intlFormatted: formatPaddleMinor(rawMinor, currencyCode)
+          }
+        }),
+        rawData: result?.data
+      })
       lineItems.forEach((li: any) => {
         const pid = li?.price?.id
         if (!pid) return
@@ -655,7 +679,12 @@ export class PlanManagerPlugin extends ViewPlugin {
           paddlePriceId: pid,
           rawMinor,
           currencyCode,
-          formatted: li?.formattedTotals?.subtotal ?? formatPaddleMinor(rawMinor, currencyCode)
+          // Always format with Intl for consistency (struck base, computed
+          // discount, and the checkout breakdown all use formatPaddleMinor).
+          // Paddle's own `formattedTotals` is locale-ambiguous for currencies
+          // that share the `$` glyph (CAD "$28.34" vs Intl "CA$28.34") or use
+          // `.` as a thousands separator (CLP "$18.393" == 18,393 CLP).
+          formatted: formatPaddleMinor(rawMinor, currencyCode)
         }
       })
       return { currencyCode, byPaddlePriceId }
@@ -3326,7 +3355,6 @@ function normalizePricePreview(
     const priceId: string = li?.price?.id ?? ''
     const cartItem = byPriceId.get(priceId)
     const totals = li?.totals ?? {}
-    const formatted = li?.formattedTotals ?? {}
     const rawSubtotal = Number(totals.subtotal ?? 0) || 0
     const rawDiscount = Number(totals.discount ?? 0) || 0
     const rawTotal = Number(totals.total ?? 0) || 0
@@ -3335,9 +3363,11 @@ function normalizePricePreview(
       slug: cartItem?.slug ?? priceId,
       name: cartItem?.name ?? li?.product?.name ?? li?.price?.name ?? 'Item',
       quantity: Number(li?.quantity ?? 1) || 1,
-      formattedSubtotal: formatted.subtotal ?? '',
-      formattedDiscount: formatted.discount ?? '',
-      formattedTotal: formatted.total ?? '',
+      // Format with Intl (not Paddle's `formattedTotals`) for currency-display
+      // consistency and to avoid locale-ambiguous strings (e.g. CLP "$18.393").
+      formattedSubtotal: formatPaddleMinor(rawSubtotal, currencyCode),
+      formattedDiscount: formatPaddleMinor(rawDiscount, currencyCode),
+      formattedTotal: formatPaddleMinor(rawTotal, currencyCode),
       rawSubtotal,
       rawDiscount,
       rawTotal,
