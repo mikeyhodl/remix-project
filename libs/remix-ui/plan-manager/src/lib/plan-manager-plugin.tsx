@@ -1987,6 +1987,7 @@ const PlanManagerOverlay: React.FC<{
               <UpgradePromoBanner
                 planCtx={planCtx}
                 plans={visiblePlans}
+                localizedPrices={catalogPrices?.byPaddlePriceId ?? null}
                 onUpgrade={() => setActiveSection(s => s === 'plans' ? null : 'plans')}
               />
             )}
@@ -2537,7 +2538,9 @@ const UpgradePromoBanner: React.FC<{
   planCtx: ReturnType<typeof selectPlanState>
   plans: ReturnType<typeof selectVisiblePlans>
   onUpgrade: () => void
-}> = ({ planCtx, plans, onUpgrade }) => {
+  /** Localized list prices keyed by Paddle price id; null = USD fallback. */
+  localizedPrices: Record<string, LocalizedCatalogPrice> | null
+}> = ({ planCtx, plans, onUpgrade, localizedPrices }) => {
   // Pick the top-tier plan (highest monthly price).
   const topPlan = React.useMemo(() => {
     if (!plans || plans.length === 0) return null
@@ -2546,15 +2549,32 @@ const UpgradePromoBanner: React.FC<{
 
   // ── Pricing ──────────────────────────────────────────────────────────
   const priceCents = topPlan?.priceUsd ?? 0
+  // Localized list price for the top plan (batched Paddle PricePreview),
+  // with USD fallback until it resolves / when Paddle is unavailable.
+  const topPrices: any[] = Array.isArray(topPlan?.prices) ? topPlan.prices : []
+  const topSelectedPrice = topPrices.find((pr: any) => pr.is_default) ?? topPrices[0] ?? null
+  const topPaddleId = paddlePriceIdOf(topSelectedPrice, topPlan)
+  const localized = topPaddleId ? localizedPrices?.[topPaddleId] ?? null : null
+
   const introDiscount = (topPlan?.introDiscounts ?? [])[0] ?? null
-  let discountedCents: number | null = null
+  let discountedPriceLabel: string | null = null
   let introOfferLabel: string | null = null
   if (introDiscount && priceCents > 0) {
     const isPct = introDiscount.discountType === 'percentage'
-    const dc = isPct
-      ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
-      : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
-    if (dc < priceCents) discountedCents = dc
+    // Localize the discounted price for percentage offers (exact off the
+    // localized base). Fixed-amount discounts are USD, so when localized we
+    // keep the base price only rather than mixing currencies.
+    if (localized) {
+      if (isPct) {
+        const dm = Math.max(0, Math.floor(localized.rawMinor * (1 - introDiscount.amount / 100)))
+        if (dm < localized.rawMinor) discountedPriceLabel = formatPaddleMinor(dm, localized.currencyCode)
+      }
+    } else {
+      const dc = isPct
+        ? Math.max(0, Math.floor(priceCents * (1 - introDiscount.amount / 100)))
+        : Math.max(0, priceCents - Math.round(introDiscount.amount * 100))
+      if (dc < priceCents) discountedPriceLabel = `$${(dc / 100).toFixed(2)}`
+    }
     const unit = topPlan?.billingInterval === 'year' ? 'year' : 'month'
     const intervals = introDiscount.maxRecurringIntervals
     const duration = !introDiscount.recur || !intervals || intervals === 1
@@ -2563,9 +2583,10 @@ const UpgradePromoBanner: React.FC<{
     introOfferLabel = isPct
       ? `${Math.round(introDiscount.amount)}% off ${duration}`
       : `$${introDiscount.amount.toFixed(2)} off ${duration}`
+
+    introOfferLabel = introDiscount.name ? `${introDiscount.name}` : introOfferLabel
   }
-  const fullPriceLabel = priceCents > 0 ? `$${(priceCents / 100).toFixed(2)}` : null
-  const discountedPriceLabel = discountedCents != null ? `$${(discountedCents / 100).toFixed(2)}` : null
+  const fullPriceLabel = localized ? localized.formatted : (priceCents > 0 ? `$${(priceCents / 100).toFixed(2)}` : null)
   const cadence = topPlan?.billingInterval === 'year' ? 'per year' : 'per month'
 
   // ── Free credits ─────────────────────────────────────────────────────
