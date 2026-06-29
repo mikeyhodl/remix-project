@@ -512,6 +512,8 @@ window.addEventListener('unhandledrejection', function(e) {
     // Build rich context prompt
     const dappName = activeDapp.config?.title || activeDapp.name || 'Untitled';
     const contractInfo = activeDapp.contract;
+    const isGraphOnlyTarget = activeDapp.appKind === 'graph-only';
+    const graphSources = Array.isArray(activeDapp.dataSources?.theGraph) ? activeDapp.dataSources.theGraph : [];
     const promptParts = [
       `DApp update target context:`,
       `Use the target details below exactly. Do not infer or substitute a different workspace.`,
@@ -521,10 +523,32 @@ window.addEventListener('unhandledrejection', function(e) {
       `Target slug: "${activeDapp.slug}"`,
       `Target mode: "${targetMode}"`,
       `Target source root: "${targetSourceRoot}"`,
+      `Target app kind: "${isGraphOnlyTarget ? 'graph-only' : 'contract'}"`,
       ``,
-      `Contract: ${contractInfo?.name || 'Unknown'} at ${contractInfo?.address || 'unknown'}`,
-      `Chain: ${contractInfo?.chainId || 'unknown'}`,
     ];
+
+    if (isGraphOnlyTarget) {
+      promptParts.push(
+        `Contract: none (Graph-only read-only DApp)`,
+        `Update scope: UI/source updates only. Preserve Graph data fetching and do not add contract, wallet, provider, signer, ethers, transaction, or network switching code.`
+      );
+    } else {
+      promptParts.push(
+        `Contract: ${contractInfo?.name || 'Unknown'} at ${contractInfo?.address || 'unknown'}`,
+        `Chain: ${contractInfo?.chainId || 'unknown'}`
+      );
+    }
+
+    if (graphSources.length > 0) {
+      promptParts.push(
+        ``,
+        `Existing The Graph data sources:`,
+        ...graphSources.map((source, index) =>
+          `- ${index + 1}. ${source.filePath || source.operationName || source.subgraphId || 'thegraph-source'} (${source.endpointKind || 'unknown'}, needsApiKey=${source.endpointNeedsApiKey === true})`
+        ),
+        `Preserve existing GraphQL fetch logic, loading/error/empty/success states, and runtime API key fallback unless I explicitly ask to remove or replace The Graph data.`
+      );
+    }
 
     if (fileList.length > 0) {
       promptParts.push(``, `Current DApp files:`, ...fileList.map(f => `- ${f}`));
@@ -879,8 +903,8 @@ window.addEventListener('unhandledrejection', function(e) {
               variant="success"
               size="sm"
               onClick={handleOpenAIAssistant}
-              disabled={isAiUpdating || isGraphOnly}
-              title={isGraphOnly ? 'AI update for Graph-only DApps is not available yet.' : undefined}
+              disabled={isAiUpdating}
+              title={isGraphOnly ? 'AI update is limited to Graph-only UI/source changes.' : undefined}
               data-id="update-with-ai-btn"
             >
               <i className="fas fa-robot me-1"></i>

@@ -1296,6 +1296,49 @@ export class UpdateDAppHandler extends BaseToolHandler {
     return { address, abi, chainId }
   }
 
+  private getGraphSources(config: any): QuickDappGraphContext[] {
+    const sources = config?.dataSources?.theGraph
+    return Array.isArray(sources) ? sources : []
+  }
+
+  private getExistingGraphDataSourceBlock(config: any): string {
+    const graphSources = this.getGraphSources(config)
+    if (graphSources.length === 0) return ''
+
+    const safeSources = graphSources.map((source, index) => ({
+      index: index + 1,
+      source: source.source,
+      filePath: source.filePath,
+      resultFilePath: source.resultFilePath,
+      endpoint: source.endpoint,
+      endpointKind: source.endpointKind,
+      endpointNeedsApiKey: source.endpointNeedsApiKey === true,
+      apiKeySource: source.apiKeySource,
+      subgraphId: source.subgraphId,
+      network: source.network,
+      description: source.description,
+      operationName: source.operationName,
+      operationType: source.operationType,
+      variables: source.variables || {},
+      query: source.query,
+      sampleResultShape: source.sampleResult && typeof source.sampleResult === 'object'
+        ? Object.keys(source.sampleResult)
+        : undefined
+    }))
+
+    const raw = JSON.stringify(safeSources, null, 2)
+    const graphContext = raw.length > 12000 ? `${raw.substring(0, 12000)}\n... [truncated]` : raw
+
+    return `EXISTING THE GRAPH DATA SOURCES:\n${graphContext}\n\n` +
+      `GRAPH DATA PRESERVATION (MANDATORY):\n` +
+      `- Preserve existing GraphQL fetch logic unless the user explicitly asks to remove or replace The Graph data.\n` +
+      `- Preserve loading, error, empty, and success states for Graph data.\n` +
+      `- Preserve window.__QUICK_DAPP_GRAPH_CONFIG__ usage and localStorage-backed runtime API key fallback.\n` +
+      `- Never hardcode an actual The Graph API key in source files.\n` +
+      `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build the keyed gateway URL only after apiKey is available.\n` +
+      `- Do not use ethers provider, RPC provider, wallet provider, signer, or contract instances to fetch GraphQL data.\n\n`
+  }
+
   /**
    * [QuickDapp] Read DApp source files from workspace recursively.
    * Only includes index.html and src/** files relative to the DApp source root.
@@ -1492,19 +1535,25 @@ export class UpdateDAppHandler extends BaseToolHandler {
         return this.createErrorResult('No files found in workspace. Please ensure the DApp workspace is active.')
       }
 
-      // Auto-resolve contract info from config
-      const contractResolved = await this.resolveContractInfo(dappOps, args, targetConfigLookup.config)
+      const targetConfig = targetConfigLookup.config || {}
+      const isGraphOnlyUpdate = targetConfig.appKind === 'graph-only'
+      const graphDataSourceBlock = this.getExistingGraphDataSourceBlock(targetConfig)
+
+      // Auto-resolve contract info from config for contract-backed DApps only.
+      const contractResolved = isGraphOnlyUpdate
+        ? undefined
+        : await this.resolveContractInfo(dappOps, args, targetConfig)
 
       // Emit UI events
       const updateStartPayload = { workspaceName: dappOps.getWorkspaceName(), slug: slugToUse }
-      const progressPayload = { status: 'preparing', contractAddress: contractResolved.address, workspaceName: dappOps.getWorkspaceName(), slug: slugToUse }
+      const progressPayload = { status: 'preparing', contractAddress: contractResolved?.address || '', workspaceName: dappOps.getWorkspaceName(), slug: slugToUse }
       plugin.emit('dappUpdateStart', updateStartPayload)
       plugin.emit('generationProgress', progressPayload)
       markQuickDappGenerationContext({
         workspaceName: dappOps.getWorkspaceName(),
         isInlineMode,
         sourceRoot: dappOps.getSourceRoot(),
-        contractAddress: contractResolved.address,
+        ...(contractResolved?.address ? { contractAddress: contractResolved.address } : {}),
         operation: 'update'
       })
 
@@ -1514,51 +1563,73 @@ export class UpdateDAppHandler extends BaseToolHandler {
       const fileList = fileNames.join('\n')
       const description = typeof args.description === 'string' ? args.description : JSON.stringify(args.description)
 
-      const isLocalVM = isLocalVMChainId(contractResolved.chainId)
+      const isLocalVM = contractResolved ? isLocalVMChainId(contractResolved.chainId) : false
 
       // Build path examples based on mode
       const examplePaths = dappOps.resolvePath('src/App.jsx')
       const correctPathExample = `Correct: ${examplePaths}`
+      const appKindLine = contractResolved
+        ? `CONTRACT ADDRESS: ${contractResolved.address} on chain ${contractResolved.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n`
+        : `APP KIND: Graph-only read-only DApp\n`
+      const buildRules = isGraphOnlyUpdate ? QUICKDAPP_GRAPH_ONLY_BUILD_RULES : QUICKDAPP_BUILD_RULES
+      const logicPreservation = isGraphOnlyUpdate
+        ? `LOGIC PRESERVATION (MANDATORY):\n` +
+          `- This is a Graph-only read-only DApp. Update UI/source files only.\n` +
+          `- NEVER add contract, wallet, provider, signer, ethers, transaction, or network switching code.\n` +
+          `- NEVER convert this DApp to contract-backed or modify appKind/contract metadata.\n` +
+          `- NEVER remove window.__QUICK_DAPP_CONFIG__ integration.\n` +
+          `- You MAY restructure JSX layout, change CSS classes, and add read-only UI features.\n` +
+          `- If the user asks to change contract address, ABI, chain, add contracts, or add transactions, do not implement that in this update. Keep the app Graph-only and explain that contract binding changes require a separate migration flow.\n` +
+          `- When returning a file, return the COMPLETE file content — not just the changed portion.\n\n`
+        : `LOGIC PRESERVATION (MANDATORY):\n` +
+          `- NEVER remove existing ethers.js contract integrations, useState, useEffect, or ABI calls.\n` +
+          `- NEVER remove wallet connection code or window.__QUICK_DAPP_CONFIG__ integration.\n` +
+          `- You MAY restructure JSX layout, change CSS classes, and add new features.\n` +
+          `- If the user asks to change contract address, ABI, chain, add contracts, or convert app kind, do not modify dapp.config.json or fake the config change. Explain that binding changes require a separate migration flow.\n` +
+          `- When returning a file, return the COMPLETE file content — not just the changed portion.\n\n`
+      const walletRules = !contractResolved
+        ? ''
+        : isLocalVM
+          ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
+          `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
+          `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
+          `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n` +
+          `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
+          : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
+          `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
+          `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
+          `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+          `- Store raw provider in a React ref for reuse in network switching.\n` +
+          `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`
+      const finalizeInstruction = contractResolved
+        ? `4. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n`
+        : `4. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", isUpdate=true\n`
 
       return this.createSuccessResult({
         success: true,
         workspaceName: dappOps.getWorkspaceName(),
-        contractAddress: contractResolved.address,
+        contractAddress: contractResolved?.address || '',
         workspaceReady: true,
         message: `DApp workspace "${targetWorkspace}" is ready for update.\n\n` +
           `Now proceed to update the DApp files directly.\n\n` +
           `---\n` +
           `TASK: Modify the DApp in workspace "${dappOps.getWorkspaceName()}"${isInlineMode ? ' (inline mode - /frontend folder)' : ''}\n` +
           `USER REQUEST: ${description}\n` +
-          `CONTRACT ADDRESS: ${contractResolved.address} on chain ${contractResolved.chainId}${isLocalVM ? ' (Remix VM)' : ''}\n` +
+          appKindLine +
           `FILES IN WORKSPACE:\n${fileList}\n\n` +
-          `${QUICKDAPP_BUILD_RULES}\n` +
+          `${buildRules}\n` +
           `\n${QUICKDAPP_DESIGN_RULES}\n` +
+          graphDataSourceBlock +
           `CRITICAL PATH RULES:\n` +
           `- All file paths are relative to workspace root. Use ${examplePaths}, NOT ${dappOps.getWorkspaceName()}${examplePaths}\n` +
           `- NEVER include workspace name in paths. ${correctPathExample}\n\n` +
-          `LOGIC PRESERVATION (MANDATORY):\n` +
-          `- NEVER remove existing ethers.js contract integrations, useState, useEffect, or ABI calls.\n` +
-          `- NEVER remove wallet connection code or window.__QUICK_DAPP_CONFIG__ integration.\n` +
-          `- You MAY restructure JSX layout, change CSS classes, and add new features.\n` +
-          `- When returning a file, return the COMPLETE file content — not just the changed portion.\n\n` +
+          logicPreservation +
           `STEPS:\n` +
           `1. Use read_file to read the files you need to modify\n` +
           `2. Modify only the relevant files using write_file\n` +
           `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
-          (isLocalVM
-            ? `\nREMIX VM RULES (LOCAL DEV MODE - CRITICAL):\n` +
-            `- Use window.ethereum directly: new ethers.BrowserProvider(window.ethereum). The Remix IDE preview provides it automatically.\n` +
-            `- Do NOT use window.__qdapp_getProvider(). Do NOT call wallet_switchEthereumChain or wallet_addEthereumChain.\n` +
-            `- Do NOT show "Install MetaMask", "Wrong Network" warnings, or chain ID checks.\n` +
-            `- MUST listen for window.ethereum accountsChanged and immediately update the visible connected account, signer, and contract instance when Deploy & Run account changes. Do not require a preview refresh.\n`
-            : `\nREAL NETWORK WALLET RULES (CRITICAL - use EXACT values below):\n` +
-            `- The contract is deployed on chain ${contractResolved.chainId}. Set TARGET_CHAIN_ID = ${contractResolved.chainId} in the generated code.\n` +
-            `- For wallet_switchEthereumChain, use chainId: '0x${Number(contractResolved.chainId).toString(16)}'. Do NOT use '0x1' or any other chain.\n` +
-            `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
-            `- Store raw provider in a React ref for reuse in network switching.\n` +
-            `- Show Connect Wallet / Disconnect / Switch Network buttons. Compare chain IDs as decimal numbers (not hex).\n`) +
-          `4. Call finalize_dapp_generation with workspaceName="${targetWorkspace}", contractAddress="${contractResolved.address}", isUpdate=true\n` +
+          walletRules +
+          finalizeInstruction +
           `---`
       })
 
