@@ -61,6 +61,18 @@ interface EndpointAnalysis {
   subgraphId?: string
 }
 
+interface QuickDappContractCandidate {
+  name: string
+  address: string
+  chainId: string
+}
+
+interface QuickDappContractHandoffContext {
+  candidates: QuickDappContractCandidate[]
+  chainId: string
+  mode: 'none' | 'single' | 'multiple'
+}
+
 const profile = {
   name: 'thegraph',
   displayName: 'The Graph',
@@ -197,21 +209,6 @@ export class TheGraphPlugin extends Plugin {
       validation
     }
 
-    console.log('[TheGraph:QuickDapp]', {
-      stage: 'stage-1',
-      action: 'context',
-      filePath: context.filePath,
-      endpointKind: context.endpointKind,
-      endpointNeedsApiKey: context.endpointNeedsApiKey,
-      apiKeyPresent: context.apiKeyPresent,
-      operationName: context.operationName,
-      queryLength: context.query.length,
-      variablesKeys: Object.keys(context.variables || {}),
-      canGenerateDapp: context.validation.canGenerateDapp,
-      errors: context.validation.errors,
-      warnings: context.validation.warnings
-    })
-
     return context
   }
 
@@ -223,54 +220,18 @@ export class TheGraphPlugin extends Plugin {
     const path = this.getPathFromCommand(pathOrCmd)
 
     try {
-      console.log('[TheGraph:QuickDapp]', {
-        stage: 'stage-2',
-        action: 'handoff-start',
-        entrypoint: 'context-menu',
-        filePath: path
-      })
-
       const context = await this.getSubgraphFileContext(path)
-      const promptKind = context.validation.canGenerateDapp ? 'quickdapp-setup' : 'subgraph-fix'
+      const contractContext = context.validation.canGenerateDapp
+        ? await this.getQuickDappContractHandoffContext()
+        : undefined
       const prompt = context.validation.canGenerateDapp
-        ? this.buildCreateDappFromSubgraphPrompt(context)
+        ? this.buildCreateDappFromSubgraphPrompt(context, contractContext)
         : this.buildSubgraphFixPrompt(context)
-
-      console.log('[TheGraph:QuickDapp]', {
-        stage: 'stage-2',
-        action: 'handoff-ready',
-        entrypoint: 'context-menu',
-        filePath: context.filePath,
-        promptKind,
-        promptLength: prompt.length,
-        canGenerateDapp: context.validation.canGenerateDapp,
-        errors: context.validation.errors,
-        warnings: context.validation.warnings,
-        missingFields: context.validation.missingFields,
-        endpointKind: context.endpointKind,
-        endpointNeedsApiKey: context.endpointNeedsApiKey,
-        apiKeyPresent: context.apiKeyPresent
-      })
 
       await this.openRemixAiAssistant()
       await this.call('remixaiassistant' as any, 'chatPipe', prompt)
-
-      console.log('[TheGraph:QuickDapp]', {
-        stage: 'stage-2',
-        action: 'handoff-sent',
-        entrypoint: 'context-menu',
-        filePath: context.filePath,
-        promptKind
-      })
     } catch (error: any) {
       const message = error?.message || 'Failed to create DApp from subgraph file.'
-      console.error('[TheGraph:QuickDapp]', {
-        stage: 'stage-2',
-        action: 'handoff-error',
-        entrypoint: 'context-menu',
-        filePath: path,
-        error: message
-      })
 
       try {
         await this.call('terminal', 'log', {
@@ -448,8 +409,45 @@ export class TheGraphPlugin extends Plugin {
     }
   }
 
-  private buildCreateDappFromSubgraphPrompt(context: SubgraphFileContext): string {
+  private async getQuickDappContractHandoffContext(): Promise<QuickDappContractHandoffContext> {
+    let chainId = 'unknown'
+
+    try {
+      const providerObject = await this.call('blockchain' as any, 'getProviderObject')
+      const providerName = providerObject?.name || 'vm-unknown'
+      if (providerName.startsWith('vm')) {
+        chainId = providerName
+      } else {
+        const network = await this.call('network' as any, 'detectNetwork')
+        chainId = network?.id?.toString() || providerName
+      }
+    } catch {
+      // Best effort only. If chain detection fails, keep the unknown chain label.
+    }
+
+    try {
+      const deployedContracts = await this.call('udappDeployedContracts' as any, 'getDeployedContracts')
+      const candidates = Array.isArray(deployedContracts)
+        ? deployedContracts
+          .filter((contract: any) => typeof contract?.name === 'string' && typeof contract?.address === 'string')
+          .slice(0, 8)
+          .map((contract: any) => ({
+            name: contract.name,
+            address: contract.address,
+            chainId
+          }))
+        : []
+      const mode = candidates.length === 0 ? 'none' : candidates.length === 1 ? 'single' : 'multiple'
+
+      return { candidates, chainId, mode }
+    } catch {
+      return { candidates: [], chainId, mode: 'none' }
+    }
+  }
+
+  private buildCreateDappFromSubgraphPrompt(context: SubgraphFileContext, contractContext?: QuickDappContractHandoffContext): string {
     const graphContext = this.getPromptGraphContext(context)
+    const contractInstructions = this.buildContractHandoffPrompt(contractContext)
 
     return [
       'I want to create a QuickDapp that uses the selected The Graph .subgraph file as an independent read-only data source.',
@@ -459,21 +457,10 @@ export class TheGraphPlugin extends Plugin {
       '- The Graph query may be unrelated to the contract ABI. Treat it as a separate read-only GraphQL data source.',
       '- The contract network/provider rules still come from the deployed contract. Do not infer the wallet network from graphContext.network.',
       '- Do not put The Graph API key values into generated source files, config files, or chat output.',
+      '- Keep this flow in QuickDapp_Specialist. Do not delegate to Contract_Runner just to list or select already deployed contracts.',
+      '- Use Contract_Runner only if I explicitly ask to compile/deploy a contract. If no deployed contract is available, continue as a Graph-only DApp instead.',
       '',
-      'STEP 1 - ASK FOR SETUP OPTIONS:',
-      'Ask me once: "How should I create your DApp?"',
-      '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
-      '- Base mini-app: No (default) or Yes',
-      '- Design: defaults, style notes, or a Figma URL',
-      '',
-      'Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, or any other design subquestions.',
-      'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
-      '',
-      'STEP 2 - CONTRACT CONTEXT:',
-      'After I answer, check the current Remix environment and deployed contracts. If no contract is deployed or selected, ask me to compile/deploy/select a contract. Subgraph-only QuickDapp generation is not part of this MVP.',
-      '',
-      'STEP 3 - GENERATE DAPP:',
-      'When the contract and setup options are confirmed, call generate_dapp with the normal contract details and include graphContext exactly from the GRAPH_CONTEXT_JSON below.',
+      ...contractInstructions,
       '',
       'GRAPH_CONTEXT_JSON:',
       '```json',
@@ -482,6 +469,79 @@ export class TheGraphPlugin extends Plugin {
       '',
       'Start by asking STEP 1 only, then STOP.'
     ].join('\n')
+  }
+
+  private buildContractHandoffPrompt(contractContext?: QuickDappContractHandoffContext): string[] {
+    const context = contractContext || { candidates: [], chainId: 'unknown', mode: 'none' as const }
+    const contractLines = this.formatContractCandidatesForPrompt(context.candidates)
+
+    if (context.mode === 'single') {
+      const contract = context.candidates[0]
+      return [
+        'DEPLOYED_CONTRACT_CANDIDATES:',
+        ...contractLines,
+        '',
+        'STEP 1 - ASK FOR SETUP OPTIONS:',
+        `Use ${contract.name} at ${contract.address} on chain ${contract.chainId} unless I explicitly ask to choose another contract.`,
+        'Ask me once: "How should I create your DApp?"',
+        '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
+        '- Base mini-app: No (default) or Yes',
+        '- Design: defaults, style notes, or a Figma URL',
+        '',
+        'Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, contract choice, or any other design subquestions.',
+        'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
+        '',
+        'STEP 2 - GENERATE DAPP:',
+        'After I answer, call generate_dapp with the contractName, contractAddress, and chainId from the single deployed contract above, plus the confirmed setup options.',
+        'Include graphContext exactly from the GRAPH_CONTEXT_JSON below.'
+      ]
+    }
+
+    if (context.mode === 'multiple') {
+      return [
+        'DEPLOYED_CONTRACT_CANDIDATES:',
+        ...contractLines,
+        '',
+        'STEP 1 - ASK FOR SETUP OPTIONS AND CONTRACT:',
+        'Ask me once: "How should I create your DApp?"',
+        '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
+        '- Base mini-app: No (default) or Yes',
+        '- Design: defaults, style notes, or a Figma URL',
+        '- Contract: choose one deployed contract from DEPLOYED_CONTRACT_CANDIDATES above',
+        '',
+        'Ask exactly those four options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, or any other design subquestions.',
+        'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
+        '',
+        'STEP 2 - GENERATE DAPP:',
+        'After I answer, call generate_dapp with the selected contractName, contractAddress, and chainId from DEPLOYED_CONTRACT_CANDIDATES, plus the confirmed setup options.',
+        'Include graphContext exactly from the GRAPH_CONTEXT_JSON below.'
+      ]
+    }
+
+    return [
+      'DEPLOYED_CONTRACT_CANDIDATES:',
+      '- none found',
+      '',
+      'STEP 1 - ASK FOR GRAPH-ONLY SETUP OPTIONS:',
+      'Ask me once: "How should I create your DApp?"',
+      '- Location: Workspace only for Graph-only MVP',
+      '- Base mini-app: No (default) or Yes',
+      '- Design: defaults or style notes',
+      '',
+      'Tell me no deployed contract was found, so this will be a read-only Graph-only DApp unless I explicitly ask to deploy a contract first.',
+      'Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, Contract, or any other design subquestions.',
+      'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_graph_dapp, or write files in the same turn as this setup question.',
+      '',
+      'STEP 2 - GENERATE GRAPH-ONLY DAPP:',
+      'After I answer, call generate_graph_dapp with setupOptionsConfirmed=true, setupOptionsSummary, isBaseMiniApp if selected, description, and graphContext exactly from the GRAPH_CONTEXT_JSON below.',
+      'Do not call generate_dapp for this no-contract path.'
+    ]
+  }
+
+  private formatContractCandidatesForPrompt(candidates: QuickDappContractCandidate[]): string[] {
+    return candidates.map((contract, index) =>
+      `${index + 1}. ${contract.name} at ${contract.address} on chain ${contract.chainId}`
+    )
   }
 
   private buildSubgraphFixPrompt(context: SubgraphFileContext): string {
@@ -705,12 +765,7 @@ export class TheGraphPlugin extends Plugin {
     try {
       const apiKey = await this.call('config', 'getAppParameter', 'settings/thegraph-access-token')
       return Boolean(apiKey)
-    } catch (e) {
-      console.warn('[TheGraph:QuickDapp]', {
-        stage: 'stage-1',
-        action: 'api-key-presence-check-failed',
-        error: e
-      })
+    } catch {
       return false
     }
   }

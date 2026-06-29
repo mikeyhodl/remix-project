@@ -291,6 +291,7 @@ export class QuickDappV2 extends ViewPlugin {
       slug: workspaceName,
       name,
       workspaceName,
+      appKind: 'contract',
       contract: {
         address: payload.address,
         name: payload.contractName,

@@ -7,6 +7,7 @@ import { AppContext } from '../../contexts';
 import DeployPanel from '../DeployPanel';
 // remixClient removed - using plugin from context instead
 import { InBrowserVite } from '../../InBrowserVite';
+import { buildGraphRuntimeConfigScript } from '../../utils/graph-runtime-config';
 
 interface Pages {
   [key: string]: string
@@ -332,6 +333,7 @@ function EditHtmlTemplate(): JSX.Element {
         };
       </script>
     `;
+    const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
     const debugScript = `<script>
 window.onerror = function(msg, url, line, col, error) {
   try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}
@@ -421,9 +423,9 @@ window.addEventListener('unhandledrejection', function(e) {
         let finalHtml = indexHtmlContent || '<html><body><div id="root"></div></body></html>';
 
         if (finalHtml.includes('</head>')) {
-          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
+          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
         } else {
-          finalHtml = `<html><head>${debugScript}${injectionScript}${ext}</head>${finalHtml}</html>`;
+          finalHtml = `<html><head>${debugScript}${injectionScript}${graphRuntimeScript}${ext}</head>${finalHtml}</html>`;
         }
 
         const scriptTag = `\n<script type="module">\n${result.js}\n</script>\n`;
@@ -443,7 +445,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
       } else {
         let finalHtml = indexHtmlContent;
-        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
+        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
         doc.open();
         doc.write(finalHtml);
         doc.close();
@@ -577,6 +579,8 @@ window.addEventListener('unhandledrejection', function(e) {
   }, []);
 
   const isVM = !!activeDapp?.contract?.chainId && activeDapp.contract.chainId.toString().startsWith('vm');
+  const isGraphOnly = activeDapp?.appKind === 'graph-only';
+  const dappNetworkLabel = isGraphOnly ? 'The Graph' : activeDapp?.contract?.networkName || 'Unknown Network';
   const [isCurrentProviderVM, setIsCurrentProviderVM] = useState(false);
   const [vmContractStatus, setVmContractStatus] = useState<'checking' | 'deployed' | 'not-found'>('checking');
 
@@ -840,7 +844,7 @@ window.addEventListener('unhandledrejection', function(e) {
             {activeDapp.config.title || activeDapp.name}
           </span>
           <span className="badge bg-secondary opacity-75">
-            {activeDapp.contract.networkName}
+            {dappNetworkLabel}
           </span>
           <div className="vr mx-1 text-secondary opacity-50" style={{ height: '1.2rem' }}></div>
           <div className="d-flex align-items-center text-muted" title="Location in File Explorer">
@@ -875,7 +879,8 @@ window.addEventListener('unhandledrejection', function(e) {
               variant="success"
               size="sm"
               onClick={handleOpenAIAssistant}
-              disabled={isAiUpdating}
+              disabled={isAiUpdating || isGraphOnly}
+              title={isGraphOnly ? 'AI update for Graph-only DApps is not available yet.' : undefined}
               data-id="update-with-ai-btn"
             >
               <i className="fas fa-robot me-1"></i>

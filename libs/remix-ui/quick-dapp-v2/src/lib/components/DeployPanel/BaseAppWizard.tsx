@@ -7,6 +7,7 @@ import { readDappFiles } from '../EditHtmlTemplate';
 import { InBrowserVite } from '../../InBrowserVite';
 import { generateWalletSelectionScript } from '../../utils/wallet-selection-script';
 import { validateEnsName } from '../../utils/ens-utils';
+import { buildGraphRuntimeConfigScript, hasTheGraphGatewaySources } from '../../utils/graph-runtime-config';
 // remixClient removed - using plugin from context instead
 import { trackMatomoEvent } from '@remix-api';
 import { endpointUrls } from '@remix-endpoints-helper';
@@ -54,6 +55,7 @@ const BaseAppWizard: React.FC = () => {
   const indexHtmlPath = isInlineMode ? 'frontend/index.html' : 'index.html';
   const dappRootPath = isInlineMode ? '/frontend' : '/';
   const rootPathLength = isInlineMode ? '/frontend'.length : 0;
+  const hasGraphGateway = hasTheGraphGatewaySources(activeDapp);
 
   const ensureActiveDappWorkspace = async () => {
     if (!activeDapp?.workspaceName) return;
@@ -252,6 +254,7 @@ const BaseAppWizard: React.FC = () => {
       // seeing </script> in user text as the closing tag for this script element.
       const safeJson = (val: string) => JSON.stringify(val).replace(/<\//g, '<\\/');
       const injectionScript = `<script>window.__QUICK_DAPP_CONFIG__={logo:${safeJson(logoDataUrl || '')},title:${safeJson(title || '')},details:${safeJson(details || '')}};</script>`;
+      const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: false, target: 'base-ipfs-deploy' });
       const walletScript = generateWalletSelectionScript();
 
       // Escape text for safe use in HTML attribute values (OG/Twitter meta tags)
@@ -312,8 +315,8 @@ const BaseAppWizard: React.FC = () => {
       ].filter(Boolean).join('\n    ');
 
       let modifiedHtml = indexHtmlContent;
-      if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n    ${ogTags}\n</head>`);
-      else modifiedHtml = `<html><head>${injectionScript}\n${ogTags}</head>${modifiedHtml}</html>`;
+      if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n${graphRuntimeScript}\n    ${ogTags}\n</head>`);
+      else modifiedHtml = `<html><head>${injectionScript}\n${graphRuntimeScript}\n${ogTags}</head>${modifiedHtml}</html>`;
 
       const inlineScript = `<script type="module">\n${jsResult.js}\n</script>`;
       modifiedHtml = modifiedHtml.replace(/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, inlineScript);
@@ -704,6 +707,11 @@ const BaseAppWizard: React.FC = () => {
                     <Alert variant="info" className="small p-2 mb-3">
                     Deploy your app to IPFS and register an ENS subdomain (`.remixdapp.eth`).
                     </Alert>
+                    {hasGraphGateway && (
+                      <Alert variant="info" className="small p-2 mb-3">
+                        The Graph API key from Remix settings will not be embedded in the IPFS or ENS deployment. The deployed app will ask users for a key when needed.
+                      </Alert>
+                    )}
 
                     <Form.Group className="mb-3">
                       <Form.Label>Choose ENS Name (Subdomain)</Form.Label>

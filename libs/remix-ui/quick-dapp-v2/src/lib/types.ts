@@ -6,8 +6,9 @@ export interface DappConfig {
   name: string;
   workspaceName: string;
   mode?: DappMode;
+  appKind?: 'contract' | 'graph-only';
 
-  contract: {
+  contract?: {
     address: string;
     name: string;
     abi: any[];

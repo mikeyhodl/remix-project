@@ -10,6 +10,7 @@ import { readDappFiles } from '../EditHtmlTemplate';
 import { InBrowserVite } from '../../InBrowserVite';
 import { generateWalletSelectionScript } from '../../utils/wallet-selection-script';
 import { validateEnsName } from '../../utils/ens-utils';
+import { buildGraphRuntimeConfigScript, hasTheGraphGatewaySources } from '../../utils/graph-runtime-config';
 // remixClient removed - using plugin from context instead
 import { trackMatomoEvent } from '@remix-api';
 import { endpointUrls } from '@remix-endpoints-helper';
@@ -27,6 +28,7 @@ function DeployPanel(): JSX.Element {
   const { activeDapp } = appState;
   const { title, details, logo } = appState.instance;
   const isVM = !!activeDapp?.contract?.chainId && activeDapp.contract.chainId.toString().startsWith('vm');
+  const hasGraphGateway = hasTheGraphGatewaySources(activeDapp);
 
   const [deployResult, setDeployResult] = useState({
     cid: activeDapp?.deployment?.ipfsCid || '',
@@ -163,6 +165,7 @@ function DeployPanel(): JSX.Element {
       // seeing </script> in user text as the closing tag for this script element.
       const safeJson = (val: string) => JSON.stringify(val).replace(/<\//g, '<\\/');
       const injectionScript = `<script>window.__QUICK_DAPP_CONFIG__={logo:${safeJson(logoDataUrl || '')},title:${safeJson(title || '')},details:${safeJson(details || '')}};</script>`;
+      const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: false, target: 'ipfs-deploy' });
       const walletScript = generateWalletSelectionScript();
 
       // Escape text for safe use in HTML attribute values (OG/Twitter meta tags)
@@ -223,8 +226,8 @@ function DeployPanel(): JSX.Element {
       ].filter(Boolean).join('\n    ');
 
       let modifiedHtml = indexHtmlContent;
-      if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n    ${ogTags}\n</head>`);
-      else modifiedHtml = `<html><head>${injectionScript}\n${ogTags}</head>${modifiedHtml}</html>`;
+      if (modifiedHtml.includes('</head>')) modifiedHtml = modifiedHtml.replace('</head>', `${walletScript}\n${injectionScript}\n${graphRuntimeScript}\n    ${ogTags}\n</head>`);
+      else modifiedHtml = `<html><head>${injectionScript}\n${graphRuntimeScript}\n${ogTags}</head>${modifiedHtml}</html>`;
 
       console.log("[IPFS Deploy] indexHtml length:", indexHtmlContent.length, "scriptRegexTest:", /<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent));
       if (!/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/.test(indexHtmlContent)) { console.log("[IPFS Deploy] Script tags:", indexHtmlContent.match(/<script[^>]*>/g)); console.log("[IPFS Deploy] HTML head:", indexHtmlContent.substring(0, 500)); }
@@ -341,6 +344,12 @@ function DeployPanel(): JSX.Element {
               <Alert variant="warning" className="mt-2 small mb-0">
                 <i className="fas fa-exclamation-triangle me-1"></i>
                 IPFS deployment is not available for Remix VM contracts. Deploy your contract to a public network first.
+              </Alert>
+            )}
+            {hasGraphGateway && (
+              <Alert variant="info" className="mt-2 small mb-0">
+                <i className="fas fa-key me-1"></i>
+                The Graph API key from Remix settings will not be embedded in the IPFS deployment. The deployed DApp will ask users for a key when needed.
               </Alert>
             )}
             {displayCid && (

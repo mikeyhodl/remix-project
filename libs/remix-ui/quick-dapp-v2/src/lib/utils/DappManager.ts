@@ -199,6 +199,10 @@ export class DappManager {
             config = {}
           }
 
+          if (config.appKind === 'graph-only' && config.workspaceName && config.workspaceName !== workspaceName && workspaceName.startsWith(DAPP_WORKSPACE_PREFIX)) {
+            config.workspaceName = workspaceName;
+          }
+
           config.workspaceName = config.workspaceName || workspaceName;
 
           const isInline = config.mode === 'inline';
@@ -333,6 +337,7 @@ export class DappManager {
       name,
       workspaceName,
       mode: 'workspace',
+      appKind: 'contract',
       contract: {
         address: contractData.address,
         name: contractData.name,
@@ -834,7 +839,6 @@ export class DappManager {
       if (!content) throw new Error('Config file not found');
 
       const currentConfig: DappConfig = JSON.parse(content);
-
       const newConfig: DappConfig = {
         ...currentConfig,
         ...updates,

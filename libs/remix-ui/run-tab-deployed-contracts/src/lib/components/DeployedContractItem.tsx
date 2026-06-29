@@ -22,9 +22,9 @@ import isElectron from 'is-electron'
 const txHelper = remixLib.execution.txHelper
 const txFormat = remixLib.execution.txFormat
 const highlightedContracts = new Set<string>()
-const QUICKDAPP_SUBGRAPH_SETUP_OPTION = '- Subgraph: None (default) or use the selected .subgraph through "Create DApp from Subgraph Query"'
-const QUICKDAPP_SUBGRAPH_SETUP_RULE = 'Subgraph defaults to None. If I choose to use a .subgraph but no graphContext is already provided, ask me to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext and do not continue generation from the normal QuickDapp flow.'
-const QUICKDAPP_GRAPH_CONTEXT_TOOL_ARG = '- graphContext: include only if a validated graphContext was provided by The Graph handoff; otherwise omit it'
+const QUICKDAPP_SUBGRAPH_SETUP_OPTION = '- Subgraph: None (default) or a .subgraph file path/name'
+const QUICKDAPP_SUBGRAPH_SETUP_RULE = 'Subgraph defaults to None. If I choose to use a .subgraph, ask me for the .subgraph file path/name and pass it to generate_dapp as subgraphFilePath. Do not redirect me to the .subgraph context menu and do not invent graphContext.'
+const QUICKDAPP_GRAPH_CONTEXT_TOOL_ARG = '- subgraphFilePath: include only if I chose a .subgraph file path/name; graphContext: include only if a validated graphContext was already provided by The Graph handoff'
 
 interface DeployedContractItemProps {
   contract: DeployedContract

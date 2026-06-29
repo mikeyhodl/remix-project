@@ -34,6 +34,7 @@ const DappCard: React.FC<DappCardProps> = ({ dapp, isProcessing, generationProgr
   const progress = generationProgress;
   const generatedFiles = progress?.generatedFiles || [];
   const currentFile = progress?.filename;
+  const networkLabel = dapp.appKind === 'graph-only' ? 'The Graph' : dapp?.contract?.networkName || 'Remix VM';
 
   const statusText = progress?.status === 'generating_file' && currentFile
     ? `Generating ${currentFile}...`
@@ -92,7 +93,7 @@ const DappCard: React.FC<DappCardProps> = ({ dapp, isProcessing, generationProgr
           )}
 
           <div className="position-absolute top-0 start-0 m-2 badge bg-primary opacity-75" data-id={`dapp-network-${dapp.slug}`}>
-            {dapp?.contract?.networkName || 'Remix VM'}
+            {networkLabel}
           </div>
 
           {!isProcessing && (

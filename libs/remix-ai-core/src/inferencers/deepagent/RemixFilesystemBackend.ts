@@ -53,6 +53,9 @@ export class RemixFilesystemBackend {
   ): Promise<{ error?: string; occurrences?: number; metadata?: any; filesUpdate?: any }> {
 
     try {
+      const managedConfigWrite = this.getQuickDappManagedConfigWriteError(this.normalizePath(filePath))
+      if (managedConfigWrite) return managedConfigWrite
+
       // If there are pending edits for a DIFFERENT file, flush them first
       for (const [batchFile] of this.editBatches) {
         if (batchFile !== filePath) {
@@ -119,6 +122,10 @@ export class RemixFilesystemBackend {
     this.editBatches.delete(filePath)
 
     const normalizedPath = this.normalizePath(filePath)
+    const managedConfigWrite = this.getQuickDappManagedConfigWriteError(normalizedPath)
+    if (managedConfigWrite) {
+      return
+    }
     const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
     if (workspaceMismatch) {
       remixAILogger.warn('[QuickDapp][WorkspaceLock] blocked pending edit flush in wrong workspace', {
@@ -148,6 +155,10 @@ export class RemixFilesystemBackend {
     }
 
     const finalContent = result.modifiedContent || batch.virtualContent
+    const graphGatewayWrite = this.getQuickDappGraphGatewayWriteError(normalizedPath, finalContent)
+    if (graphGatewayWrite) {
+      return
+    }
 
     await this.writeFileInternal(filePath, finalContent)
   }
@@ -244,6 +255,8 @@ export class RemixFilesystemBackend {
         normalizedPath = normalizedPath.substring(activeQuickDappContext.workspaceName.length + 1)
         if (!normalizedPath.startsWith('/')) normalizedPath = '/' + normalizedPath
       }
+      const managedConfigWrite = this.getQuickDappManagedConfigWriteError(normalizedPath)
+      if (managedConfigWrite) return managedConfigWrite
       const isQuickDappCandidatePath = this.isQuickDappCandidatePath(normalizedPath)
       const hasWeb3DappContent = this.hasQuickDappWeb3Content(content)
       const shouldEnforceQuickDappRouting =
@@ -286,6 +299,8 @@ export class RemixFilesystemBackend {
       }
 
       const finalContent = result.modifiedContent || content
+      const graphGatewayWrite = this.getQuickDappGraphGatewayWriteError(normalizedPath, finalContent)
+      if (graphGatewayWrite) return graphGatewayWrite
 
       await this.writeFileInternal(normalizedPath, finalContent)
 
@@ -311,6 +326,8 @@ export class RemixFilesystemBackend {
 
     try {
       const normalizedPath = this.normalizePath(path)
+      const managedConfigWrite = this.getQuickDappManagedConfigWriteError(normalizedPath)
+      if (managedConfigWrite) return managedConfigWrite
       const workspaceMismatch = await this.getQuickDappWorkspaceMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
       if (workspaceMismatch) return workspaceMismatch
       const pathMismatch = this.getQuickDappPathMismatch(normalizedPath, this.isQuickDappCandidatePath(normalizedPath))
@@ -342,6 +359,8 @@ export class RemixFilesystemBackend {
       }
 
       const finalContent = result.modifiedContent || content
+      const graphGatewayWrite = this.getQuickDappGraphGatewayWriteError(normalizedPath, finalContent)
+      if (graphGatewayWrite) return graphGatewayWrite
 
       await this.writeFileInternal(normalizedPath, finalContent)
 
@@ -514,6 +533,39 @@ export class RemixFilesystemBackend {
       path.startsWith('/frontend/') ||
       path.startsWith('/dapp/') ||
       /[-_.]dapp\.(html|jsx?|tsx?|css)$/i.test(path)
+  }
+
+  private getQuickDappManagedConfigWriteError(path: string): { error: string } | undefined {
+    const normalizedPath = path.startsWith('/') ? path : this.normalizePath(path)
+    if (normalizedPath !== '/dapp.config.json' && normalizedPath !== '/frontend/dapp.config.json') return undefined
+
+    const activeQuickDappContext = getActiveQuickDappGenerationContext()
+    if (!activeQuickDappContext) return undefined
+
+    const error =
+      `QUICKDAPP_MANAGED_CONFIG: "${normalizedPath}" is managed by QuickDapp. ` +
+      `Do not write or edit dapp.config.json. Write only source files, then call finalize_dapp_generation.`
+
+    return { error }
+  }
+
+  private getQuickDappGraphGatewayWriteError(path: string, content: string): { error: string } | undefined {
+    const activeQuickDappContext = getActiveQuickDappGenerationContext()
+    if (!activeQuickDappContext) return undefined
+
+    const normalizedPath = path.startsWith('/') ? path : this.normalizePath(path)
+    if (!this.isQuickDappCandidatePath(normalizedPath)) return undefined
+    const unkeyedGatewayEndpointPattern =
+      /(?:fetch\s*\(\s*|(?:const|let|var)\s+[A-Za-z0-9_$]*(?:GRAPH|GRAPHQL|SUBGRAPH|ENDPOINT|URL|GATEWAY)[A-Za-z0-9_$]*\s*=\s*)['"`]https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\//i
+    if (!unkeyedGatewayEndpointPattern.test(content)) return undefined
+
+    const error =
+      `QUICKDAPP_GRAPH_GATEWAY_API_KEY_REQUIRED: "${normalizedPath}" contains a The Graph gateway URL without an API key. ` +
+      `Do not fetch https://gateway.thegraph.com/api/subgraphs/id/... directly. ` +
+      `Use SUBGRAPH_ID, read window.__QUICK_DAPP_GRAPH_CONFIG__?.apiKey, provide a visible localStorage-backed runtime API key input fallback, ` +
+      `and build https://gateway.thegraph.com/api/{apiKey}/subgraphs/id/{subgraphId} only after a key is available.`
+
+    return { error }
   }
 
   private hasQuickDappWeb3Content(content: string): boolean {

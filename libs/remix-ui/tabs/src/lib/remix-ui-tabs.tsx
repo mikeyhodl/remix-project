@@ -66,9 +66,9 @@ const initialTabsState: ITabsState = {
   name: ''
 }
 
-const QUICKDAPP_SUBGRAPH_SETUP_OPTION = '- Subgraph: None (default) or use the selected .subgraph through "Create DApp from Subgraph Query"'
-const QUICKDAPP_SUBGRAPH_SETUP_RULE = 'Subgraph defaults to None. If I choose to use a .subgraph but no graphContext is already provided, ask me to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext and do not continue generation from the normal QuickDapp flow.'
-const QUICKDAPP_GRAPH_CONTEXT_TOOL_ARG = '- graphContext: include only if a validated graphContext was provided by The Graph handoff; otherwise omit it'
+const QUICKDAPP_SUBGRAPH_SETUP_OPTION = '- Subgraph: None (default) or a .subgraph file path/name'
+const QUICKDAPP_SUBGRAPH_SETUP_RULE = 'Subgraph defaults to None. If I choose to use a .subgraph, ask me for the .subgraph file path/name and pass it to generate_dapp as subgraphFilePath. Do not redirect me to the .subgraph context menu and do not invent graphContext.'
+const QUICKDAPP_GRAPH_CONTEXT_TOOL_ARG = '- subgraphFilePath: include only if I chose a .subgraph file path/name; graphContext: include only if a validated graphContext was already provided by The Graph handoff'
 
 const tabsReducer = (state: ITabsState, action: ITabsAction) => {
   switch (action.type) {
@@ -790,8 +790,8 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph through "Create DApp from Subgraph Query". Location is fixed to Inline in /frontend for this request. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, setupOptionsSummary, and graphContext only if a validated graphContext was provided.`
-          : `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph through "Create DApp from Subgraph Query". ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true, setupOptionsSummary, and graphContext only if a validated graphContext was provided.`
+          ? `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. Location is fixed to Inline in /frontend for this request. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, setupOptionsSummary, and subgraphFilePath only if I chose a .subgraph file.`
+          : `Please ask me which contract I'd like to use, then STOP. After my next reply selects a contract, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true, setupOptionsSummary, and subgraphFilePath only if I chose a .subgraph file.`
       )
     } else if (instances.length > 0) {
       // No match for current file but other contracts exist
@@ -805,8 +805,8 @@ export const TabsUI = (props: TabsUIProps) => {
         contractList,
         ``,
         isDesktop
-          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph through "Create DApp from Subgraph Query". Location is fixed to Inline in /frontend for this request. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, setupOptionsSummary, and graphContext only if a validated graphContext was provided.`
-          : `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph through "Create DApp from Subgraph Query". ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true, setupOptionsSummary, and graphContext only if a validated graphContext was provided.`
+          ? `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. Location is fixed to Inline in /frontend for this request. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with frontendMode="inline", setupOptionsConfirmed=true, setupOptionsSummary, and subgraphFilePath only if I chose a .subgraph file.`
+          : `Please ask me which contract to use, or if I'd like to compile and deploy "${currentFileName}" first, then STOP. After a contract is selected or deployed, ask exactly these setup options and STOP again: Location Workspace(default)/Inline, Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. ${QUICKDAPP_SUBGRAPH_SETUP_RULE} Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions. Only after my following reply, call generate_dapp with setupOptionsConfirmed=true, setupOptionsSummary, and subgraphFilePath only if I chose a .subgraph file.`
       )
     } else {
       // No deployed contracts at all — AI will guide compile→deploy→generate
@@ -822,7 +822,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `Please help me through the full process:`,
           ``,
           `STEP 1 - ASK FOR SETUP OPTIONS:`,
-          `Location is fixed to Inline in /frontend for this request. Ask me once for Base mini-app No(default)/Yes, Design defaults/style/Figma, and Subgraph None(default)/Use selected .subgraph through "Create DApp from Subgraph Query".`,
+          `Location is fixed to Inline in /frontend for this request. Ask me once for Base mini-app No(default)/Yes, Design defaults/style/Figma, and Subgraph None(default)/.subgraph file path or name.`,
           `Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, or any other design subquestions.`,
           QUICKDAPP_SUBGRAPH_SETUP_RULE,
           `After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.`,
@@ -834,7 +834,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `Check if /frontend exists with content. If yes, ask: "The /frontend folder already has files. Overwrite them?"`,
           ``,
           `STEP 4 - GENERATE DAPP:`,
-          `After deployment and confirmation, call generate_dapp with frontendMode: "inline", isBaseMiniApp from my answer (default false), figmaUrl/figmaToken only if provided, graphContext only if a validated graphContext was provided, setupOptionsConfirmed=true, and setupOptionsSummary.`,
+          `After deployment and confirmation, call generate_dapp with frontendMode: "inline", isBaseMiniApp from my answer (default false), figmaUrl/figmaToken only if provided, subgraphFilePath only if I chose a .subgraph file, setupOptionsConfirmed=true, and setupOptionsSummary.`,
           ``,
           `Start by asking me for the setup options, then STOP.`
         )
@@ -865,7 +865,7 @@ export const TabsUI = (props: TabsUIProps) => {
           `Check if /frontend exists with content. If yes, ask: "The /frontend folder already has files. Overwrite them?"`,
           ``,
           `STEP 4 - GENERATE DAPP:`,
-          `After deployment, call generate_dapp with the deployed contract details, my location choice, isBaseMiniApp from my answer (default false), figmaUrl/figmaToken only if provided, graphContext only if a validated graphContext was provided, setupOptionsConfirmed=true, and setupOptionsSummary.`,
+          `After deployment, call generate_dapp with the deployed contract details, my location choice, isBaseMiniApp from my answer (default false), figmaUrl/figmaToken only if provided, subgraphFilePath only if I chose a .subgraph file, setupOptionsConfirmed=true, and setupOptionsSummary.`,
           ``,
           `Start by asking me for the setup options, then STOP.`
         )

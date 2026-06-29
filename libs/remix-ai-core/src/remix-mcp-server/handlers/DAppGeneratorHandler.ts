@@ -150,6 +150,26 @@ const QUICKDAPP_BUILD_RULES =
   `- Use window.__QUICK_DAPP_CONFIG__ for title/logo/details. Do NOT hardcode app names or logos.\n` +
   `- Fallback: config.title || 'My DApp'\n`
 
+const QUICKDAPP_GRAPH_ONLY_BUILD_RULES =
+  `IMPORT RULES (CRITICAL - violations crash the build):\n` +
+  `- Use BARE SPECIFIERS: import React from 'react'. The index.html import map resolves it.\n` +
+  `- NEVER use full URLs in imports (e.g. import React from 'https://esm.sh/react@18'). This crashes the bundler.\n` +
+  `- ALWAYS include .jsx extension in local imports: import App from './App.jsx' (not './App')\n` +
+  `- NEVER repeat src/ in relative paths inside src/: import App from './App.jsx' NOT './src/App.jsx'\n` +
+  `- EVERY .jsx file using JSX MUST import React from 'react' at the top.\n` +
+  `- Do NOT import ethers. Do NOT create wallet, provider, signer, contract, or transaction code.\n` +
+  `- Do NOT use react-router-dom. Use hash-based routing only if needed.\n\n` +
+  `FILE STRUCTURE (minimum required):\n` +
+  `- index.html: import map (react, react-dom/client), Tailwind CDN, window.__QUICK_DAPP_CONFIG__ init, <script type="module" src="./src/main.jsx">\n` +
+  `- src/main.jsx: React entry with ReactDOM.createRoot\n` +
+  `- src/App.jsx: Main Graph data UI\n` +
+  `- src/index.css: Custom styles\n\n` +
+  `INDEX.HTML IMPORT MAP (must include):\n` +
+  `<script type="importmap">{ "imports": { "react": "https://esm.sh/react@18.2.0", "react-dom/client": "https://esm.sh/react-dom@18.2.0/client" } }</script>\n\n` +
+  `DYNAMIC CONTENT:\n` +
+  `- Use window.__QUICK_DAPP_CONFIG__ for title/logo/details. Do NOT hardcode app names or logos.\n` +
+  `- Fallback: config.title || 'Graph DApp'\n`
+
 // Design rules are intentionally lower priority than build/runtime correctness.
 const QUICKDAPP_DESIGN_RULES =
   `DESIGN QUALITY RULES (LOWER PRIORITY THAN BUILD/WALLET/CONTRACT CORRECTNESS):\n` +
@@ -351,7 +371,16 @@ export interface GenerateDAppArgs {
   confirmOverwrite?: boolean
   setupOptionsConfirmed?: boolean
   setupOptionsSummary?: string
+  subgraphFilePath?: string
   graphContext?: QuickDappGraphContext
+}
+
+export interface GenerateGraphDAppArgs {
+  description: string
+  graphContext: QuickDappGraphContext
+  isBaseMiniApp?: boolean
+  setupOptionsConfirmed?: boolean
+  setupOptionsSummary?: string
 }
 
 export interface QuickDappGraphContext {
@@ -371,6 +400,31 @@ export interface QuickDappGraphContext {
   operationName?: string
   operationType?: 'query' | 'mutation' | 'subscription'
   sampleResult?: any
+}
+
+const getQuickDappGraphGatewayRuntimeRules = (graphContext?: QuickDappGraphContext): string => {
+  const subgraphId = graphContext?.subgraphId || '<subgraphId from GRAPH_CONTEXT_JSON>'
+  return `\nTHE GRAPH GATEWAY API KEY RULES (CRITICAL - MUST IMPLEMENT WHEN endpointKind="thegraph-gateway" OR endpointNeedsApiKey=true):\n` +
+    `- The sanitized gateway URL "https://gateway.thegraph.com/api/subgraphs/id/..." is NOT fetchable. It causes "auth error: missing authorization header".\n` +
+    `- NEVER create a GRAPHQL_ENDPOINT/GRAPH_ENDPOINT constant with "https://gateway.thegraph.com/api/subgraphs/id/...".\n` +
+    `- Store only SUBGRAPH_ID as a constant, for example SUBGRAPH_ID = "${subgraphId}".\n` +
+    `- Read Remix-injected config from window.__QUICK_DAPP_GRAPH_CONFIG__.\n` +
+    `- Also provide a visible runtime API key input fallback. Persist only the user's fallback key in localStorage.\n` +
+    `- Compute apiKey as: window.__QUICK_DAPP_GRAPH_CONFIG__?.apiKey || runtime/localStorage fallback.\n` +
+    `- If no apiKey is available, render the key input UI and DO NOT call fetch.\n` +
+    `- Build the fetch URL only after apiKey exists: \`https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/${subgraphId}\`.\n` +
+    `- The generated source should contain both window.__QUICK_DAPP_GRAPH_CONFIG__ and localStorage-based fallback handling for gateway endpoints.\n` +
+    `- Bad code to avoid: fetch('https://gateway.thegraph.com/api/subgraphs/id/...').\n` +
+    `- Good flow: key input or injected key -> build keyed gateway URL -> POST GraphQL query.\n`
+}
+
+interface QuickDappSubgraphFileContext extends QuickDappGraphContext {
+  validation?: {
+    canGenerateDapp: boolean
+    errors?: string[]
+    warnings?: string[]
+    missingFields?: string[]
+  }
 }
 
 export interface UpdateDAppArgs {
@@ -397,7 +451,7 @@ export interface DAppGenerationResult {
 
 export class GenerateDAppHandler extends BaseToolHandler {
   name = 'generate_dapp'
-  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph only when a graphContext is already provided by The Graph handoff. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
+  description = 'Create a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: first ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call this only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If a .subgraph file is chosen in contract-first flow, pass subgraphFilePath so this tool can resolve graphContext without losing the contract context. If Figma is requested, the URL/token are validated before any workspace or file generation begins.'
   inputSchema = {
     type: 'object',
     properties: {
@@ -460,6 +514,10 @@ export class GenerateDAppHandler extends BaseToolHandler {
         type: 'string',
         description: 'Required when setupOptionsConfirmed=true. Short summary of the setup choices confirmed by the user, e.g. "Location workspace, Base mini-app no, Design defaults, Subgraph none".'
       },
+      subgraphFilePath: {
+        type: 'string',
+        description: 'Optional path/name of a .subgraph file selected during contract-first setup. Use this instead of redirecting the user to the .subgraph context menu. The tool resolves it to graphContext before workspace creation.'
+      },
       graphContext: {
         type: 'object',
         description: 'Optional complete The Graph data source context. Only provide this when supplied by The Graph .subgraph handoff or another validated source. Never include actual API key values.',
@@ -516,6 +574,9 @@ export class GenerateDAppHandler extends BaseToolHandler {
     if (!args.contractAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       return 'Invalid contract address format'
     }
+    if (args.subgraphFilePath && !args.subgraphFilePath.trim()) {
+      return 'subgraphFilePath must not be empty when provided'
+    }
     if (args.graphContext) {
       if (!args.graphContext.endpoint?.trim()) {
         return 'graphContext.endpoint is required when graphContext is provided'
@@ -541,6 +602,25 @@ export class GenerateDAppHandler extends BaseToolHandler {
     }
 
     return true
+  }
+
+  private normalizeGraphContext(args: GenerateDAppArgs): void {
+    if (!args.graphContext?.endpoint?.trim()) return
+
+    const endpoint = args.graphContext.endpoint.trim()
+    const gatewayWithKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/([^/]+)\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithoutKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithKeyMatch = endpoint.match(gatewayWithKeyPattern)
+    const gatewayWithoutKeyMatch = endpoint.match(gatewayWithoutKeyPattern)
+    const subgraphId = gatewayWithoutKeyMatch?.[1] || gatewayWithKeyMatch?.[2]
+
+    if (!subgraphId) return
+
+    args.graphContext.endpoint = `https://gateway.thegraph.com/api/subgraphs/id/${subgraphId}`
+    args.graphContext.endpointKind = 'thegraph-gateway'
+    args.graphContext.endpointNeedsApiKey = true
+    args.graphContext.apiKeySource = 'remix-settings'
+    args.graphContext.subgraphId = subgraphId
   }
 
   private async resolveGenerateChainId(args: GenerateDAppArgs, plugin: Plugin): Promise<{
@@ -612,6 +692,80 @@ export class GenerateDAppHandler extends BaseToolHandler {
     }
   }
 
+  private async resolveGraphContextFromSubgraphFile(args: GenerateDAppArgs, plugin: Plugin): Promise<IMCPToolResult | null> {
+    if (args.graphContext || !args.subgraphFilePath?.trim()) {
+      return null
+    }
+
+    const subgraphFilePath = args.subgraphFilePath.trim()
+
+    try {
+      try {
+        await plugin.call('manager' as any, 'activatePlugin', 'thegraph')
+      } catch {
+        // The plugin may already be active.
+      }
+
+      const context = await plugin.call('thegraph' as any, 'getSubgraphFileContext', subgraphFilePath) as QuickDappSubgraphFileContext
+      const validation = context.validation
+
+      if (!validation?.canGenerateDapp) {
+        return this.createSuccessResult({
+          success: false,
+          requiresUserInput: true,
+          reason: 'subgraph_context_invalid',
+          message: `The selected .subgraph file "${subgraphFilePath}" is not ready for QuickDapp generation. Ask the user to fix only the missing or invalid .subgraph fields, then call generate_dapp again with the same contract details and subgraphFilePath.`,
+          subgraphFilePath,
+          errors: validation?.errors || [],
+          warnings: validation?.warnings || [],
+          missingFields: validation?.missingFields || [],
+          preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl', 'subgraphFilePath'],
+          originalRequest: {
+            description: args.description,
+            contractName: args.contractName,
+            contractAddress: args.contractAddress,
+            chainId: args.chainId,
+            frontendMode: args.frontendMode,
+            isBaseMiniApp: !!args.isBaseMiniApp,
+            setupOptionsConfirmed: true,
+            setupOptionsSummary: args.setupOptionsSummary,
+            figmaUrl: args.figmaUrl,
+            subgraphFilePath
+          },
+          nextAction: 'Do not create a workspace or write files. Ask the user to fix the reported .subgraph fields. After the file is fixed, call generate_dapp again with the same contract details and subgraphFilePath.'
+        })
+      }
+
+      args.graphContext = context
+      return null
+    } catch (error: any) {
+      const message = error?.message || String(error)
+
+      return this.createSuccessResult({
+        success: false,
+        requiresUserInput: true,
+        reason: 'subgraph_context_unavailable',
+        message: `Could not read the selected .subgraph file "${subgraphFilePath}". Ask the user for a valid .subgraph path/name, then call generate_dapp again with the same contract details and the corrected subgraphFilePath.`,
+        subgraphFilePath,
+        error: message,
+        preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl'],
+        originalRequest: {
+          description: args.description,
+          contractName: args.contractName,
+          contractAddress: args.contractAddress,
+          chainId: args.chainId,
+          frontendMode: args.frontendMode,
+          isBaseMiniApp: !!args.isBaseMiniApp,
+          setupOptionsConfirmed: true,
+          setupOptionsSummary: args.setupOptionsSummary,
+          figmaUrl: args.figmaUrl,
+          figmaToken: args.figmaToken
+        },
+        nextAction: 'Do not create a workspace or write files. Ask for a valid .subgraph file path/name, then retry generate_dapp with subgraphFilePath.'
+      })
+    }
+  }
+
   async execute(args: GenerateDAppArgs, plugin: Plugin): Promise<IMCPToolResult> {
     let dappOps: DappOperations | undefined
     let progressSlug: string | undefined
@@ -621,18 +775,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
       const isDesktop = isElectron()
       const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
-      if (args.graphContext) {
-        remixAILogger.log('[TheGraph:QuickDapp]', {
-          stage: 'stage-3',
-          action: 'generate-dapp-graph-context',
-          source: args.graphContext.source,
-          filePath: args.graphContext.filePath,
-          endpointKind: args.graphContext.endpointKind,
-          endpointNeedsApiKey: args.graphContext.endpointNeedsApiKey,
-          operationName: args.graphContext.operationName,
-          queryLength: args.graphContext.query?.length || 0
-        })
-      }
+      this.normalizeGraphContext(args)
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -644,13 +787,13 @@ export class GenerateDAppHandler extends BaseToolHandler {
             ? [
               'Base mini-app: No (default) or Yes',
               'Design: defaults, style notes, or a Figma URL',
-              'Subgraph: None (default) or use the selected .subgraph from The Graph handoff'
+              'Subgraph: None (default) or provide a .subgraph file path/name'
             ]
             : [
               'Location: Workspace (default) or Inline in /frontend',
               'Base mini-app: No (default) or Yes',
               'Design: defaults, style notes, or a Figma URL',
-              'Subgraph: None (default) or use the selected .subgraph from The Graph handoff'
+              'Subgraph: None (default) or provide a .subgraph file path/name'
             ],
           defaults: {
             location: isDesktop ? 'inline' : 'workspace',
@@ -660,9 +803,14 @@ export class GenerateDAppHandler extends BaseToolHandler {
           },
           fixedLocation: isDesktop ? 'inline' : undefined,
           nextAction: isDesktop
-            ? 'Ask only Base mini-app, Design, and Subgraph, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Subgraph defaults to None. If the user wants a .subgraph but no graphContext is provided, ask them to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, any figmaUrl/figmaToken, and graphContext only if it was already provided.'
-            : 'Ask only those setup options and then STOP. Subgraph defaults to None. If the user wants a .subgraph but no graphContext is provided, ask them to right-click the .subgraph file and choose "Create DApp from Subgraph Query"; do not invent graphContext. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, any figmaUrl/figmaToken, and graphContext only if it was already provided.'
+            ? 'Ask only Base mini-app, Design, and Subgraph, then STOP. Location is fixed to Inline in /frontend for this request; do not ask Location. Subgraph defaults to None. If the user wants a .subgraph, ask for the .subgraph file path/name and pass it as subgraphFilePath; do not redirect to the .subgraph context menu. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, any figmaUrl/figmaToken, and subgraphFilePath if provided.'
+            : 'Ask only those setup options and then STOP. Subgraph defaults to None. If the user wants a .subgraph, ask for the .subgraph file path/name and pass it as subgraphFilePath; do not redirect to the .subgraph context menu. Do not call any tools or write files in the same turn. After the user answers, call generate_dapp again with setupOptionsConfirmed=true, a non-empty setupOptionsSummary, frontendMode, isBaseMiniApp, description, any figmaUrl/figmaToken, and subgraphFilePath if provided.'
         })
+      }
+
+      const graphResolutionResult = await this.resolveGraphContextFromSubgraphFile(args, plugin)
+      if (graphResolutionResult) {
+        return graphResolutionResult
       }
 
       const chainResolution = await this.resolveGenerateChainId(args, plugin)
@@ -674,7 +822,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
           requiresUserInput: true,
           reason: 'figma_token_required',
           message: 'Ask the user for their Figma Personal Access Token before generating files.',
-          preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl', 'graphContext'],
+          preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'figmaUrl', 'subgraphFilePath', 'graphContext'],
           originalRequest: {
             description: args.description,
             contractName: args.contractName,
@@ -685,9 +833,10 @@ export class GenerateDAppHandler extends BaseToolHandler {
             setupOptionsConfirmed: true,
             setupOptionsSummary: args.setupOptionsSummary,
             figmaUrl: args.figmaUrl,
+            subgraphFilePath: args.subgraphFilePath,
             graphContext: args.graphContext
           },
-          nextAction: 'Ask only for the Figma token and then STOP. After the user provides the token, call generate_dapp again with the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, figmaUrl, graphContext if present, and the new figmaToken.'
+          nextAction: 'Ask only for the Figma token and then STOP. After the user provides the token, call generate_dapp again with the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, figmaUrl, subgraphFilePath or graphContext if present, and the new figmaToken.'
         })
       }
 
@@ -710,7 +859,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             defaults: {
               continueWithoutFigma: false
             },
-            preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'graphContext'],
+            preserveFields: ['description', 'contractName', 'contractAddress', 'chainId', 'frontendMode', 'isBaseMiniApp', 'setupOptionsConfirmed', 'setupOptionsSummary', 'subgraphFilePath', 'graphContext'],
             originalRequest: {
               description: args.description,
               contractName: args.contractName,
@@ -721,10 +870,11 @@ export class GenerateDAppHandler extends BaseToolHandler {
               setupOptionsConfirmed: true,
               setupOptionsSummary: args.setupOptionsSummary,
               figmaUrl: args.figmaUrl,
+              subgraphFilePath: args.subgraphFilePath,
               graphContext: args.graphContext
             },
             nextAction:
-              'Tell the user the Figma fetch failed and ask for exactly one of: a corrected Figma token, a corrected Figma URL, or explicit confirmation to continue with defaults/no Figma. On the next generate_dapp call, preserve the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, and graphContext if present. If the user gives a corrected token, reuse the same figmaUrl. If the user gives a corrected URL, use that URL. If the user chooses defaults/no Figma, omit figmaUrl and figmaToken. Do NOT create a workspace, call write_file, or generate a default design unless the user explicitly chooses defaults.'
+              'Tell the user the Figma fetch failed and ask for exactly one of: a corrected Figma token, a corrected Figma URL, or explicit confirmation to continue with defaults/no Figma. On the next generate_dapp call, preserve the same description, contractName, contractAddress, chainId, frontendMode, isBaseMiniApp, setupOptionsConfirmed=true, setupOptionsSummary, and subgraphFilePath or graphContext if present. If the user gives a corrected token, reuse the same figmaUrl. If the user gives a corrected URL, use that URL. If the user chooses defaults/no Figma, omit figmaUrl and figmaToken. Do NOT create a workspace, call write_file, or generate a default design unless the user explicitly chooses defaults.'
           })
         }
         figmaDesign = figmaResult
@@ -877,6 +1027,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
             name: args.contractName,
             workspaceName: actualWorkspaceName,
             mode: 'inline',
+            appKind: 'contract',
             contract: {
               name: args.contractName,
               address: args.contractAddress,
@@ -938,9 +1089,14 @@ export class GenerateDAppHandler extends BaseToolHandler {
         `- Never hardcode an actual The Graph API key in generated source files.\n` +
         `- If endpointNeedsApiKey is true, read the key from window.__QUICK_DAPP_GRAPH_CONFIG__ or an equivalent QuickDapp runtime config injected by Remix.\n` +
         `- If no injected key is available, provide a runtime key input fallback and store only the user-entered fallback key in localStorage.\n` +
+        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/\${subgraphId} after a key is available.\n` +
+        `- If endpointKind is "thegraph-gateway" and no key is available, show the key-required UI and do not send the GraphQL request yet.\n` +
+        `- Do not describe The Graph gateway endpoints as "No API key required" in generated comments or UI.\n` +
+        `- For IPFS/ENS static deployments, assume Remix settings are unavailable and the injected runtime config may omit apiKey; the generated DApp must still support the localStorage-backed runtime key input fallback.\n` +
         `- If the endpoint is localhost/local graph node, keep it configurable in the UI because deployed IPFS users may need a different endpoint.\n` +
         `- Do not use ethers provider, RPC provider, or wallet calls to fetch GraphQL data.\n` +
         `- Preserve contract wallet rules separately from GraphQL fetch rules.\n\n` +
+        `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
         `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
         : ''
 
@@ -1482,6 +1638,11 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         configSlug = config.slug
         remixAILogger.log(`[QuickDapp][FINALIZE] Read slug from config: ${configSlug}`)
 
+        const isGraphConfig = config.appKind === 'graph-only' || (config.dataSources?.theGraph?.length || 0) > 0
+        if (isGraphConfig && config.workspaceName && config.workspaceName !== dappOps.getWorkspaceName()) {
+          config.workspaceName = dappOps.getWorkspaceName()
+        }
+
         config.status = 'created'
         config.processingStartedAt = null
         config.updatedAt = Date.now()
@@ -1575,6 +1736,271 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         clearQuickDappGenerationContext(dappOps.getWorkspaceName())
       }
       return this.createErrorResult(`Failed to finalize DApp: ${error.message}`)
+    }
+  }
+}
+
+// ──────────────────────────────────────────────
+// Generate Graph-only DApp Tool Handler
+// ──────────────────────────────────────────────
+
+export class GenerateGraphDAppHandler extends BaseToolHandler {
+  name = 'generate_graph_dapp'
+  description = 'Create a read-only QuickDapp from The Graph data only. Use this only when a validated graphContext is provided and no deployed contract should be used. This path must not compile, deploy, select, or pin contracts.'
+  inputSchema = {
+    type: 'object',
+    properties: {
+      description: {
+        type: 'string',
+        description: 'What the Graph-only DApp should show and how it should feel.'
+      },
+      graphContext: {
+        type: 'object',
+        description: 'Required complete The Graph data source context from a validated .subgraph handoff. Never include actual API key values.',
+        properties: {
+          source: { type: 'string', enum: ['subgraph-file', 'remixai-chat', 'manual']},
+          filePath: { type: 'string' },
+          resultFilePath: { type: 'string' },
+          endpoint: { type: 'string' },
+          endpointKind: { type: 'string', enum: ['local', 'thegraph-gateway', 'generic-graphql']},
+          endpointNeedsApiKey: { type: 'boolean' },
+          apiKeySource: { type: 'string', enum: ['remix-settings', 'runtime-input', 'none']},
+          apiKeyPresent: { type: 'boolean' },
+          subgraphId: { type: 'string' },
+          network: { type: 'string' },
+          description: { type: 'string' },
+          query: { type: 'string' },
+          variables: { type: 'object' },
+          operationName: { type: 'string' },
+          operationType: { type: 'string', enum: ['query', 'mutation', 'subscription']},
+          sampleResult: {}
+        },
+        required: ['source', 'endpoint', 'query']
+      },
+      isBaseMiniApp: {
+        type: 'boolean',
+        description: 'Whether to mark this Graph-only DApp as a Base mini-app for the later publish wizard.'
+      },
+      setupOptionsConfirmed: {
+        type: 'boolean',
+        description: 'Must be true after the user answered the setup question.'
+      },
+      setupOptionsSummary: {
+        type: 'string',
+        description: 'Short summary of the setup choices confirmed by the user.'
+      }
+    },
+    required: ['description', 'graphContext']
+  }
+
+  getPermissions(): string[] {
+    return ['dapp:generate', 'file:write']
+  }
+
+  validate(args: GenerateGraphDAppArgs): boolean | string {
+    if (!args.description) return 'Missing required argument: description'
+    if (!args.graphContext) return 'Missing required argument: graphContext'
+    if (!args.graphContext.endpoint?.trim()) return 'graphContext.endpoint is required'
+    if (!args.graphContext.query?.trim()) return 'graphContext.query is required'
+    if (/gateway\.thegraph\.com\/api\/[^/]+\/subgraphs\/id\//i.test(args.graphContext.endpoint)) {
+      return 'graphContext.endpoint must not include a The Graph API key'
+    }
+    return true
+  }
+
+  private normalizeGraphContext(args: GenerateGraphDAppArgs): void {
+    if (!args.graphContext?.endpoint?.trim()) return
+
+    const endpoint = args.graphContext.endpoint.trim()
+    const gatewayWithKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/([^/]+)\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithoutKeyPattern = /^https:\/\/gateway\.thegraph\.com\/api\/subgraphs\/id\/([^/?#]+).*$/i
+    const gatewayWithKeyMatch = endpoint.match(gatewayWithKeyPattern)
+    const gatewayWithoutKeyMatch = endpoint.match(gatewayWithoutKeyPattern)
+    const subgraphId = gatewayWithoutKeyMatch?.[1] || gatewayWithKeyMatch?.[2]
+
+    if (!subgraphId) return
+
+    args.graphContext.endpoint = `https://gateway.thegraph.com/api/subgraphs/id/${subgraphId}`
+    args.graphContext.endpointKind = 'thegraph-gateway'
+    args.graphContext.endpointNeedsApiKey = true
+    args.graphContext.apiKeySource = 'remix-settings'
+    args.graphContext.subgraphId = subgraphId
+  }
+
+  private getGraphOnlyName(args: GenerateGraphDAppArgs): string {
+    const sourceName = args.graphContext.description || args.graphContext.operationName || args.graphContext.filePath?.split('/').pop()
+    if (sourceName?.trim()) return sourceName.replace(/\.subgraph$/i, '').trim()
+    return 'Graph DApp'
+  }
+
+  private getWorkspaceName(name: string): { slug: string; workspaceName: string } {
+    const uniqueId = Date.now().toString(36).slice(-6)
+    const sanitizedName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'graph-dapp'
+    const slug = `${sanitizedName}-${uniqueId}`
+    return { slug, workspaceName: `dapp-${slug}` }
+  }
+
+  async execute(args: GenerateGraphDAppArgs, plugin: Plugin): Promise<IMCPToolResult> {
+    let dappOps: DappOperations | undefined
+
+    try {
+      this.normalizeGraphContext(args)
+
+      if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
+        return this.createSuccessResult({
+          success: false,
+          requiresUserInput: true,
+          reason: 'setup_options_required',
+          message: 'Before generating files, ask the user once for Graph-only DApp setup options.',
+          optionsToAsk: [
+            'Location: Workspace only for Graph-only MVP',
+            'Base mini-app: No (default) or Yes',
+            'Design: defaults or style notes'
+          ],
+          defaults: {
+            location: 'workspace',
+            isBaseMiniApp: false,
+            design: 'defaults'
+          },
+          nextAction: 'Ask only Base mini-app and Design, then STOP. Location is fixed to a new Workspace for Graph-only DApps. After the user answers, call generate_graph_dapp again with setupOptionsConfirmed=true, setupOptionsSummary, isBaseMiniApp, description, and the same graphContext.'
+        })
+      }
+
+      const sourceWorkspaceInfo = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
+      const sourceWorkspaceName = sourceWorkspaceInfo?.name || ''
+      if (sourceWorkspaceName.startsWith('dapp-')) {
+        return this.createErrorResult('Cannot create a Graph-only DApp from within a DApp workspace. Please switch to a source workspace first.')
+      }
+
+      const appName = this.getGraphOnlyName(args)
+      const { slug, workspaceName } = this.getWorkspaceName(appName)
+      const timestamp = Date.now()
+
+      await plugin.call('filePanel' as any, 'createWorkspace', workspaceName, true)
+      await switchToWorkspaceIfNeeded(plugin, workspaceName)
+      await new Promise(r => setTimeout(r, 300))
+
+      const activeWorkspaceAfterSwitch = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
+      if (activeWorkspaceAfterSwitch?.name !== workspaceName) {
+        throw new Error(`Graph-only DApp workspace switch failed. Expected "${workspaceName}", got "${activeWorkspaceAfterSwitch?.name || 'unknown'}".`)
+      }
+
+      dappOps = new DappOperations('workspace', workspaceName, plugin, appName)
+
+      const dappConfig = {
+        _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
+        slug,
+        name: appName,
+        workspaceName,
+        mode: 'workspace',
+        appKind: 'graph-only',
+        sourceWorkspace: {
+          name: sourceWorkspaceName,
+          filePath: args.graphContext.filePath || ''
+        },
+        config: {
+          title: appName,
+          details: typeof args.description === 'string' ? args.description : `Graph-only DApp for ${appName}`,
+          description: args.description,
+          template: 'custom',
+          isBaseMiniApp: !!args.isBaseMiniApp
+        },
+        dataSources: {
+          theGraph: [args.graphContext]
+        },
+        status: 'creating',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        processingStartedAt: timestamp
+      }
+
+      await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
+      try {
+        await plugin.call('fileManager' as any, 'mkdir', 'src')
+      } catch {
+        // ignore if src already exists
+      }
+
+      setQuickDappWorkspaceLock({
+        workspaceName,
+        slug,
+        operation: 'generate',
+        reason: 'generate_graph_dapp'
+      })
+      markQuickDappGenerationContext({
+        workspaceName,
+        isInlineMode: false,
+        sourceRoot: '/',
+        operation: 'generate'
+      })
+
+      plugin.emit('generationProgress', { status: 'preparing', workspaceName, slug })
+
+      try {
+        await plugin.call('manager' as any, 'activatePlugin', 'quick-dapp-v2')
+        await plugin.call('tabs' as any, 'focus', 'quick-dapp-v2')
+        await new Promise(r => setTimeout(r, 300))
+      } catch {
+        // Non-critical; generation can continue without focusing the dashboard.
+      }
+
+      const graphLine =
+        `THE GRAPH DATA SOURCE:\n` +
+        `- This is a Graph-only read-only DApp. Do not create contract, wallet, provider, signer, ethers, transaction, or network switching code.\n` +
+        `- Query The Graph using browser fetch with POST { query, variables }.\n` +
+        `- Show loading, error, empty, and success states.\n` +
+        `- Render data according to the sample result shape when provided.\n` +
+        `- Never hardcode an actual The Graph API key in generated source files.\n` +
+        `- If endpointNeedsApiKey is true, read the key from window.__QUICK_DAPP_GRAPH_CONFIG__ or an equivalent QuickDapp runtime config injected by Remix.\n` +
+        `- If no injected key is available, provide a runtime key input fallback and store only the user-entered fallback key in localStorage.\n` +
+        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/\${subgraphId} after a key is available.\n` +
+        `- If endpointKind is "thegraph-gateway" and no key is available, show the key-required UI and do not send the GraphQL request yet.\n` +
+        `- Do not describe The Graph gateway endpoints as "No API key required" in generated comments or UI.\n` +
+        `- For IPFS/ENS static deployments, assume Remix settings are unavailable and the injected runtime config may omit apiKey; the generated DApp must still support the localStorage-backed runtime key input fallback.\n` +
+        `- If the endpoint is localhost/local graph node, keep it configurable in the UI because deployed IPFS users may need a different endpoint.\n\n` +
+        `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
+        `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
+
+      return this.createSuccessResult({
+        success: true,
+        workspaceName,
+        isGraphOnly: true,
+        workspaceReady: true,
+        message: `Graph-only DApp workspace "${workspaceName}" created successfully.\n\n` +
+          `Now generate the DApp files directly using write_file.\n\n` +
+          `---\n` +
+          `TASK: Generate a new Graph-only read-only DApp frontend\n` +
+          `APP NAME: ${appName}\n` +
+          `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
+          (args.isBaseMiniApp
+            ? `\nBase mini-app RULES:\n` +
+            `- Base mini-app is a QuickDapp packaging/deployment mode handled after file generation by the Base mini-app wizard.\n` +
+            `- Do NOT import @farcaster/miniapp-sdk. Do NOT include fc:frame or fc:miniapp meta tags.\n` +
+            `- Do NOT add base:app_id meta tags, ENS/IPFS setup files, manifests, or deployment scripts. The wizard manages those later.\n`
+            : '') +
+          `${graphLine}` +
+          `\n${QUICKDAPP_GRAPH_ONLY_BUILD_RULES}\n` +
+          `\n${QUICKDAPP_DESIGN_RULES}\n` +
+          `CRITICAL PATH RULES:\n` +
+          `- All file paths are relative to workspace root. Use /index.html, /src/main.jsx, /src/App.jsx, /src/index.css.\n` +
+          `- NEVER include workspace name "${workspaceName}" in paths.\n\n` +
+          `STEPS:\n` +
+          `1. Write files using write_file: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css\n` +
+          `2. Do not create contract or wallet UI.\n` +
+          `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
+          `4. After ALL files are written, call finalize_dapp_generation with workspaceName="${workspaceName}" only.\n` +
+          `---`
+      })
+    } catch (error: any) {
+      if (dappOps?.getWorkspaceName()) {
+        clearQuickDappWorkspaceLock(dappOps.getWorkspaceName())
+        clearQuickDappGenerationContext(dappOps.getWorkspaceName())
+      }
+      plugin.emit('dappGenerationError', {
+        workspaceName: dappOps?.getWorkspaceName(),
+        error: error.message
+      })
+      return this.createErrorResult(`Failed to create Graph-only DApp: ${error.message}`)
     }
   }
 }
@@ -1774,15 +2200,23 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_dapp',
-      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/Use selected .subgraph only when graphContext is already provided by The Graph handoff. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
+      description: 'Set up a new DApp frontend from a deployed smart contract. STRICT PREREQUISITE: never call this in the same assistant turn where setup options are asked. First ask only the required setup options, then stop. If the current prompt or tool result says Location is fixed, do not ask Location; otherwise ask Location Workspace(default)/Inline. Always ask Base mini-app No(default)/Yes, Design defaults/style notes/Figma URL, and Subgraph None(default)/.subgraph file path or name. Do not ask Theme, Primary Color, DApp Title, Layout, or other design subquestions. Call only after the user replies, with setupOptionsConfirmed=true and a non-empty setupOptionsSummary. If a .subgraph file is chosen in contract-first flow, pass subgraphFilePath. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation.',
       inputSchema: new GenerateDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
       handler: new GenerateDAppHandler()
     },
     {
+      name: 'generate_graph_dapp',
+      description: 'Set up a new read-only Graph-only DApp from a validated graphContext when no deployed contract should be used. Never use this for contract-backed DApps. It creates a dedicated workspace and returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation with workspaceName only.',
+      inputSchema: new GenerateGraphDAppHandler().inputSchema,
+      category: ToolCategory.WORKSPACE,
+      permissions: ['dapp:generate', 'file:write'],
+      handler: new GenerateGraphDAppHandler()
+    },
+    {
       name: 'finalize_dapp_generation',
-      description: 'Finalize a DApp after ALL files have been written using write_file. Updates config, refreshes dashboard, and opens DApp preview. MUST be called after generate_dapp + write_file sequence.',
+      description: 'Finalize a DApp after ALL files have been written using write_file. Updates config, refreshes dashboard, and opens DApp preview. MUST be called after generate_dapp or generate_graph_dapp + write_file sequence.',
       inputSchema: new FinalizeDAppGenerationHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],
