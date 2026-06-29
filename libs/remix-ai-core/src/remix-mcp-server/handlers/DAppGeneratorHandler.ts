@@ -386,7 +386,6 @@ export interface GenerateGraphDAppArgs {
 export interface QuickDappGraphContext {
   source: 'subgraph-file' | 'remixai-chat' | 'manual'
   filePath?: string
-  resultFilePath?: string
   endpoint: string
   endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql'
   endpointNeedsApiKey?: boolean
@@ -399,7 +398,6 @@ export interface QuickDappGraphContext {
   variables?: Record<string, any>
   operationName?: string
   operationType?: 'query' | 'mutation' | 'subscription'
-  sampleResult?: any
 }
 
 const getQuickDappGraphGatewayRuntimeRules = (graphContext?: QuickDappGraphContext): string => {
@@ -527,7 +525,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
             enum: ['subgraph-file', 'remixai-chat', 'manual']
           },
           filePath: { type: 'string' },
-          resultFilePath: { type: 'string' },
           endpoint: {
             type: 'string',
             description: 'GraphQL endpoint without actual API key values.'
@@ -554,8 +551,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
           operationType: {
             type: 'string',
             enum: ['query', 'mutation', 'subscription']
-          },
-          sampleResult: {}
+          }
         },
         required: ['source', 'endpoint', 'query']
       }
@@ -1309,7 +1305,6 @@ export class UpdateDAppHandler extends BaseToolHandler {
       index: index + 1,
       source: source.source,
       filePath: source.filePath,
-      resultFilePath: source.resultFilePath,
       endpoint: source.endpoint,
       endpointKind: source.endpointKind,
       endpointNeedsApiKey: source.endpointNeedsApiKey === true,
@@ -1320,10 +1315,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
       operationName: source.operationName,
       operationType: source.operationType,
       variables: source.variables || {},
-      query: source.query,
-      sampleResultShape: source.sampleResult && typeof source.sampleResult === 'object'
-        ? Object.keys(source.sampleResult)
-        : undefined
+      query: source.query
     }))
 
     const raw = JSON.stringify(safeSources, null, 2)
@@ -1831,7 +1823,6 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
         properties: {
           source: { type: 'string', enum: ['subgraph-file', 'remixai-chat', 'manual']},
           filePath: { type: 'string' },
-          resultFilePath: { type: 'string' },
           endpoint: { type: 'string' },
           endpointKind: { type: 'string', enum: ['local', 'thegraph-gateway', 'generic-graphql']},
           endpointNeedsApiKey: { type: 'boolean' },
@@ -1843,8 +1834,7 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
           query: { type: 'string' },
           variables: { type: 'object' },
           operationName: { type: 'string' },
-          operationType: { type: 'string', enum: ['query', 'mutation', 'subscription']},
-          sampleResult: {}
+          operationType: { type: 'string', enum: ['query', 'mutation', 'subscription']}
         },
         required: ['source', 'endpoint', 'query']
       },

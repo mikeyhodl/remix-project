@@ -51,7 +51,6 @@ export interface DappConfig {
 export interface QuickDappGraphContext {
   source: 'subgraph-file' | 'remixai-chat' | 'manual';
   filePath?: string;
-  resultFilePath?: string;
   endpoint: string;
   endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql';
   endpointNeedsApiKey?: boolean;
@@ -64,7 +63,6 @@ export interface QuickDappGraphContext {
   variables?: Record<string, any>;
   operationName?: string;
   operationType?: 'query' | 'mutation' | 'subscription';
-  sampleResult?: any;
 }
 
 export type DappMode = 'workspace' | 'inline';

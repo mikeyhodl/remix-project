@@ -24,7 +24,7 @@ interface QueryResult {
 
 type SubgraphEndpointKind = 'local' | 'thegraph-gateway' | 'generic-graphql'
 type SubgraphValidationError = 'missing-endpoint' | 'missing-query' | 'invalid-query' | 'invalid-variables-json'
-type SubgraphValidationWarning = 'missing-network' | 'missing-description' | 'missing-sample-result' | 'endpoint-needs-api-key' | 'local-endpoint'
+type SubgraphValidationWarning = 'missing-network' | 'missing-description' | 'endpoint-needs-api-key' | 'local-endpoint'
 
 interface SubgraphFileValidation {
   canGenerateDapp: boolean
@@ -36,7 +36,6 @@ interface SubgraphFileValidation {
 interface SubgraphFileContext {
   source: 'subgraph-file'
   filePath: string
-  resultFilePath?: string
   endpoint?: string
   endpointKind?: SubgraphEndpointKind
   endpointNeedsApiKey: boolean
@@ -49,7 +48,6 @@ interface SubgraphFileContext {
   variables?: Record<string, any>
   operationName?: string
   operationType?: 'query' | 'mutation' | 'subscription'
-  sampleResult?: any
   validation: SubgraphFileValidation
 }
 
@@ -183,16 +181,9 @@ export class TheGraphPlugin extends Plugin {
       endpointNeedsApiKey: endpointInfo.endpointNeedsApiKey,
       variablesParseError
     })
-    const resultContext = await this.readSampleResult(path)
-
-    if (!resultContext.sampleResult) {
-      this.addWarning(validation, 'missing-sample-result')
-    }
-
     const context: SubgraphFileContext = {
       source: 'subgraph-file',
       filePath: path,
-      resultFilePath: resultContext.resultFilePath,
       endpoint: endpointInfo.endpoint,
       endpointKind: endpointInfo.endpointKind,
       endpointNeedsApiKey: endpointInfo.endpointNeedsApiKey,
@@ -205,7 +196,6 @@ export class TheGraphPlugin extends Plugin {
       variables: parsed.metadata.variables,
       operationName: parsed.operationName,
       operationType: parsed.operationType,
-      sampleResult: resultContext.sampleResult,
       validation
     }
 
@@ -571,7 +561,6 @@ export class TheGraphPlugin extends Plugin {
     return JSON.parse(JSON.stringify({
       source: context.source,
       filePath: context.filePath,
-      resultFilePath: context.resultFilePath,
       endpoint: context.endpoint,
       endpointKind: context.endpointKind,
       endpointNeedsApiKey: context.endpointNeedsApiKey,
@@ -584,7 +573,6 @@ export class TheGraphPlugin extends Plugin {
       variables: context.variables || {},
       operationName: context.operationName,
       operationType: context.operationType,
-      sampleResult: context.sampleResult,
       validation: context.validation
     }))
   }
@@ -694,12 +682,6 @@ export class TheGraphPlugin extends Plugin {
     }
   }
 
-  private addWarning(validation: SubgraphFileValidation, warning: SubgraphValidationWarning): void {
-    if (!validation.warnings.includes(warning)) {
-      validation.warnings.push(warning)
-    }
-  }
-
   private getVariablesParseError(content: string): string | undefined {
     const variablesMatch = content.match(/^#\s*@variables:\s*(.+)$/m)
     if (!variablesMatch) return undefined
@@ -709,38 +691,6 @@ export class TheGraphPlugin extends Plugin {
       return undefined
     } catch (e: any) {
       return e?.message || 'Invalid variables JSON'
-    }
-  }
-
-  private async readSampleResult(path: string): Promise<{ resultFilePath?: string; sampleResult?: any }> {
-    const resultPath = path.replace(/\.subgraph$/i, '.result.json')
-    if (resultPath === path) return {}
-
-    try {
-      const resultContent = await this.call('fileManager', 'readFile', resultPath)
-      const sampleResult = this.truncateSampleResult(JSON.parse(resultContent))
-      return {
-        resultFilePath: resultPath,
-        sampleResult
-      }
-    } catch {
-      return {}
-    }
-  }
-
-  private truncateSampleResult(sampleResult: any, maxChars = 12000): any {
-    try {
-      const serialized = JSON.stringify(sampleResult)
-      if (!serialized || serialized.length <= maxChars) {
-        return sampleResult
-      }
-
-      return {
-        __truncated: true,
-        preview: serialized.slice(0, maxChars)
-      }
-    } catch {
-      return undefined
     }
   }
 
