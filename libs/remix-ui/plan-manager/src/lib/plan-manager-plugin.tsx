@@ -14,7 +14,7 @@
  *
  * The plugin owns NO derived state — every visible string is a selector.
  */
-import isElectron from 'is-electron'
+
 import { ViewPlugin } from '@remixproject/engine-web'
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { PluginViewWrapper, DISCORD_URL } from '@remix-ui/helper'
@@ -244,10 +244,6 @@ export class PlanManagerPlugin extends ViewPlugin {
    * feature key that triggered the open.
    */
   async open(intent?: OpenIntent | string): Promise<void> {
-    if (isElectron()) {
-      (window as any).electronAPI.openExternal('https://remix.ethereum.org/?call=planManager//open//plans')
-      return
-    }
     // Support string shortcut from nudge targets: 'topup' → { initialSection: 'topup' }
     const resolved: OpenIntent | undefined = typeof intent === 'string'
       ? { initialSection: intent as OpenIntent['initialSection'] }
@@ -1707,7 +1703,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       })
       if (gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen) {
         planManagerLogger.log('[PlanManager:email-gate] auto-opening panel → email-unverified')
-        // this.store.send({ type: 'OPEN_OVERLAY', intent: { reason: 'email-unverified' } })
+        this.store.send({ type: 'OPEN_OVERLAY', intent: { reason: 'email-unverified' } })
         // Catalog wasn't loaded as part of this path — fetch it now so the
         // panel isn't empty when it opens on a fresh login.
         this.store.send({ type: 'CATALOG_LOAD' })
@@ -1745,7 +1741,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       if (canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen) {
         this.freePlanAutoOpenFired = true
         planManagerLogger.log('[PlanManager:free-plan-gate] auto-opening panel → free plan')
-        // this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans', reason: 'feature-required' } })
+        this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans', reason: 'feature-required' } })
         // Catalog wasn't loaded as part of this path — fetch it now so plans
         // are visible immediately without having to close and reopen the panel.
         this.store.send({ type: 'CATALOG_LOAD' })
@@ -1826,8 +1822,7 @@ const PlanManagerOverlay: React.FC<{
   // 'credits' = default landing view (hero + quotas). Other tabs expand
   // their own section and collapse the credits view. null means no tab is
   // active (used internally when a feature is hidden by permissions).
-  const [activeSection, setActiveSection] = React.useState<'credits' | 'plans' | 'topup' | 'usage' | null>(null)
-  const [hasInitialized, setHasInitialized] = React.useState(false)
+  const [activeSection, setActiveSection] = React.useState<'credits' | 'plans' | 'topup' | 'usage' | null>('credits')
 
   // When a non-UI plugin opens us with an intent, follow its routing
   // hint. We track the intent identity (reference) so a fresh OPEN_OVERLAY
@@ -1886,17 +1881,6 @@ const PlanManagerOverlay: React.FC<{
   // Pure derivations — every render reads fresh from the snapshot.
   const planCtx = useMemo(() => selectPlanState(snap), [snap])
   const status = useMemo(() => selectCreditStatus(snap), [snap])
-
-  // Set initial tab based on user's plan (free users start on Plans tab)
-  useEffect(() => {
-    if (!hasInitialized && snap.dataState === 'ready' && !activeSection && !intent) {
-      const isFreeUser = planCtx.kind === 'no_subscription'
-      const initialTab = isFreeUser ? 'plans' : 'credits'
-      planManagerLogger.log('[PlanManager:section] setting initial tab', { isFreeUser, initialTab })
-      setActiveSection(initialTab)
-      setHasInitialized(true)
-    }
-  }, [hasInitialized, snap.dataState, activeSection, intent, planCtx.kind])
   const activeAlert: ActiveAlert = useMemo(() => selectActiveAlert(snap), [snap])
   const visiblePlans = useMemo(() => selectVisiblePlans(snap), [snap])
   const visiblePackages = useMemo(() => selectVisiblePackages(snap), [snap])
@@ -1979,14 +1963,11 @@ const PlanManagerOverlay: React.FC<{
       // first visible section. This is what lands a free-tier user (no
       // `ui:show-credits` grant) on Plans automatically instead of a blank
       // body under visible tabs.
-      // For free users, prefer 'plans' tab if available
-      const isFreeUser = planCtx.kind === 'no_subscription'
       const fallback: 'credits' | 'plans' | 'topup' | 'usage' | null =
-        isFreeUser && ui.showPlans ? 'plans' :
-          ui.showCredits ? 'credits' :
-            ui.showPlans ? 'plans' :
-              ui.showTopUps ? 'topup' :
-                ui.showUsage ? 'usage' : null
+        ui.showCredits ? 'credits' :
+          ui.showPlans ? 'plans' :
+            ui.showTopUps ? 'topup' :
+              ui.showUsage ? 'usage' : null
       if (fallback !== activeSection) {
         planManagerLogger.log('[PlanManager:section] falling back to first visible section', {
           from: activeSection,
