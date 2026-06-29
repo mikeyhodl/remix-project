@@ -73,10 +73,6 @@
   transform: translateY(-1px);
 }
 
-.nudge-widget-body:hover .nudge-widget-cta {
-  color: var(--nw-accent);
-}
-
 /* Illustration area */
 .nudge-widget-illustration {
   position: relative;
@@ -308,8 +304,6 @@
 .nudge-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
   z-index: 8999;
   animation: fadeIn 0.2s ease-out;
 }
@@ -389,6 +383,7 @@
 .nudge-widget--modal .nudge-widget-cta:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  filter: brightness(1.1);
 }
 
 /* HTML content styling for modal descriptions */
