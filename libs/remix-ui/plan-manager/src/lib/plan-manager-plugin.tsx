@@ -1886,7 +1886,7 @@ const PlanManagerOverlay: React.FC<{
   // Pure derivations — every render reads fresh from the snapshot.
   const planCtx = useMemo(() => selectPlanState(snap), [snap])
   const status = useMemo(() => selectCreditStatus(snap), [snap])
-  
+
   // Set initial tab based on user's plan (free users start on Plans tab)
   useEffect(() => {
     if (!hasInitialized && snap.dataState === 'ready' && !activeSection && !intent) {

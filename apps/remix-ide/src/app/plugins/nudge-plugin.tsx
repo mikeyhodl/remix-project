@@ -135,7 +135,7 @@ export class NudgePlugin extends Plugin {
 
     // 33% chance to fire promote-plans event
     if (Math.random() < 0.33) {
-     this.engine_.fire('app:load')
+      this.engine_.fire('app:load')
     }
   }
 
@@ -887,7 +887,7 @@ export class NudgePlugin extends Plugin {
 
     // Promote plans with random PRO_DEMOS content
     // Select a random demo to feature
-    const randomDemo =  PRO_DEMOS[Math.floor(Math.random() * PRO_DEMOS.length)]
+    const randomDemo = PRO_DEMOS[Math.floor(Math.random() * PRO_DEMOS.length)]
     this.engine_.addRule({
       id: 'promote-plans',
       condition: 'app:load',
@@ -1153,8 +1153,8 @@ function NudgeWidgetUI({ state, onAction, onDismiss, onDismissPermanent, onDecor
             )}
             {/* Render HTML for modal nudges, plain text for others */}
             {nudge.action.type === 'modal' ? (
-              <div 
-                className="nudge-widget-desc nudge-widget-desc--html" 
+              <div
+                className="nudge-widget-desc nudge-widget-desc--html"
                 dangerouslySetInnerHTML={{ __html: nudge.action.message }}
               />
             ) : (
