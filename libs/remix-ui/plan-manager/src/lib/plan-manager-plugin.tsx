@@ -97,6 +97,20 @@ export class PlanManagerPlugin extends ViewPlugin {
   private paddleEventHandler: ((e: PaddleEventData) => void) | null = null
   private paddleTheme: 'dark' | 'light' = 'dark'
 
+  // Desktop (Electron) billing bridge.
+  // Paddle's checkout iframe can't run inside the Electron shell, so on
+  // desktop the buy/switch actions open the web IDE in the user's browser
+  // (see `openBillingOnWeb`). `desktopBillingReturn` is set on the *web*
+  // instance that was launched from desktop (carries `?desktop_billing=1`):
+  // once its purchase succeeds we hand control back to the desktop app via the
+  // remix://billing/complete protocol, mirroring the SSO login bridge.
+  private desktopBillingReturn = false
+  private desktopReturnFired = false
+  // The billing section the desktop user was sent to buy from (set on the
+  // *desktop* instance in `openBillingOnWeb`). Used when control returns so the
+  // confirmation screen shows the right intent (subscription vs top-up).
+  private desktopPendingBillingSection: 'plans' | 'topup' | null = null
+
   constructor() {
     super(profile)
     // Dev-only UI controls are hidden by default. Flip this to `true`
@@ -112,6 +126,12 @@ export class PlanManagerPlugin extends ViewPlugin {
       if (next !== lastResult) {
         lastResult = next
         this.emit('checkoutResultChanged', next)
+        // If this web instance was launched from Remix Desktop, hand the
+        // successful purchase back to the desktop app (focus + refresh) the
+        // same way SSO login hands tokens back via the remix:// protocol.
+        if (next?.kind === 'success' && this.desktopBillingReturn) {
+          this.returnToDesktopAfterBilling()
+        }
       }
     })
 
@@ -129,6 +149,24 @@ export class PlanManagerPlugin extends ViewPlugin {
 
   async onActivation(): Promise<void> {
     this.renderComponent()
+
+    // Detect whether this (web) instance was launched from Remix Desktop to
+    // complete a purchase. Captured once here so a later URL rewrite can't
+    // lose the marker before checkout finishes.
+    this.desktopBillingReturn = this.readDesktopBillingMarker()
+
+    // On desktop, listen for the web checkout completing so we can refresh
+    // credits/plan once the user returns (the remix:// protocol already
+    // brings the window forward).
+    if (this.isDesktop()) {
+      try {
+        this.on('desktopBillingHandler' as any, 'onBillingComplete', () => {
+          void this.handleDesktopBillingComplete()
+        })
+      } catch (err) {
+        planManagerLogger.warn('[PlanManager] desktop billing bridge unavailable', err)
+      }
+    }
 
     // Catalog is public — load it eagerly so plan/package cards are ready
     // even before the user signs in.
@@ -347,6 +385,12 @@ export class PlanManagerPlugin extends ViewPlugin {
    * `onActivation`, which dispatches CHECKOUT_COMPLETED / CLOSED / ERROR.
    */
   async purchaseCredits(packageId: string, priceId?: number): Promise<void> {
+    // Paddle checkout can't run inside the Electron shell — hand the user off
+    // to the web IDE's top-up screen in their browser instead.
+    if (this.isDesktop()) {
+      this.openBillingOnWeb('topup')
+      return
+    }
     const snap = this.store.getSnapshot()
     const pkg = snap.catalogPackages.find(p => p.id === packageId)
     const itemLabel = pkg ? `${pkg.credits.toLocaleString()} credits${pkg.name ? ` (${pkg.name})` : ''}` : packageId
@@ -387,6 +431,16 @@ export class PlanManagerPlugin extends ViewPlugin {
     // guard — free → paid still goes through purchase.
     const planState = selectPlanState(snap)
     const targetIsFree = (plan?.priceUsd ?? 0) === 0
+
+    // On desktop, any paid plan (new subscription or switch) needs Paddle,
+    // which we can't open in the Electron shell — hand off to the web IDE's
+    // plans screen. The free plan is granted server-side with no Paddle
+    // hand-off, so it stays in-app.
+    if (this.isDesktop() && !targetIsFree) {
+      this.openBillingOnWeb('plans')
+      return
+    }
+
     if (planState.kind === 'paid' && !targetIsFree && planState.planId !== planId) {
       await this.changePlan(planId, resolvedPriceId)
       return
@@ -437,6 +491,13 @@ export class PlanManagerPlugin extends ViewPlugin {
     const snap = this.store.getSnapshot()
     const cart = snap.cartItems
     if (cart.length === 0) return
+
+    // Safety net — paid carts always end in a Paddle transaction, which can't
+    // open in Electron. Send desktop users to the web plans screen instead.
+    if (this.isDesktop()) {
+      this.openBillingOnWeb('plans')
+      return
+    }
 
     // Build a label from all items for the pending-checkout indicator.
     const planItem = cart.find(i => i.productType === 'subscription_plan')
@@ -702,6 +763,12 @@ export class PlanManagerPlugin extends ViewPlugin {
    * Not for switching to free — use cancelSubscription() instead.
    */
   async changePlan(planId: string, priceId?: number): Promise<void> {
+    // Plan switches are charged through Paddle (proration), which can't open
+    // in the Electron shell — redirect to the web plans screen.
+    if (this.isDesktop()) {
+      this.openBillingOnWeb('plans')
+      return
+    }
     const snap = this.store.getSnapshot()
     const plan = snap.catalogPlans.find(p => p.id === planId)
     const itemLabel = plan?.name ?? planId
@@ -1016,6 +1083,108 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   // ─── Internals ──────────────────────────────────────────────────
+
+  // ─── Desktop (Electron) billing bridge ───────────────────────────
+
+  /** True when running inside the Electron desktop shell. */
+  private isDesktop(): boolean {
+    return typeof window !== 'undefined' && (window as any).electronAPI !== undefined
+  }
+
+  /**
+   * Base URL of the web IDE used for the desktop → web checkout hand-off.
+   * Dev/E2E desktop builds load the app from localhost, so reuse that origin;
+   * packaged desktop loads from `file://`, where we fall back to production.
+   */
+  private webBillingBaseUrl(): string {
+    try {
+      const loc = typeof window !== 'undefined' ? window.location : null
+      if (loc && /^https?:$/.test(loc.protocol) && /^(localhost|127\.0\.0\.1)$/.test(loc.hostname)) {
+        return loc.origin
+      }
+    } catch { /* ignore */ }
+    return 'https://remix.ethereum.org'
+  }
+
+  /** Read the `desktop_billing` marker from the current URL (web instance). */
+  private readDesktopBillingMarker(): boolean {
+    try {
+      if (typeof window === 'undefined') return false
+      const search = new URLSearchParams(window.location.search)
+      if (search.get('desktop_billing') === '1') return true
+      // The `#` fragment may carry params too (parity with QueryParams).
+      const hash = window.location.hash || ''
+      const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : hash.replace(/^#/, '')
+      return new URLSearchParams(hashQuery).get('desktop_billing') === '1'
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Desktop can't render Paddle's checkout iframe, so buy/switch actions open
+   * the matching web IDE screen in the user's browser. `window.open` is routed
+   * to `shell.openExternal` by the Electron shell's window-open handler. The
+   * `desktop_billing=1` marker tells that web instance to hand control back to
+   * the desktop app once the purchase succeeds.
+   */
+  private openBillingOnWeb(section: 'plans' | 'topup'): void {
+    // Remember where we sent the user so the desktop confirmation screen can
+    // show the right intent when control comes back via remix://billing/complete.
+    this.desktopPendingBillingSection = section
+    const url = `${this.webBillingBaseUrl()}/?call=planManager//open//${section}&desktop_billing=1`
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager] Failed to open web billing', err)
+    }
+    // Let the user know where checkout went, and keep the panel on the
+    // relevant section so they see the result when they return.
+    this.call('notification' as any, 'toast', 'Opening checkout in your browser — complete your purchase there, then return to the app.').catch(() => { /* noop */ })
+    this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: section } })
+  }
+
+  /**
+   * Web instance (launched from desktop) finished a purchase: hand control
+   * back to the desktop app via the remix:// protocol, just like the SSO
+   * login bridge. The desktop side brings its window forward and refreshes.
+   */
+  private returnToDesktopAfterBilling(): void {
+    if (this.desktopReturnFired) return
+    this.desktopReturnFired = true
+    // Brief delay so the success screen is visible before we redirect.
+    setTimeout(() => {
+      try {
+        window.location.href = 'remix://billing/complete'
+      } catch (err) {
+        planManagerLogger.warn('[PlanManager] Failed to return to desktop', err)
+      }
+    }, 1500)
+  }
+
+  /**
+   * Desktop side: the web checkout completed and handed control back. Mirror
+   * the web post-purchase flow so the desktop reaches the same end state:
+   *   1. Reveal the panel.
+   *   2. Seed a `success` checkout result so the confirmation screen shows.
+   *      `setCheckoutResult('success')` internally runs `completePurchaseRefresh`,
+   *      which reloads account data *and* refreshes the auth plugin's
+   *      permissions / credits / access-policy — so the top-bar avatar dropdown
+   *      and every feature gate reflect the new plan, exactly like on the web.
+   * The purchase happened on the (already-authenticated) web account, so there
+   * are no tokens to transfer; we just resync this desktop instance's view.
+   */
+  private async handleDesktopBillingComplete(): Promise<void> {
+    planManagerLogger.log('[PlanManager] desktop billing complete — confirming + refreshing user state')
+    try { await this.open() } catch { /* noop */ }
+    // We don't know the exact item bought on the web, so use the section the
+    // user was sent to as the intent and keep the label generic; the plan/credit
+    // cards below the confirmation render the precise, freshly-refreshed values.
+    const intent: CheckoutIntent = this.desktopPendingBillingSection === 'topup' ? 'topup' : 'subscription'
+    const itemLabel = intent === 'subscription' ? 'Remix' : undefined
+    this.desktopPendingBillingSection = null
+    this.setCheckoutResult({ kind: 'success', intent, itemLabel })
+  }
 
   /** Init the Paddle singleton with config fetched from the auth backend. */
   private async initPaddleSingleton(): Promise<void> {
