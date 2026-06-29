@@ -449,7 +449,7 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
           }}
         >
           <i className="fab fa-discord"></i>
-          Beta Feedback
+          User Feedback
         </button>
       </div>
       <p className="help-panel-header-sub">
