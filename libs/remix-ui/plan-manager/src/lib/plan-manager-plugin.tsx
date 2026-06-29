@@ -245,7 +245,7 @@ export class PlanManagerPlugin extends ViewPlugin {
    */
   async open(intent?: OpenIntent | string): Promise<void> {
     if (isElectron()) {
-      (window as any).electronAPI.openExternal('https://remix.ethereum.org?call=planManager//open')
+      (window as any).electronAPI.openExternal('https://remix.ethereum.org/?call=planManager//open//plans')
       return
     }
     // Support string shortcut from nudge targets: 'topup' → { initialSection: 'topup' }
