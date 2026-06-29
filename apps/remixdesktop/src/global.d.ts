@@ -11,6 +11,7 @@ declare global {
       openFolder: (path: string) => Promise<any>
       openFolderInSameWindow: (path: string) => Promise<any>
       activatePlugin: (name: string) => Promise<any>
+      openExternal: (url: string) => void
       plugins: Array<{
         name: string
         on: (cb: (...args: any[]) => void) => void
