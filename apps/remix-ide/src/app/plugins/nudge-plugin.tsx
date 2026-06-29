@@ -2,6 +2,7 @@ import { Plugin } from '@remixproject/engine'
 import React from 'react'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { NudgeEngine, all, any } from '@remix-project/remix-lib'
+import { PRO_DEMOS } from '@remix-ui/modal-help'
 import type { NudgeRule, NudgeAction, SerializedNudgeRule } from '@remix-project/remix-lib'
 import { trackMatomoEvent as baseTrackMatomoEvent, NudgeEvent, MatomoEvent, Features } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
@@ -131,6 +132,11 @@ export class NudgePlugin extends Plugin {
     this._setupBuiltinRules()
     this._setupEventListeners()
     this.renderComponent()
+
+    // 33% chance to fire promote-plans event
+    if (Math.random() < 0.33) {
+     this.engine_.fire('app:load')
+    }
   }
 
   onDeactivation(): void {
@@ -268,24 +274,6 @@ export class NudgePlugin extends Plugin {
       // rule is (re)registered with the resolved plan name baked in, then fired.
       const planLabel = (info?.label || 'Pro').replace(/\s*\+.*$/, '') // strip any "+ N add-ons"
       this._upgradedPlanLabel = /^remix/i.test(planLabel) ? planLabel : `Remix ${planLabel}`
-      this.engine_.addRule({
-        id: 'plan-upgraded-welcome',
-        condition: 'user:plan_upgraded',
-        action: {
-          type: 'widget',
-          position: 'right',
-          hidePermanentDismiss: true,
-          title: `You're on ${this._upgradedPlanLabel}!`,
-          message: 'Your upgrade is live — premium AI models, higher limits, and the audit tools are unlocked. Open the AI assistant to put them to work.',
-          actionLabel: 'Open AI Assistant',
-          actionTarget: 'menuicons::select::remixaiassistant',
-          icon: 'fas fa-circle-check',
-          widgetColor: '#2fbfb1',
-          widgetBg: 'rgba(47, 191, 177, 0.1)'
-        },
-        showOnce: 'session',
-        priority: 20
-      })
       this.engine_.fire('user:plan_upgraded')
 
       const planLower = planLabel.toLowerCase()
@@ -877,6 +865,48 @@ export class NudgePlugin extends Plugin {
       priority: 5
     })
 
+    // After plan upgrade
+    this.engine_.addRule({
+      id: 'plan-upgraded-welcome',
+      condition: 'user:plan_upgraded',
+      action: {
+        type: 'widget',
+        position: 'right',
+        hidePermanentDismiss: true,
+        title: `You're on ${this._upgradedPlanLabel}!`,
+        message: 'Your upgrade is live — premium AI models, higher limits, and the audit tools are unlocked. Open the AI assistant to put them to work.',
+        actionLabel: 'Open AI Assistant',
+        actionTarget: 'menuicons::select::remixaiassistant',
+        icon: 'fas fa-circle-check',
+        widgetColor: '#2fbfb1',
+        widgetBg: 'rgba(47, 191, 177, 0.1)'
+      },
+      showOnce: 'session',
+      priority: 20
+    })
+
+    // Promote plans with random PRO_DEMOS content
+    // Select a random demo to feature
+    const randomDemo =  PRO_DEMOS[Math.floor(Math.random() * PRO_DEMOS.length)]
+    this.engine_.addRule({
+      id: 'promote-plans',
+      condition: 'app:load',
+      action: {
+        type: 'modal',
+        position: 'right',
+        hidePermanentDismiss: true,
+        title: randomDemo.name,
+        message: randomDemo.desc + '\n' + randomDemo.mockReply,
+        actionLabel: 'Upgrade',
+        actionTarget: 'planManager::open',
+        icon: 'fas fa-circle-check',
+        widgetColor: randomDemo.color,
+        widgetBg: `rgba(${parseInt(randomDemo.color.slice(1, 3), 16)}, ${parseInt(randomDemo.color.slice(3, 5), 16)}, ${parseInt(randomDemo.color.slice(5, 7), 16)}, 0.1)`
+      },
+      showOnce: false,
+      priority: 20
+    })
+
     /* ─── Hint decorations (pulsating dots / glows on UI elements) ─── */
 
   }
@@ -1074,10 +1104,19 @@ function NudgeWidgetUI({ state, onAction, onDismiss, onDismissPermanent, onDecor
 
   return (
     <>
-      {/* Corner widget for active nudges */}
+      {/* Modal backdrop for modal-type nudges */}
+      {nudge && nudge.action.type === 'modal' && (
+        <div className="nudge-modal-backdrop" onClick={onDismiss} />
+      )}
+
+      {/* Corner widget or modal for active nudges */}
       {nudge && nudge.action.type !== 'hint' && (
         <div
-          className={`nudge-widget${nudge.action.position === 'right' ? ' nudge-widget--right' : ''}${state.animateOut ? ' nudge-widget--out' : ''}`}
+          className={`nudge-widget${
+            nudge.action.type === 'modal' ? ' nudge-widget--modal' : ''
+          }${nudge.action.position === 'right' ? ' nudge-widget--right' : ''}${
+            state.animateOut ? ' nudge-widget--out' : ''
+          }`}
           data-id="nudge-widget"
           style={{
             ...(nudge.action.widgetColor ? { '--nw-accent': nudge.action.widgetColor } as React.CSSProperties : {}),
@@ -1112,7 +1151,15 @@ function NudgeWidgetUI({ state, onAction, onDismiss, onDismissPermanent, onDecor
             {nudge.action.title && (
               <h6 className="nudge-widget-title">{nudge.action.title}</h6>
             )}
-            <p className="nudge-widget-desc">{nudge.action.message}</p>
+            {/* Render HTML for modal nudges, plain text for others */}
+            {nudge.action.type === 'modal' ? (
+              <div 
+                className="nudge-widget-desc nudge-widget-desc--html" 
+                dangerouslySetInnerHTML={{ __html: nudge.action.message }}
+              />
+            ) : (
+              <p className="nudge-widget-desc">{nudge.action.message}</p>
+            )}
 
             {nudge.action.actionLabel && (
               <span className="nudge-widget-cta">
