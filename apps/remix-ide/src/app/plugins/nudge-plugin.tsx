@@ -893,7 +893,7 @@ export class NudgePlugin extends Plugin {
         title: randomDemo.name,
         message: randomDemo.desc + '\n' + randomDemo.mockReply,
         actionLabel: 'Upgrade',
-        actionTarget: 'planManager::open',
+        actionTarget: 'planManager::open::plans',
         icon: 'fas fa-circle-check',
         widgetColor: randomDemo.color,
         widgetBg: `rgba(${parseInt(randomDemo.color.slice(1, 3), 16)}, ${parseInt(randomDemo.color.slice(3, 5), 16)}, ${parseInt(randomDemo.color.slice(5, 7), 16)}, 0.1)`
