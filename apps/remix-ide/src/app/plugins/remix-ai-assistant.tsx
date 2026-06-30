@@ -4,7 +4,7 @@ import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
 import { ChatMessage, RemixUiRemixAiAssistant, RemixUiRemixAiAssistantHandle, ConversationMetadata } from '@remix-ui/remix-ai-assistant'
 import { EventEmitter } from 'events'
-import { trackMatomoEvent } from '@remix-api'
+import { trackMatomoEvent, ChatPromptMetadata } from '@remix-api'
 import { ChatHistory, ChatHistoryStorageManager, IndexedDBChatHistoryBackend, remixAILogger } from '@remix/remix-ai-core'
 import { appActionTypes, AppAction } from '@remix-ui/app'
 
@@ -27,7 +27,7 @@ export class RemixAIAssistant extends ViewPlugin {
   element: HTMLDivElement
   dispatch: React.Dispatch<any> = () => { }
   appStateDispatch: React.Dispatch<AppAction> = () => { }
-  queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number } | null = null
+  queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number, metadata?: ChatPromptMetadata } | null = null
   event: any
   chatRef: React.RefObject<RemixUiRemixAiAssistantHandle>
   history: ChatMessage[] = []
@@ -150,6 +150,9 @@ export class RemixAIAssistant extends ViewPlugin {
         ...(emptyNewConversations.length > 0 ? [emptyNewConversations[0]] : [])
       ]
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'load_conversation', isClick: false })
+      // Single source of truth for conversation breadth — loadConversations()
+      // runs after every create/delete/archive, so the count is always fresh.
+      this.handleActivity('conversation_count', this.conversations.length)
       this.renderComponent()
     } catch (error) {
       remixAILogger.error('Failed to load conversations:', error)
@@ -463,7 +466,7 @@ export class RemixAIAssistant extends ViewPlugin {
     })
   }
 
-  chatPipe = (message: string, isEditorCodeAnalysis: boolean = false) => {
+  chatPipe = (message: string, isEditorCodeAnalysis: boolean = false, metadata?: ChatPromptMetadata) => {
     remixAILogger.log('[QuickDapp] chatPipe received, length:', message?.length)
     // Show right side panel if it's hidden
     this.call('rightSidePanel', 'isPanelHidden').then((isPanelHidden) => {
@@ -481,15 +484,18 @@ export class RemixAIAssistant extends ViewPlugin {
 
     // If the inner component is mounted, call it directly
     if (this.chatRef?.current) {
-      this.chatRef.current.sendChat(message, isEditorCodeAnalysis)
+      this.chatRef.current.sendChat(message, isEditorCodeAnalysis, metadata)
       return
     }
 
-    // Otherwise queue it for first render
+    // Otherwise queue it for first render. The provenance metadata rides
+    // along so the component can attribute the prompt once it drains the
+    // queue (the queued path doesn't go through sendChat/sendPrompt).
     this.queuedMessage = {
       text: message,
       isEditorCodeAnalysis: isEditorCodeAnalysis,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      metadata
     }
     this.renderComponent()
   }
@@ -527,14 +533,37 @@ export class RemixAIAssistant extends ViewPlugin {
   }
 
   async handleActivity(type: string, payload: any) {
-    // Never log user prompts - only track the activity type
-    const eventName = type === 'promptSend' ? 'remixai-assistant-promptSend' : `remixai-assistant-${type}-${payload}`;
-    trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: `chatting${type}-${payload}`, isClick: true })
+    // IMPORTANT: never interpolate prompt text into the event name/value.
+    // Prompt provenance arrives as a small metadata object ({ source,
+    // presetId, length }) — only those derived fields are tracked, never the
+    // user's actual prompt content.
+    const thread = `conversation_id:${this.currentConversationId ?? 'none'}`
+    switch (type) {
+    case 'prompt_typed':
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_typed', value: `${payload?.source ?? 'user'}|${thread}`, isClick: true })
+      break
+    case 'prompt_preset':
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_preset', value: `${payload?.presetId ?? payload?.source ?? 'unknown'}|${thread}`, isClick: true })
+      break
+    case 'conversation_size':
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'conversation_size', value: Number(payload) || 0, isClick: false })
+      break
+    case 'conversation_count':
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'conversation_count', value: Number(payload) || 0, isClick: false })
+      break
+    case 'promptSend':
+      // Retained for dashboard continuity. payload is now { source, length },
+      // NOT the raw prompt text.
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'promptSend', value: `${payload?.source ?? 'user'}|${thread}`, isClick: true })
+      break
+    default:
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: `chatting-${type}`, value: typeof payload === 'string' ? payload : undefined, isClick: true })
+    }
   }
 
   updateComponent(state: {
     isInitializing: boolean
-    queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number } | null
+    queuedMessage: { text: string, isEditorCodeAnalysis?: boolean, timestamp: number, metadata?: ChatPromptMetadata } | null
     conversations: ConversationMetadata[]
     currentConversationId: string | null
     showHistorySidebar: boolean

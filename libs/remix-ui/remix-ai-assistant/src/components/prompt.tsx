@@ -422,7 +422,12 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
           {[...SHORTCUT_CATEGORIES, ...(toolCommands.length > 0 ? [{ id: 'tools', label: 'Tools' }] : [])].map(cat => (
             <button
               key={cat.id}
-              onClick={() => setActiveShortcut(prev => prev === cat.id ? null : cat.id)}
+              onClick={() => setActiveShortcut(prev => {
+                const next = prev === cat.id ? null : cat.id
+                // Track only when opening a category (not when toggling it shut)
+                if (next) trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'command_category_open', value: cat.id, isClick: true })
+                return next
+              })}
               className="btn btn-sm rounded-pill"
               style={{
                 fontSize: '0.72rem',
@@ -467,11 +472,15 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   onClick={() => {
                     // Locked prompt → route to the plan manager (or sign-in
                     // when anonymous) instead of dropping it into the composer.
+                    // The upgrade hand-off is tracked by onUpgradeRequired.
                     if (isLocked) {
                       setActiveShortcut(null)
                       onUpgradeRequired?.(promptText, missingFeature as string)
                       return
                     }
+                    // Track which canned prompt was picked by category + index —
+                    // never the prompt text (kept short and content-free).
+                    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'shortcut_selected', value: `${activeCategory.id}:${i}`, isClick: true })
                     handleShortcutSelect(promptText)
                   }}
                   className="d-flex align-items-center justify-content-between w-100 text-start px-3 py-2 border-0"
@@ -538,10 +547,12 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                   key={cmd.name}
                   onClick={() => {
                     setActiveShortcut(null)
+                    // Locked tool → plan-manager hand-off (tracked by onUpgradeRequired).
                     if (isLocked) {
                       onUpgradeRequired?.(cmd.name, missingFeature as string)
                       return
                     }
+                    trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'tool_selected', value: cmd.name, isClick: true })
                     cmd.action?.()
                   }}
                   className="d-block w-100 text-start px-3 py-2 border-0"

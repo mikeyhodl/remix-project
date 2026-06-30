@@ -1104,7 +1104,7 @@ export const EditorUI = (props: EditorUIProps) => {
             (async () => {
               await props.plugin.call('popupPanel', 'showPopupPanel', true)
               setTimeout(async () => {
-                props.plugin.call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt)
+                (props.plugin as any).call('remixAI', 'chatPipe', 'vulnerability_check', pastedCodePrompt, undefined, undefined, { source: 'editor', presetId: 'paste-vulnerability-check' })
               }, 500)
               trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'vulnerability_check_pasted_code', isClick: true })
             })();
@@ -1320,7 +1320,7 @@ export const EditorUI = (props: EditorUIProps) => {
           if (isPanelHidden) {
             await props.plugin.call('rightSidePanel', 'togglePanel')
           }
-          await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', message, context)
+          await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', message, context, undefined, { source: 'editor', presetId: 'explain-function' })
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },
@@ -1349,7 +1349,7 @@ export const EditorUI = (props: EditorUIProps) => {
           if (isPanelHidden) {
             await props.plugin.call('rightSidePanel', 'togglePanel')
           }
-          await props.plugin.call('remixAI' as any, 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage)
+          await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', selectedCode, content, pipeMessage, { source: 'editor', presetId: 'explain-solidity' })
         }, 500)
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explainFunction', isClick: true })
       },

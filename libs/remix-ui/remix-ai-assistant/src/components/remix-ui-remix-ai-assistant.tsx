@@ -9,7 +9,7 @@ import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse,
 //@ts-ignore
 import '../css/color.css'
 import { ModalTypes } from '@remix-ui/app'
-import { MatomoEvent, AIEvent, Features, PublicPlan } from '@remix-api'
+import { MatomoEvent, AIEvent, Features, PublicPlan, ChatPromptMetadata } from '@remix-api'
 //@ts-ignore
 import { TrackingContext } from '@remix-ide/tracking'
 import { ChatHistoryComponent } from './chat'
@@ -28,7 +28,7 @@ import { ToolApprovalModal } from './ToolApprovalModal'
 export interface RemixUiRemixAiAssistantProps {
   plugin: RemixAIAssistant
   isInitializing?: boolean
-  queuedMessage: { text: string; isEditorCodeAnalysis?: boolean; timestamp: number } | null
+  queuedMessage: { text: string; isEditorCodeAnalysis?: boolean; timestamp: number; metadata?: ChatPromptMetadata } | null
   initialMessages?: ChatMessage[]
   onMessagesChange?: (msgs: ChatMessage[]) => void
   /** optional callback whenever the user or AI does something */
@@ -50,7 +50,7 @@ export interface RemixUiRemixAiAssistantProps {
 }
 export interface RemixUiRemixAiAssistantHandle {
   /** Programmatically send a prompt to the chat (returns after processing starts) */
-  sendChat: (prompt: string, isEditorCodeAnalysis?: boolean) => Promise<void>
+  sendChat: (prompt: string, isEditorCodeAnalysis?: boolean, metadata?: ChatPromptMetadata) => Promise<void>
   submitCurrentInput: () => Promise<void>
   addAssistantMessage: (text: string) => void
   clearChat: () => void
@@ -260,6 +260,29 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.onActivity?.(type, payload)
     },
     [props.onActivity]
+  )
+
+  /**
+   * Emit prompt-provenance + engagement activities for a single send.
+   * Distinguishes user-typed from preset prompts and reports conversation
+   * depth. NEVER passes the prompt text — only derived metadata (source,
+   * presetId, length, message count).
+   */
+  const trackPromptActivity = useCallback(
+    (metadata: ChatPromptMetadata | undefined, length: number, priorMessageCount: number) => {
+      const source = metadata?.source ?? 'user'
+      const isPreset = !!(metadata && (metadata.presetId || (metadata.source && metadata.source !== 'user')))
+      // Retained for dashboard continuity — provenance only, no prompt text.
+      dispatchActivity('promptSend', { source, length })
+      dispatchActivity(isPreset ? 'prompt_preset' : 'prompt_typed', {
+        source,
+        presetId: metadata?.presetId,
+        length
+      })
+      // Engagement depth — number of messages in the conversation including this turn.
+      dispatchActivity('conversation_size', priorMessageCount + 1)
+    },
+    [dispatchActivity]
   )
 
   useEffect(() => {
@@ -1493,7 +1516,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   // Push a queued message (if any) into history once props update
   useEffect(() => {
     if (props.queuedMessage) {
-      const { text, isEditorCodeAnalysis, timestamp } = props.queuedMessage
+      const { text, isEditorCodeAnalysis, timestamp, metadata } = props.queuedMessage
       setMessages(prev => [
         ...prev,
         {
@@ -1503,8 +1526,12 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           timestamp
         }
       ])
+      // This path bypasses sendPrompt (it only paints the bubble), so emit the
+      // prompt-provenance + engagement activities here too. Preset prompts
+      // queued before the panel mounts would otherwise go untracked.
+      trackPromptActivity(metadata, (text || '').trim().length, firstPromptStateRef.current.count)
     }
-  }, [props.queuedMessage])
+  }, [props.queuedMessage, trackPromptActivity])
 
   // Stop ongoing request - ALWAYS execute stop logic regardless of abort controller state
   const stopRequest = useCallback(() => {
@@ -1619,7 +1646,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
   // reusable sender (used by both UI button and imperative ref)
   const sendPrompt = useCallback(
-    async (prompt: string, isEditorCodeAnalysis: boolean = false) => {
+    async (prompt: string, isEditorCodeAnalysis: boolean = false, metadata?: ChatPromptMetadata) => {
       const trimmed = prompt.trim()
       if (!trimmed || isStreaming) return
 
@@ -1631,7 +1658,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         if (!ready) return
       } catch { /* assistantState not active — fall through to legacy behaviour */ }
 
-      dispatchActivity('promptSend', trimmed)
+      // firstPromptStateRef holds the live message count — sendPrompt is
+      // intentionally memoized without `messages`, so its closure value is stale.
+      trackPromptActivity(metadata, trimmed.length, firstPromptStateRef.current.count)
 
       // Reset the per-turn "stream consumed" flag — it gates the
       // post-await duplicate-bubble guard further down.
@@ -2084,7 +2113,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     } catch { /* assistantState not active — fall through, sendPrompt will retry the check */ }
 
     setInput('')
-    await sendPrompt(trimmed)
+    await sendPrompt(trimmed, false, { source: 'user' })
   }, [input, isStreaming, props.plugin, sendPrompt])
 
   /*
@@ -2341,7 +2370,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     } catch {
       // skill endpoint unavailable — proceed without it
     }
-    props.plugin.chatPipe('Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.', true)
+    props.plugin.chatPipe('Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.', true, { source: 'ai-assistant', presetId: 'gas-optimization-audit' })
   }, [props.plugin])
 
   const handleGenerateWorkspace = useCallback(async () => {
@@ -2365,7 +2394,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       })
 
       if (description && description.trim()) {
-        sendPrompt(`/generate ${description.trim()}`)
+        sendPrompt(`/generate ${description.trim()}`, false, { source: 'ai-assistant', presetId: 'generate-workspace-modal' })
         trackMatomoEvent<AIEvent>({ category: 'ai', action: 'GenerateNewAIWorkspaceFromModal', name: description, isClick: true })
       }
     } catch {
@@ -2376,8 +2405,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      sendChat: async (prompt: string, isEditorCodeAnalysis?: boolean) => {
-        await sendPrompt(prompt, isEditorCodeAnalysis)
+      sendChat: async (prompt: string, isEditorCodeAnalysis?: boolean, metadata?: ChatPromptMetadata) => {
+        await sendPrompt(prompt, isEditorCodeAnalysis, metadata)
       },
       submitCurrentInput: async () => {
         await handleSend()
