@@ -486,7 +486,7 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
 
       // Send prompt to AI Assistant
       console.log('[QuickDapp] calling chatPipe...');
-      await plugin.call('remixaiassistant' as any, 'chatPipe', prompt)
+      await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, { source: 'run-tab', presetId: 'dapp-from-deployed-contract' })
       console.log('[QuickDapp] chatPipe returned');
 
       trackMatomoEvent?.({ category: 'ai', action: 'remixAI', name: 'create_dapp_via_ai', isClick: true })

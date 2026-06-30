@@ -23,7 +23,8 @@ import { PluginViewWrapper, DISCORD_URL } from '@remix-ui/helper'
 import { initPaddle, getPaddle, openCheckoutWithTransaction, onPaddleEvent, offPaddleEvent, previewPrices } from './paddle-singleton'
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, FeatureGroup, UsageReport } from '@remix-api'
-import { Features, FEATURE_LABELS } from '@remix-api'
+import { Features, FEATURE_LABELS, trackMatomoEvent } from '@remix-api'
+import type { CheckoutEvent } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
 import {
@@ -388,12 +389,14 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Paddle checkout can't run inside the Electron shell — hand the user off
     // to the web IDE's top-up screen in their browser instead.
     if (this.isDesktop()) {
+      this.trackCheckout('desktop_handoff', 'topup', packageId)
       this.openBillingOnWeb('topup')
       return
     }
     const snap = this.store.getSnapshot()
     const pkg = snap.catalogPackages.find(p => p.id === packageId)
     const itemLabel = pkg ? `${pkg.credits.toLocaleString()} credits${pkg.name ? ` (${pkg.name})` : ''}` : packageId
+    this.trackCheckout('intent', 'topup', itemLabel)
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'topup', itemLabel, productId: packageId })
     // Credit-package purchases stay on the legacy /billing/purchase-credits
     // endpoint for now (it already produces a Paddle transaction); the
@@ -437,6 +440,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // plans screen. The free plan is granted server-side with no Paddle
     // hand-off, so it stays in-app.
     if (this.isDesktop() && !targetIsFree) {
+      this.trackCheckout('desktop_handoff', 'plans', planId)
       this.openBillingOnWeb('plans')
       return
     }
@@ -448,6 +452,7 @@ export class PlanManagerPlugin extends ViewPlugin {
 
     // Free plan → straight to checkout (no upsell opportunity).
     if (targetIsFree) {
+      this.trackCheckout('intent', 'free', itemLabel)
       this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId: planId })
       await this.runCheckout('subscription', itemLabel, async () => {
         const productsApi: any = await this.call('auth', 'getProductsApi').catch(() => null)
@@ -467,6 +472,7 @@ export class PlanManagerPlugin extends ViewPlugin {
 
     // Paid plan → seed the cart with this plan and show the upsell step.
     // The user can then add credit packages before proceeding to checkout.
+    this.trackCheckout('cart_add', 'subscription', itemLabel)
     this.store.send({ type: 'CART_CLEAR' })
     this.store.send({
       type: 'CART_ADD',
@@ -495,6 +501,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Safety net — paid carts always end in a Paddle transaction, which can't
     // open in Electron. Send desktop users to the web plans screen instead.
     if (this.isDesktop()) {
+      this.trackCheckout('desktop_handoff', 'plans')
       this.openBillingOnWeb('plans')
       return
     }
@@ -509,6 +516,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       : cart.map(i => i.name).join(' + ')
     const productId = planItem?.slug ?? cart[0].slug
 
+    this.trackCheckout('intent', 'subscription', `${itemLabel} (${cart.length} item${cart.length !== 1 ? 's' : ''})`)
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'subscription', itemLabel, productId })
 
     await this.runCheckout('subscription', itemLabel, async () => {
@@ -530,6 +538,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         const err = (resp?.data as any)?.error || resp?.error
         if (err === 'ALREADY_SUBSCRIBED') {
           // Fall back to single-plan change flow for the subscription item.
+          this.trackCheckout('error', 'subscription', 'ALREADY_SUBSCRIBED')
           if (planItem) void this.changePlan(planItem.slug, planItem.priceId)
           return { ok: false, error: 'You already have an active subscription. Switching to change-plan flow…' }
         }
@@ -766,12 +775,14 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Plan switches are charged through Paddle (proration), which can't open
     // in the Electron shell — redirect to the web plans screen.
     if (this.isDesktop()) {
+      this.trackCheckout('desktop_handoff', 'change_plan', planId)
       this.openBillingOnWeb('plans')
       return
     }
     const snap = this.store.getSnapshot()
     const plan = snap.catalogPlans.find(p => p.id === planId)
     const itemLabel = plan?.name ?? planId
+    this.trackCheckout('change_plan', itemLabel, planId)
     const PRORATION = 'prorated_immediately' as const
     const ON_FAILURE = 'prevent_change' as const
 
@@ -923,6 +934,7 @@ export class PlanManagerPlugin extends ViewPlugin {
 
     // flips the plan card to "Free" in real time.
     const planName = planState.planName
+    this.trackCheckout('cancel', planName, chosen)
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'cancel', itemLabel: planName, productId: planState.planId ?? planName })
 
     try {
@@ -966,16 +978,19 @@ export class PlanManagerPlugin extends ViewPlugin {
     if (planState.kind !== 'paid' || !planState.isCancelled) return
 
     const planName = planState.planName
+    this.trackCheckout('reactivate', planName, planState.planId ?? planName)
     this.store.send({ type: 'CHECKOUT_INTENT', intent: 'reactivate', itemLabel: planName, productId: planState.planId ?? planName })
 
     try {
       const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
       if (!billingApi) {
+        this.trackCheckout('error', 'reactivate', 'billing_unavailable')
         this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
         return
       }
       const resp = await billingApi.reactivateSubscription()
       if (!resp?.ok) {
+        this.trackCheckout('error', 'reactivate', resp?.error || 'reactivate_failed')
         this.store.send({ type: 'CHECKOUT_ERROR', message: resp?.error || 'Could not reactivate your subscription.' })
         return
       }
@@ -1208,6 +1223,15 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   /**
+   * Emit a checkout-funnel Matomo event. Centralizes the 'checkout' category so
+   * call sites only specify the funnel step (action) plus an optional qualifier
+   * (name, e.g. the intent) and metric/status (value).
+   */
+  private trackCheckout(action: CheckoutEvent['action'], name?: string, value?: string | number): void {
+    trackMatomoEvent(this, { category: 'checkout', action, name, value, isClick: false })
+  }
+
+  /**
    * Shared checkout driver. Calls the supplied billing API method (which
    * must POST to the backend and receive `{ transactionId, checkoutUrl }`),
    * then opens Paddle. On API failure, dispatches CHECKOUT_ERROR; the
@@ -1222,17 +1246,20 @@ export class PlanManagerPlugin extends ViewPlugin {
     // attaches based on the bearer token.
     if (!this.store.getSnapshot().isAuthenticated) {
       try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
+      this.trackCheckout('error', intent, 'not_authenticated')
       this.store.send({ type: 'CHECKOUT_ERROR', message: 'Please sign in to complete the purchase.' })
       return
     }
     try {
       const billingApi = await this.call('auth', 'getBillingApi').catch(() => null) as any
       if (!billingApi) {
+        this.trackCheckout('error', intent, 'billing_unavailable')
         this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
         return
       }
       const response = await apiCall(billingApi)
       if (!response?.ok || !response.data) {
+        this.trackCheckout('error', intent, response?.error || 'start_failed')
         this.store.send({ type: 'CHECKOUT_ERROR', message: response?.error || 'Could not start checkout.' })
         return
       }
@@ -1240,6 +1267,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       // Immediate-grant path (e.g. free plan via /products/purchase) — no
       // Paddle hand-off; the backend already granted the membership.
       if ((response.data as any).immediate === true) {
+        this.trackCheckout('completed', intent, 'immediate')
         this.store.send({ type: 'CHECKOUT_COMPLETED' })
         // Trigger a fast refresh that ends with PURCHASE_CONFIRMED so the
         // result is promoted 'processing' → 'success' (a bare loadAccountData
@@ -1263,20 +1291,24 @@ export class PlanManagerPlugin extends ViewPlugin {
             frameStyle: 'width: 100%; min-width: 312px; min-height: 700px; background-color: transparent; border: none;',
           }
         })
+        this.trackCheckout('opened', intent, transactionId)
         this.store.send({ type: 'CHECKOUT_OPENED' })
       } else if (checkoutUrl) {
         // Hosted-checkout fallback — we won't get Paddle events back, so
         // surface a "processing" state immediately and poll the backend
         // until the webhook lands.
         window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
+        this.trackCheckout('opened', intent, 'hosted_url')
         this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
         planManagerLogger.log('[plan-manager:poll] triggered from hosted-url fallback', { intent, transactionId })
         void this.pollPaymentConfirmation(intent, transactionId)
       } else {
+        this.trackCheckout('error', intent, 'no_checkout_reference')
         this.store.send({ type: 'CHECKOUT_ERROR', message: 'Backend returned no checkout reference.' })
       }
     } catch (err: any) {
       planManagerLogger.error('[PlanManager] Checkout failed', err)
+      this.trackCheckout('error', intent, err?.message || 'unexpected_error')
       this.store.send({ type: 'CHECKOUT_ERROR', message: err?.message || 'Unexpected checkout error.' })
     }
     // Touch unused param to satisfy strict mode — `intent`/`itemLabel` are
@@ -1297,12 +1329,19 @@ export class PlanManagerPlugin extends ViewPlugin {
     case 'checkout.customer.updated' as any:
     case 'checkout.updated' as any: {
       console.log('[PlanManager] Paddle checkout update', event.name, event.data)
+      // The very first event is the iframe finishing load — track it once as a
+      // distinct funnel step; subsequent updates are price recalculations.
+      if (event.name === ('checkout.loaded' as any)) this.trackCheckout('paddle_loaded', undefined, transactionId)
       const breakdown = this.parseCheckoutBreakdown(event)
-      if (breakdown) this.store.send({ type: 'CHECKOUT_BREAKDOWN', breakdown })
+      if (breakdown) {
+        this.trackCheckout('breakdown_updated', breakdown.currencyCode, breakdown.total)
+        this.store.send({ type: 'CHECKOUT_BREAKDOWN', breakdown })
+      }
       break
     }
     case 'checkout.completed': {
       const pendingIntent = this.store.getSnapshot().pendingCheckout?.intent ?? 'subscription'
+      this.trackCheckout('completed', pendingIntent, transactionId)
       this.store.send({ type: 'CHECKOUT_COMPLETED', transactionId })
       planManagerLogger.log('[plan-manager:poll] triggered from paddle checkout.completed', { intent: pendingIntent, transactionId })
       // Poll our backend (never Paddle) until the webhook has been processed,
@@ -1311,6 +1350,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       break
     }
     case 'checkout.closed':
+      this.trackCheckout('closed', this.store.getSnapshot().pendingCheckout?.intent, transactionId)
       this.store.send({ type: 'CHECKOUT_CLOSED' })
       break
     // Paddle uses dot-separated names in TS, but the runtime payload may
@@ -1320,6 +1360,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       const message = (event as any)?.error?.message
         || (event as any)?.data?.error?.message
         || 'Payment failed'
+      this.trackCheckout('error', this.store.getSnapshot().pendingCheckout?.intent, message)
       this.store.send({ type: 'CHECKOUT_ERROR', message, transactionId })
       break
     }
@@ -1504,6 +1545,7 @@ export class PlanManagerPlugin extends ViewPlugin {
           }
         })
 
+      this.trackCheckout('catalog_loaded', undefined, `plans:${plans.length}|pkgs:${packages.length}`)
       this.store.send({ type: 'CATALOG_LOADED', plans, packages })
     } catch (err: any) {
       this.store.send({ type: 'CATALOG_FAILED', message: err?.message ?? 'Catalog load failed' })
@@ -1532,10 +1574,12 @@ export class PlanManagerPlugin extends ViewPlugin {
     const tag = (m: string) => `${LOG} ${pollId} ${m}`
 
     planManagerLogger.log(tag('start'), { intent, transactionId })
+    this.trackCheckout('polling_started', intent, transactionId)
 
     const billingApi: any = await this.call('auth', 'getBillingApi').catch(() => null)
     if (!billingApi) {
       planManagerLogger.warn(tag('abort: no billing api'))
+      this.trackCheckout('error', intent, 'poll_no_billing_api')
       return
     }
 
@@ -1571,9 +1615,11 @@ export class PlanManagerPlugin extends ViewPlugin {
             httpStatus: resp?.status,
             txnStatus: status
           })
+          this.trackCheckout('poll_tick', intent, status ?? 'pending')
           if (status && status !== 'pending') {
             if (status === 'completed') {
               planManagerLogger.log(tag('completed → refreshing account + permissions'))
+              // completePurchaseRefresh emits the 'confirmed' success event.
               await this.completePurchaseRefresh()
             } else {
               const msg =
@@ -1583,6 +1629,7 @@ export class PlanManagerPlugin extends ViewPlugin {
                       : status === 'disputed' ? 'Payment is under dispute.'
                         : `Payment ${status}.`
               planManagerLogger.warn(tag(`terminal failure: ${status}`))
+              this.trackCheckout('error', intent, status)
               this.store.send({ type: 'CHECKOUT_ERROR', message: msg, transactionId })
             }
             return
@@ -1597,6 +1644,7 @@ export class PlanManagerPlugin extends ViewPlugin {
             hasActiveSubscription: hasActive,
             planSlug: resp?.data?.subscription?.planSlug ?? null
           })
+          this.trackCheckout('poll_tick', intent, hasActive ? 'active' : 'pending')
           if (resp?.ok && hasActive) {
             planManagerLogger.log(tag('active subscription confirmed → refreshing account + permissions'))
             await this.completePurchaseRefresh()
@@ -1609,6 +1657,7 @@ export class PlanManagerPlugin extends ViewPlugin {
 
       if (elapsed >= SOFT_CAP_MS) {
         planManagerLogger.warn(tag(`soft cap reached at ${elapsed}ms — UI stays in 'processing'`))
+        this.trackCheckout('poll_tick', intent, 'soft_cap_timeout')
         return
       }
       const next = intervalAt(elapsed)
@@ -1616,6 +1665,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       await new Promise(r => setTimeout(r, next))
     }
     planManagerLogger.error(tag('hard cap reached without confirmation'))
+    this.trackCheckout('error', intent, 'hard_cap_timeout')
   }
 
   /**
@@ -1643,6 +1693,8 @@ export class PlanManagerPlugin extends ViewPlugin {
     // the time we get here; PURCHASE_CONFIRMED is handled at machine root.
     this.store.send({ type: 'PURCHASE_CONFIRMED' })
     const cr = this.store.getSnapshot().checkoutResult
+    // Single source of truth for a fully-confirmed, account-refreshed purchase.
+    this.trackCheckout('confirmed', cr?.intent, cr?.itemLabel)
     this.emit('purchaseConfirmed', { intent: cr?.intent, label: cr?.itemLabel })
     planManagerLogger.log(LOG, 'done')
   }

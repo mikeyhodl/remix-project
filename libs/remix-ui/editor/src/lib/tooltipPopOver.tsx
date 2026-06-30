@@ -779,7 +779,7 @@ ${codeToAnalyze}
                       // Small delay to ensure panel is open
                       setTimeout(async () => {
                         // Call RemixAI with editor code analysis flag
-                        await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true)
+                        await plugin.call('remixaiassistant', 'chatPipe', deeperPrompt, true, { source: 'editor', presetId: 'keyword-analysis' })
                       }, 500)
 
                       // Close the tooltip
@@ -864,7 +864,7 @@ ${fileContent}
                       // Small delay to ensure panel is open
                       setTimeout(async () => {
                         // Call RemixAI with editor code analysis flag
-                        await plugin.call('remixaiassistant', 'chatPipe', wholeFilePrompt, true)
+                        await plugin.call('remixaiassistant', 'chatPipe', wholeFilePrompt, true, { source: 'editor', presetId: 'analyze-file' })
                       }, 500)
 
                       // Close the tooltip

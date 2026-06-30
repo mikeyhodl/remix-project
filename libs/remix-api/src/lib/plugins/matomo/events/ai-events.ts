@@ -109,6 +109,26 @@ export interface AIEvent extends MatomoEventBase {
 }
 
 /**
+ * Prompt / engagement tracking event names. These are emitted with
+ * `{ category: 'ai', action: 'remixAI', name: <one of these> }` so analytics
+ * can distinguish user-typed prompts from preset prompts and measure
+ * conversation depth/breadth. Kept as documented constants for grep-ability;
+ * `MatomoEventBase.name` is already `string`, so no union widening is needed.
+ *
+ *  - 'prompt_typed'       value = source (usually 'user')
+ *  - 'prompt_preset'      value = presetId (falls back to source)
+ *  - 'conversation_size'  value = number of messages in the active conversation
+ *  - 'conversation_count' value = total number of conversations the user has
+ *  - 'promptSend'         value = source (retained for dashboard continuity)
+ */
+export type AIPromptEventName =
+  | 'prompt_typed'
+  | 'prompt_preset'
+  | 'conversation_size'
+  | 'conversation_count'
+  | 'promptSend'
+
+/**
  * @deprecated Use AIEvent with name: 'like-response' | 'dislike-response' instead
  * This interface is kept for backward compatibility during migration
  */

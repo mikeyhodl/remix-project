@@ -1,6 +1,6 @@
 import * as packageJson from '../../../../../package.json'
 import { Plugin } from '@remixproject/engine';
-import { trackMatomoEvent, Features } from '@remix-api'
+import { trackMatomoEvent, Features, ChatPromptMetadata } from '@remix-api'
 import { remixAILogger, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core';
 import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
@@ -928,7 +928,7 @@ export class RemixAIPlugin extends Plugin {
     })
   }
 
-  async chatPipe(fn, prompt: string, context?: string, pipeMessage?: string){
+  async chatPipe(fn, prompt: string, context?: string, pipeMessage?: string, metadata?: ChatPromptMetadata){
     // Gate before we pipe anything to the chat — otherwise the user bubble
     // appears for a request we already know we won't honor (and the
     // downstream null result crashes the chat with "cannot read body").
@@ -940,6 +940,11 @@ export class RemixAIPlugin extends Plugin {
       if (!ready) return
     } catch { /* assistantState not active — fall through to legacy path */ }
 
+    // Attribute the prompt so analytics can group it. Callers should pass
+    // explicit provenance; when absent we fall back to the function name so
+    // error/code-explain prompts are still distinguishable from user-typed.
+    const promptMeta: ChatPromptMetadata = metadata ?? { source: 'remixAI', presetId: fn }
+
     if (this.chatRequestBuffer == null){
       this.chatRequestBuffer = {
         fn_name: fn,
@@ -947,12 +952,12 @@ export class RemixAIPlugin extends Plugin {
         context: context
       }
 
-      if (pipeMessage) this.call('remixaiassistant', 'chatPipe', pipeMessage)
+      if (pipeMessage) this.call('remixaiassistant', 'chatPipe', pipeMessage, false, promptMeta)
       else {
-        if (fn === "code_explaining") this.call('remixaiassistant', 'chatPipe',"Explain the current code")
-        else if (fn === "error_explaining") this.call('remixaiassistant', 'chatPipe', "Explain the error")
-        else if (fn === "answer") this.call('remixaiassistant', 'chatPipe', "Answer the following question")
-        else if (fn === "vulnerability_check") this.call('remixaiassistant', 'chatPipe',"Is there any vulnerability in the pasted code?")
+        if (fn === "code_explaining") this.call('remixaiassistant', 'chatPipe',"Explain the current code", false, promptMeta)
+        else if (fn === "error_explaining") this.call('remixaiassistant', 'chatPipe', "Explain the error", false, promptMeta)
+        else if (fn === "answer") this.call('remixaiassistant', 'chatPipe', "Answer the following question", false, promptMeta)
+        else if (fn === "vulnerability_check") this.call('remixaiassistant', 'chatPipe',"Is there any vulnerability in the pasted code?", false, promptMeta)
         else remixAILogger.log("chatRequestBuffer function name not recognized.")
       }
     }
