@@ -317,6 +317,10 @@ export class PlanManagerPlugin extends ViewPlugin {
    * CATALOG_FAILED / DATA_FAILED into the machine.
    */
   private refreshOnOpen(): void {
+    const result = this.store.getSnapshot().checkoutResult
+    if (result && (result.kind === 'closed' || result.kind === 'error')) {
+      this.store.send({ type: 'CHECKOUT_RESULT_DISMISS' })
+    }
     this.store.send({ type: 'CATALOG_LOAD' })
     void this.loadCatalog()
     const snap = this.store.getSnapshot()
