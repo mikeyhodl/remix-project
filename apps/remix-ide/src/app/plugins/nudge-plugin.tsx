@@ -892,7 +892,7 @@ export class NudgePlugin extends Plugin {
         hidePermanentDismiss: true,
         title: randomDemo.name,
         message: randomDemo.desc + '\n' + randomDemo.mockReply,
-        actionLabel: 'Upgrade',
+        actionLabel: 'Upgrade Plan',
         actionTarget: 'planManager::open::plans',
         icon: 'fas fa-circle-check',
         widgetColor: randomDemo.color,
