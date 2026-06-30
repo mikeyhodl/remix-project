@@ -1,6 +1,6 @@
 
 import { Message } from '@remixproject/plugin-utils'
-import { contextBridge, ipcRenderer, shell } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
 console.log('preload.ts', new Date().toLocaleTimeString())
 
@@ -23,7 +23,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   activatePlugin: (name: string) => {
     return ipcRenderer.invoke('manager:activatePlugin', name)
   },
-  openExternal: (url: string) => shell.openExternal(url),
 
   // CRE Desktop Bridge — listen for project imports from Scaffold CRE
   onCREProjectImported: (cb: (payload: { projectName: string; projectDir: string; switchWorkspace: boolean }) => void) => {
