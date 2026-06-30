@@ -1765,7 +1765,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       })
       if (gateEnabled && (emailMissing || emailUnverified) && !panelAlreadyOpen) {
         planManagerLogger.log('[PlanManager:email-gate] auto-opening panel → email-unverified')
-        this.store.send({ type: 'OPEN_OVERLAY', intent: { reason: 'email-unverified' } })
+        this.call('nudgePlugin', 'fire', 'app:time-to-promote-plans')
         // Catalog wasn't loaded as part of this path — fetch it now so the
         // panel isn't empty when it opens on a fresh login.
         this.store.send({ type: 'CATALOG_LOAD' })
@@ -1803,7 +1803,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       if (canShowPlans && isFreePlan && !this.freePlanAutoOpenFired && !panelAlreadyOpen) {
         this.freePlanAutoOpenFired = true
         planManagerLogger.log('[PlanManager:free-plan-gate] auto-opening panel → free plan')
-        this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans', reason: 'feature-required' } })
+        this.call('nudgePlugin', 'fire', 'app:time-to-promote-plans')
         // Catalog wasn't loaded as part of this path — fetch it now so plans
         // are visible immediately without having to close and reopen the panel.
         this.store.send({ type: 'CATALOG_LOAD' })
