@@ -70,7 +70,7 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm', 'cancelCheckout'],
   events: ['opened', 'closed', 'checkoutResultChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
@@ -287,12 +287,20 @@ export class PlanManagerPlugin extends ViewPlugin {
     // Also clear any pending cart so the upsell step doesn't linger on re-open.
     const snap = this.store.getSnapshot()
     if (snap.pendingCheckout && !snap.checkoutResult) {
-      this.store.send({ type: 'CHECKOUT_CLOSED' })
+      this.cancelCheckout('panel_closed')
     }
     if (snap.cartItems.length > 0 && !snap.checkoutResult) {
       this.store.send({ type: 'CART_CLEAR' })
     }
     this.store.send({ type: 'CLOSE_OVERLAY' })
+  }
+
+  cancelCheckout(reason: string = 'user_cancelled'): void {
+    const pending = this.store.getSnapshot().pendingCheckout
+    if (pending) {
+      this.trackCheckout('closed', pending.intent, reason)
+    }
+    this.store.send({ type: 'CHECKOUT_CLOSED' })
   }
 
   toggle(): void {
@@ -347,6 +355,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       void this.completePurchaseRefresh()
       break
     case 'closed':
+      this.trackCheckout('closed', result.intent, 'result_dismissed')
       this.store.send({ type: 'CHECKOUT_CLOSED' })
       break
     case 'error':
@@ -864,7 +873,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         ]
       })
       if (choice !== 'confirm') {
-        this.store.send({ type: 'CHECKOUT_CLOSED' })
+        this.cancelCheckout('change_plan_declined')
         return
       }
 
@@ -1344,10 +1353,12 @@ export class PlanManagerPlugin extends ViewPlugin {
       void this.pollPaymentConfirmation(pendingIntent, transactionId)
       break
     }
-    case 'checkout.closed':
-      this.trackCheckout('closed', this.store.getSnapshot().pendingCheckout?.intent, transactionId)
+    case 'checkout.closed': {
+      const pendingClose = this.store.getSnapshot().pendingCheckout
+      if (pendingClose) this.trackCheckout('closed', pendingClose.intent, transactionId)
       this.store.send({ type: 'CHECKOUT_CLOSED' })
       break
+    }
     // Paddle uses dot-separated names in TS, but the runtime payload may
     // also be `checkout.payment.failed`; handle both spellings.
     case 'checkout.payment.failed' as any:
@@ -2338,7 +2349,7 @@ const PlanManagerOverlay: React.FC<{
                     <div className="pm-inline-checkout__header">
                       <button
                         className="pm-inline-checkout__back"
-                        onClick={() => plugin.store.send({ type: 'CHECKOUT_CLOSED' })}
+                        onClick={() => plugin.cancelCheckout('back_to_plans')}
                       >
                         <i className="fas fa-arrow-left"></i>
                         <span>Back to plans</span>
