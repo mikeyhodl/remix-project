@@ -132,11 +132,6 @@ export class NudgePlugin extends Plugin {
     this._setupBuiltinRules()
     this._setupEventListeners()
     this.renderComponent()
-
-    // 33% chance to fire promote-plans event
-    if (Math.random() < 0.33) {
-      this.engine_.fire('app:load')
-    }
   }
 
   onDeactivation(): void {
@@ -890,7 +885,7 @@ export class NudgePlugin extends Plugin {
     const randomDemo = PRO_DEMOS[Math.floor(Math.random() * PRO_DEMOS.length)]
     this.engine_.addRule({
       id: 'promote-plans',
-      condition: 'app:load',
+      condition: 'app:time-to-promote-plans',
       action: {
         type: 'modal',
         position: 'right',
