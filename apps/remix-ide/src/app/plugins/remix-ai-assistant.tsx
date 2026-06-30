@@ -537,12 +537,13 @@ export class RemixAIAssistant extends ViewPlugin {
     // Prompt provenance arrives as a small metadata object ({ source,
     // presetId, length }) — only those derived fields are tracked, never the
     // user's actual prompt content.
+    const thread = `conversation_id:${this.currentConversationId ?? 'none'}`
     switch (type) {
     case 'prompt_typed':
-      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_typed', value: payload?.source ?? 'user', isClick: true })
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_typed', value: `${payload?.source ?? 'user'}|${thread}`, isClick: true })
       break
     case 'prompt_preset':
-      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_preset', value: payload?.presetId ?? payload?.source ?? 'unknown', isClick: true })
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'prompt_preset', value: `${payload?.presetId ?? payload?.source ?? 'unknown'}|${thread}`, isClick: true })
       break
     case 'conversation_size':
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'conversation_size', value: Number(payload) || 0, isClick: false })
@@ -553,7 +554,7 @@ export class RemixAIAssistant extends ViewPlugin {
     case 'promptSend':
       // Retained for dashboard continuity. payload is now { source, length },
       // NOT the raw prompt text.
-      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'promptSend', value: payload?.source ?? 'user', isClick: true })
+      trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'promptSend', value: `${payload?.source ?? 'user'}|${thread}`, isClick: true })
       break
     default:
       trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: `chatting-${type}`, value: typeof payload === 'string' ? payload : undefined, isClick: true })

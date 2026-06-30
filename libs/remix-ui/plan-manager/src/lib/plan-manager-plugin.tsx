@@ -1222,11 +1222,6 @@ export class PlanManagerPlugin extends ViewPlugin {
     }
   }
 
-  /**
-   * Emit a checkout-funnel Matomo event. Centralizes the 'checkout' category so
-   * call sites only specify the funnel step (action) plus an optional qualifier
-   * (name, e.g. the intent) and metric/status (value).
-   */
   private trackCheckout(action: CheckoutEvent['action'], name?: string, value?: string | number): void {
     trackMatomoEvent(this, { category: 'checkout', action, name, value, isClick: false })
   }
