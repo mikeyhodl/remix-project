@@ -389,8 +389,7 @@ export interface QuickDappGraphContext {
   endpoint: string
   endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql'
   endpointNeedsApiKey?: boolean
-  apiKeySource?: 'remix-settings' | 'runtime-input' | 'none'
-  apiKeyPresent?: boolean
+  apiKeySource?: 'remix-settings' | 'none'
   subgraphId?: string
   network?: string
   description?: string
@@ -402,18 +401,18 @@ export interface QuickDappGraphContext {
 
 const getQuickDappGraphGatewayRuntimeRules = (graphContext?: QuickDappGraphContext): string => {
   const subgraphId = graphContext?.subgraphId || '<subgraphId from GRAPH_CONTEXT_JSON>'
-  return `\nTHE GRAPH GATEWAY API KEY RULES (CRITICAL - MUST IMPLEMENT WHEN endpointKind="thegraph-gateway" OR endpointNeedsApiKey=true):\n` +
+  return `\nTHE GRAPH GATEWAY RUNTIME RULES (CRITICAL - MUST IMPLEMENT WHEN endpointKind="thegraph-gateway" OR endpointNeedsApiKey=true):\n` +
     `- The sanitized gateway URL "https://gateway.thegraph.com/api/subgraphs/id/..." is NOT fetchable. It causes "auth error: missing authorization header".\n` +
     `- NEVER create a GRAPHQL_ENDPOINT/GRAPH_ENDPOINT constant with "https://gateway.thegraph.com/api/subgraphs/id/...".\n` +
     `- Store only SUBGRAPH_ID as a constant, for example SUBGRAPH_ID = "${subgraphId}".\n` +
-    `- Read Remix-injected config from window.__QUICK_DAPP_GRAPH_CONFIG__.\n` +
-    `- Also provide a visible runtime API key input fallback. Persist only the user's fallback key in localStorage.\n` +
-    `- Compute apiKey as: window.__QUICK_DAPP_GRAPH_CONFIG__?.apiKey || runtime/localStorage fallback.\n` +
-    `- If no apiKey is available, render the key input UI and DO NOT call fetch.\n` +
-    `- Build the fetch URL only after apiKey exists: \`https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/${subgraphId}\`.\n` +
-    `- The generated source should contain both window.__QUICK_DAPP_GRAPH_CONFIG__ and localStorage-based fallback handling for gateway endpoints.\n` +
+    `- Read Remix-injected runtime config from window.__QUICK_DAPP_GRAPH_CONFIG__.\n` +
+    `- Runtime priority: (1) graphConfig.proxyEndpoint + matching source.proxyToken, then (2) Remix preview graphConfig.apiKey, then (3) show a configuration message without fetching.\n` +
+    `- Deployed DApps use the sealed proxy path. When proxyToken is available, POST only { token: proxyToken, variables } to graphConfig.proxyEndpoint. Do not send query, apiKey, subgraphId, or operationName to the proxy.\n` +
+    `- Remix preview may use graphConfig.apiKey when no proxyToken exists. Only in that preview path, build \`https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/${subgraphId}\` and POST { query, variables, operationName }.\n` +
+    `- Do not render a The Graph API key input. Do not ask the user for a The Graph API key. Do not read or write The Graph API keys in localStorage.\n` +
+    `- Missing proxyToken/apiKey is only a runtime configuration state; it is NOT a reason to refuse DApp generation.\n` +
     `- Bad code to avoid: fetch('https://gateway.thegraph.com/api/subgraphs/id/...').\n` +
-    `- Good flow: key input or injected key -> build keyed gateway URL -> POST GraphQL query.\n`
+    `- Good deployed flow: injected proxy token -> POST { token, variables } to Remix proxy.\n`
 }
 
 interface QuickDappSubgraphFileContext extends QuickDappGraphContext {
@@ -536,9 +535,8 @@ export class GenerateDAppHandler extends BaseToolHandler {
           endpointNeedsApiKey: { type: 'boolean' },
           apiKeySource: {
             type: 'string',
-            enum: ['remix-settings', 'runtime-input', 'none']
+            enum: ['remix-settings', 'none']
           },
-          apiKeyPresent: { type: 'boolean' },
           subgraphId: { type: 'string' },
           network: {
             type: 'string',
@@ -1079,17 +1077,17 @@ export class GenerateDAppHandler extends BaseToolHandler {
         `- The Graph query is independent from the smart contract ABI. Do not assume the query entities match the contract.\n` +
         `- The DApp network and wallet rules are still determined by the contract chainId. The Graph network metadata is informational only.\n` +
         `- Create a small GraphQL client/helper, for example src/graphClient.js or src/hooks/useGraphQuery.js.\n` +
-        `- Use browser fetch with POST { query, variables }.\n` +
+        `- The Graph API key is handled by QuickDapp runtime config. Do not refuse generation because an API key is not present during generation.\n` +
+        `- Implement a runtime fetch helper that first tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
         `- Show loading, error, empty, and success states.\n` +
-        `- Render data according to the sample result shape when provided.\n` +
         `- Never hardcode an actual The Graph API key in generated source files.\n` +
-        `- If endpointNeedsApiKey is true, read the key from window.__QUICK_DAPP_GRAPH_CONFIG__ or an equivalent QuickDapp runtime config injected by Remix.\n` +
-        `- If no injected key is available, provide a runtime key input fallback and store only the user-entered fallback key in localStorage.\n` +
-        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/\${subgraphId} after a key is available.\n` +
-        `- If endpointKind is "thegraph-gateway" and no key is available, show the key-required UI and do not send the GraphQL request yet.\n` +
-        `- Do not describe The Graph gateway endpoints as "No API key required" in generated comments or UI.\n` +
-        `- For IPFS/ENS static deployments, assume Remix settings are unavailable and the injected runtime config may omit apiKey; the generated DApp must still support the localStorage-backed runtime key input fallback.\n` +
-        `- If the endpoint is localhost/local graph node, keep it configurable in the UI because deployed IPFS users may need a different endpoint.\n` +
+        `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use its proxyEndpoint/source.proxyToken when present.\n` +
+        `- For proxyToken requests, POST { token, variables } only. The Remix proxy already has the fixed query.\n` +
+        `- Do not ask users for a The Graph API key. Do not store The Graph API keys in localStorage.\n` +
+        `- For Remix preview only, graphConfig.apiKey may be present; use it only when no proxyToken exists, and POST { query, variables, operationName } to the keyed gateway URL.\n` +
+        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
+        `- If endpointKind is "thegraph-gateway" and neither proxyToken nor preview apiKey is available at runtime, show a configuration message and do not send the GraphQL request yet.\n` +
+        `- For IPFS/ENS static deployments, assume the injected runtime config provides a sealed proxy token.\n` +
         `- Do not use ethers provider, RPC provider, or wallet calls to fetch GraphQL data.\n` +
         `- Preserve contract wallet rules separately from GraphQL fetch rules.\n\n` +
         `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
@@ -1325,9 +1323,10 @@ export class UpdateDAppHandler extends BaseToolHandler {
       `GRAPH DATA PRESERVATION (MANDATORY):\n` +
       `- Preserve existing GraphQL fetch logic unless the user explicitly asks to remove or replace The Graph data.\n` +
       `- Preserve loading, error, empty, and success states for Graph data.\n` +
-      `- Preserve window.__QUICK_DAPP_GRAPH_CONFIG__ usage and localStorage-backed runtime API key fallback.\n` +
+      `- Preserve window.__QUICK_DAPP_GRAPH_CONFIG__ usage and prefer proxyEndpoint/source.proxyToken for The Graph gateway requests.\n` +
+      `- Do not add a runtime The Graph API key input or localStorage key fallback.\n` +
       `- Never hardcode an actual The Graph API key in source files.\n` +
-      `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build the keyed gateway URL only after apiKey is available.\n` +
+      `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
       `- Do not use ethers provider, RPC provider, wallet provider, signer, or contract instances to fetch GraphQL data.\n\n`
   }
 
@@ -1826,8 +1825,7 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
           endpoint: { type: 'string' },
           endpointKind: { type: 'string', enum: ['local', 'thegraph-gateway', 'generic-graphql']},
           endpointNeedsApiKey: { type: 'boolean' },
-          apiKeySource: { type: 'string', enum: ['remix-settings', 'runtime-input', 'none']},
-          apiKeyPresent: { type: 'boolean' },
+          apiKeySource: { type: 'string', enum: ['remix-settings', 'none']},
           subgraphId: { type: 'string' },
           network: { type: 'string' },
           description: { type: 'string' },
@@ -2008,17 +2006,17 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
       const graphLine =
         `THE GRAPH DATA SOURCE:\n` +
         `- This is a Graph-only read-only DApp. Do not create contract, wallet, provider, signer, ethers, transaction, or network switching code.\n` +
-        `- Query The Graph using browser fetch with POST { query, variables }.\n` +
+        `- The Graph API key is handled by QuickDapp runtime config. Do not refuse generation because an API key is not present during generation.\n` +
+        `- Implement a runtime fetch helper that first tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
         `- Show loading, error, empty, and success states.\n` +
-        `- Render data according to the sample result shape when provided.\n` +
         `- Never hardcode an actual The Graph API key in generated source files.\n` +
-        `- If endpointNeedsApiKey is true, read the key from window.__QUICK_DAPP_GRAPH_CONFIG__ or an equivalent QuickDapp runtime config injected by Remix.\n` +
-        `- If no injected key is available, provide a runtime key input fallback and store only the user-entered fallback key in localStorage.\n` +
-        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly. Build https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/\${subgraphId} after a key is available.\n` +
-        `- If endpointKind is "thegraph-gateway" and no key is available, show the key-required UI and do not send the GraphQL request yet.\n` +
-        `- Do not describe The Graph gateway endpoints as "No API key required" in generated comments or UI.\n` +
-        `- For IPFS/ENS static deployments, assume Remix settings are unavailable and the injected runtime config may omit apiKey; the generated DApp must still support the localStorage-backed runtime key input fallback.\n` +
-        `- If the endpoint is localhost/local graph node, keep it configurable in the UI because deployed IPFS users may need a different endpoint.\n\n` +
+        `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use its proxyEndpoint/source.proxyToken when present.\n` +
+        `- For proxyToken requests, POST { token, variables } only. The Remix proxy already has the fixed query.\n` +
+        `- Do not ask users for a The Graph API key. Do not store The Graph API keys in localStorage.\n` +
+        `- For Remix preview only, graphConfig.apiKey may be present; use it only when no proxyToken exists, and POST { query, variables, operationName } to the keyed gateway URL.\n` +
+        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
+        `- If endpointKind is "thegraph-gateway" and neither proxyToken nor preview apiKey is available at runtime, show a configuration message and do not send the GraphQL request yet.\n` +
+        `- For IPFS/ENS static deployments, assume the injected runtime config provides a sealed proxy token.\n\n` +
         `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
         `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
 

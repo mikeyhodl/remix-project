@@ -709,7 +709,7 @@ const BaseAppWizard: React.FC = () => {
                     </Alert>
                     {hasGraphGateway && (
                       <Alert variant="info" className="small p-2 mb-3">
-                        The Graph API key from Remix settings will not be embedded in the IPFS or ENS deployment. The deployed app will ask users for a key when needed.
+                        The Graph API key from Remix settings is sealed by Remix for this deployment. It is not embedded in the DApp, and visitors do not need their own key.
                       </Alert>
                     )}
 

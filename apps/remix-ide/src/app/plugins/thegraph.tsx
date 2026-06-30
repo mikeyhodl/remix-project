@@ -39,8 +39,7 @@ interface SubgraphFileContext {
   endpoint?: string
   endpointKind?: SubgraphEndpointKind
   endpointNeedsApiKey: boolean
-  apiKeySource: 'remix-settings' | 'runtime-input' | 'none'
-  apiKeyPresent: boolean
+  apiKeySource: 'remix-settings' | 'none'
   subgraphId?: string
   network?: string
   description?: string
@@ -55,7 +54,7 @@ interface EndpointAnalysis {
   endpoint?: string
   endpointKind?: SubgraphEndpointKind
   endpointNeedsApiKey: boolean
-  apiKeySource: 'remix-settings' | 'runtime-input' | 'none'
+  apiKeySource: 'remix-settings' | 'none'
   subgraphId?: string
 }
 
@@ -171,7 +170,6 @@ export class TheGraphPlugin extends Plugin {
     const variablesParseError = this.getVariablesParseError(content)
     const endpoint = parsed.metadata.endpoint || this.settings.defaultEndpoint
     const endpointInfo = this.analyzeEndpoint(endpoint)
-    const apiKeyPresent = await this.hasTheGraphApiKey()
     const validation = this.validateSubgraphContext({
       endpoint: endpointInfo.endpoint,
       query: parsed.query,
@@ -188,7 +186,6 @@ export class TheGraphPlugin extends Plugin {
       endpointKind: endpointInfo.endpointKind,
       endpointNeedsApiKey: endpointInfo.endpointNeedsApiKey,
       apiKeySource: endpointInfo.apiKeySource,
-      apiKeyPresent,
       subgraphId: endpointInfo.subgraphId,
       network: parsed.metadata.network,
       description: parsed.metadata.description,
@@ -447,6 +444,7 @@ export class TheGraphPlugin extends Plugin {
       '- The Graph query may be unrelated to the contract ABI. Treat it as a separate read-only GraphQL data source.',
       '- The contract network/provider rules still come from the deployed contract. Do not infer the wallet network from graphContext.network.',
       '- Do not put The Graph API key values into generated source files, config files, or chat output.',
+      '- The Graph API key is not required to ask setup options or generate files. Remix preview/deployment injects runtime Graph config later.',
       '- Keep this flow in QuickDapp_Specialist. Do not delegate to Contract_Runner just to list or select already deployed contracts.',
       '- Use Contract_Runner only if I explicitly ask to compile/deploy a contract. If no deployed contract is available, continue as a Graph-only DApp instead.',
       '',
@@ -565,7 +563,6 @@ export class TheGraphPlugin extends Plugin {
       endpointKind: context.endpointKind,
       endpointNeedsApiKey: context.endpointNeedsApiKey,
       apiKeySource: context.apiKeySource,
-      apiKeyPresent: context.apiKeyPresent,
       subgraphId: context.subgraphId,
       network: context.network,
       description: context.description,

@@ -45,6 +45,7 @@ export type EndpointUrls = {
   mcp: string;
   ethskills: string;
   quickdappIpfs: string;
+  quickdappGraph: string;
   ensService: string;
   ccipRead: string;
   ensContractNames: string;
@@ -90,6 +91,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   mcp: 'mcp',
   ethskills: 'mcp/ethskills',
   quickdappIpfs: 'endpoints/quickdapp-ipfs',
+  quickdappGraph: 'quickdapp-graph',
   ensService: 'endpoints/ens-service',
   ccipRead: 'endpoints/ccip-read',
   ensContractNames: 'endpoints/contract-ens',
@@ -191,7 +193,7 @@ export function updateEndpoints(config: RemixConfig): void {
     endpointUrls.mcpCorsProxy = `${base}${config.services.mcp}`;
   } // SSO must always point to auth.api.remix.live (separate auth domain)
   //endpointUrls.sso = 'https://auth.api.remix.live/sso';
- }
+}
 
 /**
  * Initialize endpoints from service discovery.

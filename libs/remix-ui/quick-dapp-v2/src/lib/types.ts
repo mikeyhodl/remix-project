@@ -54,8 +54,7 @@ export interface QuickDappGraphContext {
   endpoint: string;
   endpointKind?: 'local' | 'thegraph-gateway' | 'generic-graphql';
   endpointNeedsApiKey?: boolean;
-  apiKeySource?: 'remix-settings' | 'runtime-input' | 'none';
-  apiKeyPresent?: boolean;
+  apiKeySource?: 'remix-settings' | 'none';
   subgraphId?: string;
   network?: string;
   description?: string;

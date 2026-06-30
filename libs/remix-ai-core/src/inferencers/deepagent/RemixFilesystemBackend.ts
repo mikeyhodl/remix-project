@@ -562,8 +562,8 @@ export class RemixFilesystemBackend {
     const error =
       `QUICKDAPP_GRAPH_GATEWAY_API_KEY_REQUIRED: "${normalizedPath}" contains a The Graph gateway URL without an API key. ` +
       `Do not fetch https://gateway.thegraph.com/api/subgraphs/id/... directly. ` +
-      `Use SUBGRAPH_ID, read window.__QUICK_DAPP_GRAPH_CONFIG__?.apiKey, provide a visible localStorage-backed runtime API key input fallback, ` +
-      `and build https://gateway.thegraph.com/api/{apiKey}/subgraphs/id/{subgraphId} only after a key is available.`
+      `Read window.__QUICK_DAPP_GRAPH_CONFIG__, prefer graphConfig.proxyEndpoint plus source.proxyToken for deployed DApps, ` +
+      `and use graphConfig.apiKey only for Remix preview. Do not add a The Graph API key input or localStorage key fallback.`
 
     return { error }
   }

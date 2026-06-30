@@ -546,7 +546,7 @@ window.addEventListener('unhandledrejection', function(e) {
         ...graphSources.map((source, index) =>
           `- ${index + 1}. ${source.filePath || source.operationName || source.subgraphId || 'thegraph-source'} (${source.endpointKind || 'unknown'}, needsApiKey=${source.endpointNeedsApiKey === true})`
         ),
-        `Preserve existing GraphQL fetch logic, loading/error/empty/success states, and runtime API key fallback unless I explicitly ask to remove or replace The Graph data.`
+        `Preserve existing GraphQL fetch logic, loading/error/empty/success states, and QuickDapp runtime Graph config usage. Prefer proxyEndpoint/source.proxyToken for deployed The Graph gateway requests; do not add a runtime API key input or localStorage key fallback unless I explicitly ask to remove The Graph support.`
       );
     }
 
