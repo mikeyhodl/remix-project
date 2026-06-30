@@ -228,7 +228,7 @@ const TOPICS: TopicDef[] = [
     icon: 'fas fa-seedling',
     color: '#5b9cf5',
     tag: 'Starter',
-    requiredFeatures: [Features.SKILLS_ADVANCED]
+    requiredFeatures: [Features.AI_SOLCODER]
   },
   {
     // The auditor agent is Pro-only.
@@ -238,7 +238,7 @@ const TOPICS: TopicDef[] = [
     icon: 'fas fa-crown',
     color: '#f0a030',
     tag: 'Pro',
-    requiredFeatures: [Features.AI_AUDITOR]
+    requiredFeatures: [Features.AI_SOLCODER]
   },
 ]
 
@@ -299,7 +299,10 @@ const STARTER_DEMOS: PlanGuideDemo[] = [
     desc: 'A focused coding helper that writes, refactors, and fixes Solidity alongside you.',
     prompt: 'How do I use the code helper to analyze my code?',
     mockReply: 'Select a function or snippet in the editor, then a `Code Analysis` block will appear with suggestions.\n\n' +
-      '<img src="https://raw.githubusercontent.com/remix-project-org/remix-dynamics/main/gifs/code_analyzis.gif" alt="Code Analysis" style="max-width:100%;border-radius:6px;" />'
+      `<video width="500" height="300" controls autoPlay muted style="border:none;outline:none; margin-left:-33px;margin-top:5px" }}>
+  <source src="https://github.com/remix-project-org/remix-dynamics/raw/refs/heads/main/gifs/code-helper.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>`
   },
   {
     key: 'connectors', name: 'Web Search & OpenZeppelin', color: '#9b7dff',
@@ -332,7 +335,7 @@ const STARTER_DEMOS: PlanGuideDemo[] = [
   }
 ]
 
-const PRO_DEMOS: PlanGuideDemo[] = [
+export const PRO_DEMOS: PlanGuideDemo[] = [
   {
     key: 'auditor', name: 'Auditor Agent', color: '#f0a030',
     desc: 'The RemixAI auditor agent reviews your contract against curated security checklists.',
@@ -446,7 +449,7 @@ const HelpPanelUI: React.FC<{ plugin: HelpPlugin }> = ({ plugin }) => {
           }}
         >
           <i className="fab fa-discord"></i>
-          Beta Feedback
+          User Feedback
         </button>
       </div>
       <p className="help-panel-header-sub">
