@@ -18,8 +18,7 @@ const needsGatewayKey = (source: any): boolean =>
   source?.endpointKind === 'thegraph-gateway' || source?.endpointNeedsApiKey === true;
 
 const getQuickdappGraphEndpoint = (): string => {
-  const baseUrl = process.env.NX_ENDPOINTS_URL;
-  return baseUrl ? `${baseUrl.replace(/\/$/, '')}/quickdapp-graph` : endpointUrls.quickdappGraph;
+  return endpointUrls.quickdappGraph;
 };
 
 const hasText = (value: any): boolean => typeof value === 'string' && value.trim().length > 0;
