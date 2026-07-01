@@ -723,7 +723,7 @@ contract CommentedImports is ERC20 {
             .pause(3000)
             // Verify that compilation shows proper error message instead of crashing
             .waitForElementVisible('*[data-id="compiledErrors"]', 10000)
-            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Fetch failed 404')
+            .waitForElementContainsText('*[data-id="compiledErrors"]', 'Failed to fetch')
             .waitForElementContainsText('*[data-id="compiledErrors"]', 'SafeMath.sol')
             .perform(function () {
                 browser.assert.ok(true, 'Unresolvable imports should show proper error messages without crashing');
