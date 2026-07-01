@@ -184,7 +184,8 @@ export const buildQuickDappGraphGatewayRuntimeRules = (graphContext?: QuickDappG
     `- NEVER create a GRAPHQL_ENDPOINT/GRAPH_ENDPOINT constant with "https://gateway.thegraph.com/api/subgraphs/id/...".\n` +
     `- Store only SUBGRAPH_ID as a constant, for example SUBGRAPH_ID = "${subgraphId}".\n` +
     `- Read Remix-injected runtime config from window.__QUICK_DAPP_GRAPH_CONFIG__.\n` +
-    `- Runtime priority: (1) graphConfig.proxyEndpoint + matching source.proxyToken, then (2) Remix preview graphConfig.apiKey, then (3) show a configuration message without fetching.\n` +
+    `- Runtime priority: (1) graphConfig.proxyEndpoint + matching source.proxyToken from graphConfig.sources (or graphConfig.source fallback), then (2) Remix preview graphConfig.apiKey, then (3) show a configuration message without fetching.\n` +
+    `- Resolve the runtime source with code like: const source = (graphConfig.sources || []).find(s => s.subgraphId === SUBGRAPH_ID) || graphConfig.source || (graphConfig.sources || [])[0];\n` +
     `- Deployed DApps use the sealed proxy path. When proxyToken is available, POST only { token: proxyToken, variables } to graphConfig.proxyEndpoint. Do not send query, apiKey, subgraphId, or operationName to the proxy.\n` +
     `- Remix preview may use graphConfig.apiKey when no proxyToken exists. Only in that preview path, build \`https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/${subgraphId}\` and POST { query, variables, operationName }.\n` +
     `- Do not render a The Graph API key input. Do not ask the user for a The Graph API key. Do not read or write The Graph API keys in localStorage.\n` +
@@ -213,10 +214,10 @@ export const buildQuickDappGraphDataSourceInstructions = (args: {
   return `\nTHE GRAPH DATA SOURCE:\n` +
     graphOnlyIntro +
     `- The Graph API key is handled by QuickDapp runtime config. Do not refuse generation because an API key is not present during generation.\n` +
-    `- Implement a runtime fetch helper that first tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
+    `- Implement a runtime fetch helper that first resolves source from graphConfig.sources (with graphConfig.source fallback), then tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
     `- Show loading, error, empty, and success states.\n` +
     `- Never hardcode an actual The Graph API key in generated source files.\n` +
-    `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use its proxyEndpoint/source.proxyToken when present.\n` +
+    `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use proxyEndpoint plus the resolved source.proxyToken when present.\n` +
     `- For proxyToken requests, POST { token, variables } only. The Remix proxy already has the fixed query.\n` +
     `- Do not ask users for a The Graph API key. Do not store The Graph API keys in localStorage.\n` +
     `- For Remix preview only, graphConfig.apiKey may be present; use it only when no proxyToken exists, and POST { query, variables, operationName } to the keyed gateway URL.\n` +

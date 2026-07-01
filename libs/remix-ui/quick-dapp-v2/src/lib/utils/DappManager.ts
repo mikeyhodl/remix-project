@@ -5,27 +5,6 @@ import { DappConfig } from '../types/dapp';
 const DAPP_WORKSPACE_PREFIX = 'dapp-';
 const CONFIG_FILENAME = 'dapp.config.json';
 
-const getGraphConfigTrace = (config: any) => {
-  const sources = config?.dataSources?.theGraph;
-  const graphSources = Array.isArray(sources) ? sources : [];
-  const firstSource = graphSources[0];
-  return {
-    workspaceName: config?.workspaceName,
-    mode: config?.mode,
-    appKind: config?.appKind,
-    sourceWorkspaceName: config?.sourceWorkspace?.name,
-    sourceWorkspaceFilePath: config?.sourceWorkspace?.filePath,
-    graphSourceCount: graphSources.length,
-    firstGraphSourceId: firstSource?.filePath || firstSource?.subgraphId || firstSource?.operationName,
-    firstGraphFilePath: firstSource?.filePath,
-    firstGraphEndpointKind: firstSource?.endpointKind,
-    firstGraphEndpointNeedsApiKey: firstSource?.endpointNeedsApiKey === true,
-    firstGraphHasSubgraphId: !!firstSource?.subgraphId,
-    firstGraphQueryLength: typeof firstSource?.query === 'string' ? firstSource.query.length : 0,
-    firstGraphVariablesKeys: firstSource?.variables ? Object.keys(firstSource.variables) : []
-  };
-};
-
 export class DappManager {
   private plugin: PluginClient;
 
@@ -225,13 +204,6 @@ export class DappManager {
           }
 
           config.workspaceName = config.workspaceName || workspaceName;
-          if (config.appKind === 'graph-only' || Array.isArray(config.dataSources?.theGraph)) {
-            console.log('[QD_THEGRAPH_TRACE]', {
-              event: 'dapp_manager.getDapps.configLoaded',
-              scannedWorkspaceName: workspaceName,
-              ...getGraphConfigTrace(config)
-            });
-          }
 
           const isInline = config.mode === 'inline';
           const previewPath = isInline ? 'frontend/preview.png' : 'preview.png';
@@ -391,12 +363,6 @@ export class DappManager {
       } : undefined
     };
 
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'dapp_manager.createDappWorkspace.initialConfig',
-      targetWorkspaceName: workspaceName,
-      sourceWorkspaceName,
-      ...getGraphConfigTrace(initialConfig)
-    });
     await this.saveConfig(workspaceName, initialConfig);
 
     try {

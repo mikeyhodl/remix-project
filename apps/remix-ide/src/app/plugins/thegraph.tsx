@@ -86,31 +86,6 @@ const profile = {
   methods: ['runSubgraphFile', 'getSubgraphFileContext', 'createDappFromSubgraphFile', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
 }
 
-const getCommandTrace = (pathOrCmd: string | { path: string[] }) => {
-  if (typeof pathOrCmd === 'string') return { commandType: 'string', path: pathOrCmd }
-  const pathList = Array.isArray(pathOrCmd?.path) ? pathOrCmd.path : []
-  return {
-    commandType: 'context-menu',
-    pathCount: pathList.length,
-    selectedPath: pathList[pathList.length - 1] || ''
-  }
-}
-
-const getSubgraphContextTrace = (context: SubgraphFileContext) => ({
-  filePath: context.filePath,
-  canGenerateDapp: context.validation?.canGenerateDapp === true,
-  errors: context.validation?.errors || [],
-  warnings: context.validation?.warnings || [],
-  missingFields: context.validation?.missingFields || [],
-  endpointKind: context.endpointKind,
-  endpointNeedsApiKey: context.endpointNeedsApiKey === true,
-  apiKeySource: context.apiKeySource,
-  hasSubgraphId: !!context.subgraphId,
-  queryLength: typeof context.query === 'string' ? context.query.length : 0,
-  operationName: context.operationName,
-  operationType: context.operationType
-})
-
 /**
  * The Graph Plugin
  * Executes GraphQL queries from .subgraph files
@@ -226,11 +201,6 @@ export class TheGraphPlugin extends Plugin {
       validation
     }
 
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'handoff.getSubgraphFileContext',
-      ...getSubgraphContextTrace(context)
-    })
-
     return context
   }
 
@@ -240,18 +210,9 @@ export class TheGraphPlugin extends Plugin {
    */
   async createDappFromSubgraphFile(pathOrCmd: string | { path: string[] }): Promise<void> {
     const path = this.getPathFromCommand(pathOrCmd)
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'handoff.createDappFromSubgraphFile.start',
-      selectedPath: path,
-      command: getCommandTrace(pathOrCmd)
-    })
 
     try {
       const context = await this.getSubgraphFileContext(path)
-      console.log('[QD_THEGRAPH_TRACE]', {
-        event: 'handoff.createDappFromSubgraphFile.context',
-        ...getSubgraphContextTrace(context)
-      })
       const contractContext = context.validation.canGenerateDapp
         ? await this.getQuickDappContractHandoffContext()
         : undefined
@@ -261,14 +222,6 @@ export class TheGraphPlugin extends Plugin {
         : buildSubgraphFixPrompt({ graphContext, validation: context.validation })
 
       await this.openRemixAiAssistant()
-      console.log('[QD_THEGRAPH_TRACE]', {
-        event: 'handoff.createDappFromSubgraphFile.chatPipe',
-        selectedPath: path,
-        promptLength: prompt.length,
-        includesSelectedSubgraphFilePath: prompt.includes('SELECTED_SUBGRAPH_FILE_PATH'),
-        includesGraphContextJson: prompt.includes('GRAPH_CONTEXT_JSON'),
-        includesCurrentSubgraphContextJson: prompt.includes('CURRENT_SUBGRAPH_CONTEXT_JSON')
-      })
       await this.call('remixaiassistant' as any, 'chatPipe', prompt)
     } catch (error: any) {
       const message = error?.message || 'Failed to create DApp from subgraph file.'

@@ -422,27 +422,6 @@ const getGraphContextTrace = (graphContext?: QuickDappGraphContext | null) => {
   }
 }
 
-const getGraphSourcesTrace = (config: any) => {
-  const sources = config?.dataSources?.theGraph
-  const graphSources = Array.isArray(sources) ? sources : []
-  return {
-    graphSourceCount: graphSources.length,
-    sources: graphSources.map((source, index) => ({
-      index: index + 1,
-      source: source?.source,
-      filePath: source?.filePath,
-      endpointKind: source?.endpointKind,
-      endpointNeedsApiKey: source?.endpointNeedsApiKey === true,
-      apiKeySource: source?.apiKeySource,
-      hasSubgraphId: !!source?.subgraphId,
-      queryLength: typeof source?.query === 'string' ? source.query.length : 0,
-      variablesKeys: source?.variables ? Object.keys(source.variables) : [],
-      operationName: source?.operationName,
-      operationType: source?.operationType
-    }))
-  }
-}
-
 const getGenerateDAppArgsTrace = (args: GenerateDAppArgs) => ({
   descriptionType: typeof args.description,
   contractName: args.contractName,
@@ -814,13 +793,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
       const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
       this.normalizeGraphContext(args)
-      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-        event: 'generate_dapp.start',
-        isDesktop,
-        targetMode,
-        graphContext: getGraphContextTrace(args.graphContext),
-        subgraphFilePath: args.subgraphFilePath
-      })
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -857,12 +829,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
       if (graphResolutionResult) {
         return graphResolutionResult
       }
-      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-        event: 'generate_dapp.afterGraphResolution',
-        targetMode,
-        graphContext: getGraphContextTrace(args.graphContext),
-        subgraphFilePath: args.subgraphFilePath
-      })
 
       const chainResolution = await this.resolveGenerateChainId(args, plugin)
       args.chainId = chainResolution.chainId
@@ -1103,14 +1069,6 @@ export class GenerateDAppHandler extends BaseToolHandler {
           }
           await dappOps.ensureBaseDir()
           await plugin.call('fileManager', 'writeFile', configPath, JSON.stringify(dappConfig, null, 2))
-          remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-            event: 'generate_dapp.inlineConfigWritten',
-            workspaceName: actualWorkspaceName,
-            configPath,
-            mode: 'inline',
-            appKind: 'contract',
-            ...getGraphSourcesTrace(dappConfig)
-          })
           remixAILogger.log(`[QuickDapp] DApp config created at ${configPath}`)
         } catch (configErr) {
           remixAILogger.warn('[QuickDapp] Config creation failed (non-critical):', configErr)
@@ -1714,17 +1672,6 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         const config = targetConfigLookup?.config || await dappOps.readConfig()
         configSlug = config.slug
         remixAILogger.log(`[QuickDapp][FINALIZE] Read slug from config: ${configSlug}`)
-        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-          event: 'finalize.configRead',
-          workspaceName,
-          targetMode,
-          isInlineMode,
-          appKind: config.appKind,
-          configWorkspaceName: config.workspaceName,
-          sourceWorkspaceName: config.sourceWorkspace?.name,
-          sourceWorkspaceFilePath: config.sourceWorkspace?.filePath,
-          ...getGraphSourcesTrace(config)
-        })
 
         const isGraphConfig = config.appKind === 'graph-only' || (config.dataSources?.theGraph?.length || 0) > 0
         if (isGraphConfig && config.workspaceName && config.workspaceName !== dappOps.getWorkspaceName()) {
@@ -1765,17 +1712,6 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         } else if (config.sourceWorkspace) {
           remixAILogger.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
         }
-        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-          event: 'finalize.beforeConfigWrite',
-          workspaceName: dappOps.getWorkspaceName(),
-          targetMode,
-          isInlineMode,
-          appKind: config.appKind,
-          configWorkspaceName: config.workspaceName,
-          sourceWorkspaceName: config.sourceWorkspace?.name,
-          sourceWorkspaceFilePath: config.sourceWorkspace?.filePath,
-          ...getGraphSourcesTrace(config)
-        })
 
         if (targetConfigLookup?.configPath) {
           await plugin.call('fileManager', 'writeFile', targetConfigLookup.configPath, JSON.stringify(config, null, 2))
@@ -1952,27 +1888,10 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
     try {
       this.normalizeGraphContext(args)
       const isDesktop = isElectron()
-      const requestedFrontendMode = args.frontendMode
       const targetMode: 'workspace' | 'inline' = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
-      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-        event: 'generate_graph_dapp.start',
-        isDesktop,
-        targetMode,
-        requestedFrontendMode,
-        setupOptionsConfirmed: args.setupOptionsConfirmed === true,
-        hasSetupOptionsSummary: !!args.setupOptionsSummary?.trim(),
-        graphContext: getGraphContextTrace(args.graphContext)
-      })
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
-        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-          event: 'generate_graph_dapp.setupOptionsRequired',
-          isDesktop,
-          targetMode,
-          requestedFrontendMode,
-          graphContext: getGraphContextTrace(args.graphContext)
-        })
         return this.createSuccessResult({
           success: false,
           requiresUserInput: true,
@@ -2003,15 +1922,6 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
 
       const sourceWorkspaceInfo = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
       const sourceWorkspaceName = sourceWorkspaceInfo?.name || ''
-      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-        event: 'generate_graph_dapp.sourceWorkspace',
-        isDesktop,
-        targetMode,
-        requestedFrontendMode,
-        sourceWorkspaceName,
-        sourceWorkspaceIsLocalhost: sourceWorkspaceInfo?.isLocalhost === true,
-        graphContext: getGraphContextTrace(args.graphContext)
-      })
       if (sourceWorkspaceName.startsWith('dapp-')) {
         return this.createErrorResult('Cannot create a Graph-only DApp from within a DApp workspace. Please switch to a source workspace first.')
       }
@@ -2101,18 +2011,6 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
 
         await dappOps.ensureBaseDir()
         await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
-        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-          event: 'generate_graph_dapp.configWritten',
-          isDesktop,
-          targetMode,
-          sourceWorkspaceName,
-          workspaceName: actualWorkspaceName,
-          slug: targetSlug,
-          mode: 'inline',
-          appKind: 'graph-only',
-          sourceWorkspaceFilePath: args.graphContext.filePath || '',
-          ...getGraphSourcesTrace(dappConfig)
-        })
       } else {
         await plugin.call('filePanel' as any, 'createWorkspace', workspaceName, true)
         await switchToWorkspaceIfNeeded(plugin, workspaceName)
@@ -2153,18 +2051,6 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
         }
 
         await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
-        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
-          event: 'generate_graph_dapp.configWritten',
-          isDesktop,
-          targetMode,
-          sourceWorkspaceName,
-          workspaceName,
-          slug,
-          mode: 'workspace',
-          appKind: 'graph-only',
-          sourceWorkspaceFilePath: args.graphContext.filePath || '',
-          ...getGraphSourcesTrace(dappConfig)
-        })
         try {
           await plugin.call('fileManager' as any, 'mkdir', 'src')
         } catch {

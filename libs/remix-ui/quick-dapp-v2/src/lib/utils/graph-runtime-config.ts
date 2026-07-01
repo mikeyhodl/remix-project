@@ -17,22 +17,6 @@ const getGraphSourceId = (source: any): string =>
 const needsGatewayKey = (source: any): boolean =>
   source?.endpointKind === 'thegraph-gateway' || source?.endpointNeedsApiKey === true;
 
-const getGraphSourceTrace = (source: any, activeDapp?: any) => ({
-  id: getGraphSourceId(source),
-  filePath: source?.filePath,
-  sourceWorkspaceName: activeDapp?.sourceWorkspace?.name,
-  sourceWorkspaceFilePath: activeDapp?.sourceWorkspace?.filePath,
-  endpointKind: source?.endpointKind,
-  endpointNeedsApiKey: source?.endpointNeedsApiKey === true,
-  apiKeySource: source?.apiKeySource,
-  hasSubgraphId: !!source?.subgraphId,
-  hasQuery: typeof source?.query === 'string' && source.query.trim().length > 0,
-  queryLength: typeof source?.query === 'string' ? source.query.length : 0,
-  variablesKeys: source?.variables ? Object.keys(source.variables) : [],
-  operationName: source?.operationName,
-  operationType: source?.operationType
-});
-
 const getQuickdappGraphEndpoint = (): string => {
   const baseUrl = process.env.NX_ENDPOINTS_URL;
   return baseUrl ? `${baseUrl.replace(/\/$/, '')}/quickdapp-graph` : endpointUrls.quickdappGraph;
@@ -98,20 +82,9 @@ const readSubgraphFileForDeploy = async (
   for (const filePath of getSubgraphPathCandidates(source, activeDapp)) {
     try {
       const content = await plugin.call('filePanel', 'readFileFromWorkspace', workspaceName, filePath);
-      console.log('[QD_THEGRAPH_TRACE]', {
-        event: 'deploy.hydrateGraphSource.readSubgraphFile',
-        workspaceName,
-        filePath,
-        contentLength: typeof content === 'string' ? content.length : 0
-      });
       return { path: filePath, content };
-    } catch (e: any) {
-      console.log('[QD_THEGRAPH_TRACE]', {
-        event: 'deploy.hydrateGraphSource.readSubgraphFileFailed',
-        workspaceName,
-        filePath,
-        message: e?.message || String(e)
-      });
+    } catch {
+      // Try the next candidate path.
     }
   }
 
@@ -121,29 +94,11 @@ const readSubgraphFileForDeploy = async (
 const hydrateGraphSourceForDeploy = async (plugin: any, activeDapp: any, source: any): Promise<any> => {
   const needsQuery = !hasText(source?.query);
   const needsSubgraphId = !hasText(source?.subgraphId);
-  const needsOperation = needsQuery && (!hasText(source?.operationName) || !hasText(source?.operationType));
-  const needsVariables = needsQuery && source?.variables === undefined;
 
   if (!needsQuery && !needsSubgraphId) return source;
 
-  console.log('[QD_THEGRAPH_TRACE]', {
-    event: 'deploy.hydrateGraphSource.start',
-    ...getGraphSourceTrace(source, activeDapp),
-    needsQuery,
-    needsSubgraphId,
-    needsOperation,
-    needsVariables
-  });
-
   const subgraphFile = await readSubgraphFileForDeploy(plugin, activeDapp, source);
-  if (!subgraphFile) {
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'deploy.hydrateGraphSource.noSourceFile',
-      ...getGraphSourceTrace(source, activeDapp),
-      candidates: getSubgraphPathCandidates(source, activeDapp)
-    });
-    return source;
-  }
+  if (!subgraphFile) return source;
 
   try {
     const parsed = parseGraphQLFile(subgraphFile.content);
@@ -165,17 +120,8 @@ const hydrateGraphSourceForDeploy = async (plugin: any, activeDapp: any, source:
       operationType: source?.operationType || parsed.operationType
     };
 
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'deploy.hydrateGraphSource.success',
-      ...getGraphSourceTrace(hydrated, activeDapp)
-    });
     return hydrated;
-  } catch (e: any) {
-    console.log('[QD_THEGRAPH_TRACE]', {
-      event: 'deploy.hydrateGraphSource.parseFailed',
-      filePath: subgraphFile.path,
-      message: e?.message || String(e)
-    });
+  } catch {
     return source;
   }
 };
@@ -200,17 +146,13 @@ const getTheGraphApiKey = async (plugin: any): Promise<string> => {
 };
 
 const createProxyToken = async (source: any, apiKey: string): Promise<string> => {
-  console.log('[QD_THEGRAPH_TRACE]', {
-    event: 'deploy.createProxyToken.start',
-    ...getGraphSourceTrace(source),
-    hasApiKey: !!apiKey
-  });
   const sourceId = getGraphSourceId(source);
   if (!source?.subgraphId) throw new Error(`The Graph subgraph ID is required to deploy this DApp. Missing dataSources.theGraph[].subgraphId for ${sourceId}.`);
   if (!source?.query) throw new Error(`The Graph query is required to deploy this DApp. Missing dataSources.theGraph[].query for ${sourceId}.`);
 
   const authToken = getRemixAccessToken();
-  const response = await fetch(`${getQuickdappGraphEndpoint()}/seal`, {
+  const graphEndpoint = getQuickdappGraphEndpoint();
+  const response = await fetch(`${graphEndpoint}/seal`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -247,21 +189,6 @@ export const buildGraphRuntimeConfigScript = async (
   const needsApiKey = gatewaySources.length > 0;
   let apiKey = needsApiKey ? await getTheGraphApiKey(plugin) : '';
   const proxyTokens: Record<string, string> = {};
-  console.log('[QD_THEGRAPH_TRACE]', {
-    event: 'deploy.buildGraphRuntimeConfigScript.start',
-    target: options.target,
-    includeApiKey: options.includeApiKey,
-    activeWorkspaceName: activeDapp?.workspaceName,
-    activeDappMode: activeDapp?.mode,
-    activeAppKind: activeDapp?.appKind,
-    sourceWorkspaceName: activeDapp?.sourceWorkspace?.name,
-    sourceWorkspaceFilePath: activeDapp?.sourceWorkspace?.filePath,
-    graphSourceCount: graphSources.length,
-    gatewaySourceCount: gatewaySources.length,
-    needsApiKey,
-    hasApiKey: !!apiKey,
-    sources: graphSources.map(source => getGraphSourceTrace(source, activeDapp))
-  });
 
   if (needsApiKey && !options.includeApiKey) {
     if (!apiKey) {
@@ -269,30 +196,28 @@ export const buildGraphRuntimeConfigScript = async (
     }
 
     await Promise.all(gatewaySources.map(async source => {
-      console.log('[QD_THEGRAPH_TRACE]', {
-        event: 'deploy.buildGraphRuntimeConfigScript.sealSource',
-        target: options.target,
-        ...getGraphSourceTrace(source, activeDapp),
-        hasApiKey: !!apiKey
-      });
       proxyTokens[getGraphSourceId(source)] = await createProxyToken(source, apiKey);
     }));
     apiKey = '';
   }
 
+  const runtimeSources = graphSources.map(source => ({
+    id: getGraphSourceId(source),
+    filePath: source?.filePath,
+    endpointKind: source?.endpointKind,
+    endpointNeedsApiKey: source?.endpointNeedsApiKey === true,
+    apiKeySource: options.includeApiKey ? source?.apiKeySource : 'none',
+    subgraphId: source?.subgraphId,
+    operationName: source?.operationName,
+    proxyToken: proxyTokens[getGraphSourceId(source)]
+  }));
+  const primarySource = runtimeSources[0];
+
   const runtimeConfig: any = {
     ...(apiKey ? { apiKey } : {}),
     ...(needsApiKey && !options.includeApiKey ? { proxyEndpoint: `${getQuickdappGraphEndpoint()}/query` } : {}),
-    sources: graphSources.map(source => ({
-      id: getGraphSourceId(source),
-      filePath: source?.filePath,
-      endpointKind: source?.endpointKind,
-      endpointNeedsApiKey: source?.endpointNeedsApiKey === true,
-      apiKeySource: options.includeApiKey ? source?.apiKeySource : 'none',
-      subgraphId: source?.subgraphId,
-      operationName: source?.operationName,
-      proxyToken: proxyTokens[getGraphSourceId(source)]
-    }))
+    ...(primarySource ? { source: primarySource } : {}),
+    sources: runtimeSources
   };
 
   return `<script>window.__QUICK_DAPP_GRAPH_CONFIG__=${safeScriptJson(runtimeConfig)};</script>`;
