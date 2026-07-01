@@ -7,6 +7,8 @@ import { AppContext } from '../../contexts';
 import DeployPanel from '../DeployPanel';
 // remixClient removed - using plugin from context instead
 import { InBrowserVite } from '../../InBrowserVite';
+import { buildGraphRuntimeConfigScript } from '../../utils/graph-runtime-config';
+import { buildQuickDappUpdateGraphContextBlock } from '@remix/remix-ai-core/quick-dapp-thegraph-prompts';
 
 interface Pages {
   [key: string]: string
@@ -332,6 +334,7 @@ function EditHtmlTemplate(): JSX.Element {
         };
       </script>
     `;
+    const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
     const debugScript = `<script>
 window.onerror = function(msg, url, line, col, error) {
   try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}
@@ -421,9 +424,9 @@ window.addEventListener('unhandledrejection', function(e) {
         let finalHtml = indexHtmlContent || '<html><body><div id="root"></div></body></html>';
 
         if (finalHtml.includes('</head>')) {
-          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
+          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
         } else {
-          finalHtml = `<html><head>${debugScript}${injectionScript}${ext}</head>${finalHtml}</html>`;
+          finalHtml = `<html><head>${debugScript}${injectionScript}${graphRuntimeScript}${ext}</head>${finalHtml}</html>`;
         }
 
         const scriptTag = `\n<script type="module">\n${result.js}\n</script>\n`;
@@ -443,7 +446,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
       } else {
         let finalHtml = indexHtmlContent;
-        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${ext}\n</head>`);
+        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
         doc.open();
         doc.write(finalHtml);
         doc.close();
@@ -510,6 +513,8 @@ window.addEventListener('unhandledrejection', function(e) {
     // Build rich context prompt
     const dappName = activeDapp.config?.title || activeDapp.name || 'Untitled';
     const contractInfo = activeDapp.contract;
+    const isGraphOnlyTarget = activeDapp.appKind === 'graph-only';
+    const graphSources = Array.isArray(activeDapp.dataSources?.theGraph) ? activeDapp.dataSources.theGraph : [];
     const promptParts = [
       `DApp update target context:`,
       `Use the target details below exactly. Do not infer or substitute a different workspace.`,
@@ -519,10 +524,25 @@ window.addEventListener('unhandledrejection', function(e) {
       `Target slug: "${activeDapp.slug}"`,
       `Target mode: "${targetMode}"`,
       `Target source root: "${targetSourceRoot}"`,
+      `Target app kind: "${isGraphOnlyTarget ? 'graph-only' : 'contract'}"`,
       ``,
-      `Contract: ${contractInfo?.name || 'Unknown'} at ${contractInfo?.address || 'unknown'}`,
-      `Chain: ${contractInfo?.chainId || 'unknown'}`,
     ];
+
+    if (isGraphOnlyTarget) {
+      promptParts.push(
+        `Contract: none (Graph-only read-only DApp)`,
+        `Update scope: UI/source updates only. Preserve Graph data fetching and do not add contract, wallet, provider, signer, ethers, transaction, or network switching code.`
+      );
+    } else {
+      promptParts.push(
+        `Contract: ${contractInfo?.name || 'Unknown'} at ${contractInfo?.address || 'unknown'}`,
+        `Chain: ${contractInfo?.chainId || 'unknown'}`
+      );
+    }
+
+    if (graphSources.length > 0) {
+      promptParts.push(...buildQuickDappUpdateGraphContextBlock(graphSources));
+    }
 
     if (fileList.length > 0) {
       promptParts.push(``, `Current DApp files:`, ...fileList.map(f => `- ${f}`));
@@ -577,6 +597,8 @@ window.addEventListener('unhandledrejection', function(e) {
   }, []);
 
   const isVM = !!activeDapp?.contract?.chainId && activeDapp.contract.chainId.toString().startsWith('vm');
+  const isGraphOnly = activeDapp?.appKind === 'graph-only';
+  const dappNetworkLabel = isGraphOnly ? 'The Graph' : activeDapp?.contract?.networkName || 'Unknown Network';
   const [isCurrentProviderVM, setIsCurrentProviderVM] = useState(false);
   const [vmContractStatus, setVmContractStatus] = useState<'checking' | 'deployed' | 'not-found'>('checking');
 
@@ -840,7 +862,7 @@ window.addEventListener('unhandledrejection', function(e) {
             {activeDapp.config.title || activeDapp.name}
           </span>
           <span className="badge bg-secondary opacity-75">
-            {activeDapp.contract.networkName}
+            {dappNetworkLabel}
           </span>
           <div className="vr mx-1 text-secondary opacity-50" style={{ height: '1.2rem' }}></div>
           <div className="d-flex align-items-center text-muted" title="Location in File Explorer">
@@ -876,6 +898,7 @@ window.addEventListener('unhandledrejection', function(e) {
               size="sm"
               onClick={handleOpenAIAssistant}
               disabled={isAiUpdating}
+              title={isGraphOnly ? 'AI update is limited to Graph-only UI/source changes.' : undefined}
               data-id="update-with-ai-btn"
             >
               <i className="fas fa-robot me-1"></i>
@@ -956,6 +979,7 @@ window.addEventListener('unhandledrejection', function(e) {
                         const progress = appState.generationProgress;
                         const generatedFiles = progress?.generatedFiles || [];
                         const currentFile = progress?.filename;
+                        const fallbackStatusText = activeDapp?.status === 'creating' ? 'Creating DApp' : 'Updating DApp';
                         const statusText = progress?.status === 'generating_file' && currentFile
                           ? `Writing ${currentFile}`
                           : progress?.status === 'validating'
@@ -964,7 +988,9 @@ window.addEventListener('unhandledrejection', function(e) {
                               ? 'Parsing generated output'
                               : progress?.status === 'calling_llm'
                                 ? 'Waiting for AI response'
-                                : 'Updating DApp';
+                                : progress?.status === 'preparing'
+                                  ? 'Preparing...'
+                                  : fallbackStatusText;
 
                         return (
                           <div className="position-absolute w-100 h-100 d-flex flex-column align-items-center justify-content-center qd-progress-overlay" data-id="ai-updating-overlay">
