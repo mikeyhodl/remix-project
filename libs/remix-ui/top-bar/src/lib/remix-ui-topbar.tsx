@@ -73,6 +73,7 @@ export function RemixUiTopbar() {
   const [compactRightLabels, setCompactRightLabels] = useState(false)
   const [compactPanelControl, setCompactPanelControl] = useState(false)
   const [panelControlMenuOpen, setPanelControlMenuOpen] = useState(false)
+  const [aiPanelActive, setAiPanelActive] = useState<boolean>(false)
   const sectionRef = useRef<HTMLElement>(null)
   const panelControlRef = useRef<HTMLDivElement>(null)
   const rightSideRef = useRef<HTMLDivElement>(null)
@@ -287,6 +288,45 @@ export function RemixUiTopbar() {
     const current = localStorage.getItem('currentWorkspace')
     setCurrentWorkspace(current as any)
   }, [plugin.filePanel.workspaces])
+
+  // Keep the top-right AI icon in sync with whether the AI assistant panel is open
+  const refreshAiPanelState = useCallback(async () => {
+    try {
+      const pState = await plugin.call('menuicons', 'getPluginState', 'remixaiassistant')
+      if (!pState) return setAiPanelActive(false)
+      if (pState.pinned) {
+        const hidden = await plugin.call('rightSidePanel', 'isPanelHidden')
+        const focus = await plugin.call('rightSidePanel', 'currentFocus')
+        setAiPanelActive(!hidden && focus === 'remixaiassistant')
+      } else {
+        setAiPanelActive(!!pState.active)
+      }
+    } catch (e) {
+      setAiPanelActive(false)
+    }
+  }, [plugin])
+
+  useEffect(() => {
+    // Note: rightSidePanelShown/Hidden are already subscribed elsewhere (see rightPanelHidden),
+    // and the engine keeps only one callback per (listener, event) pair, so we react to
+    // rightPanelHidden below instead of re-subscribing to those events here.
+    plugin.on('rightSidePanel', 'pinnedPlugin', refreshAiPanelState)
+    plugin.on('rightSidePanel', 'unPinnedPlugin', refreshAiPanelState)
+    plugin.on('menuicons', 'showContent', refreshAiPanelState)
+    plugin.on('menuicons', 'toggleContent', refreshAiPanelState)
+    return () => {
+      plugin.off('rightSidePanel', 'pinnedPlugin')
+      plugin.off('rightSidePanel', 'unPinnedPlugin')
+      plugin.off('menuicons', 'showContent')
+      plugin.off('menuicons', 'toggleContent')
+    }
+  }, [refreshAiPanelState])
+
+  // rightPanelHidden is driven by the rightSidePanelShown/Hidden events subscribed above;
+  // re-derive the AI icon state whenever it (or the current workspace) changes.
+  useEffect(() => {
+    refreshAiPanelState()
+  }, [rightPanelHidden, refreshAiPanelState])
 
   useEffect(() => {
     const run = async () => {
@@ -937,26 +977,20 @@ export function RemixUiTopbar() {
             <i className="fa fa-cog"></i>
           </span>
           <span
-            className="ms-3"
-            style={{
-              fontSize: '1.2rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(91, 207, 207, 0.1)',
-              border: '1px solid rgba(91, 207, 207, 0.3)'
-            }}
+            className={`ms-3 remixai-topbar-icon${aiPanelActive ? ' active' : ''}`}
             onClick={async () => {
               const pState = await plugin.call('menuicons', 'getPluginState', 'remixaiassistant')
-              if (pState.pinned) {
-                plugin.call('rightSidePanel', 'highlight')
+              if (pState && pState.pinned) {
+                // When the AI panel is already open, clicking the icon closes it; otherwise open it.
+                if (aiPanelActive) {
+                  await plugin.call('rightSidePanel', 'togglePanel')
+                } else {
+                  await plugin.call('rightSidePanel', 'highlight')
+                }
               } else {
-                plugin.call('menuicons', 'toggle', 'remixaiassistant')
+                await plugin.call('menuicons', 'toggle', 'remixaiassistant')
               }
+              refreshAiPanelState()
             }}
             data-id="remixai-assistant-icon"
           >
