@@ -8,6 +8,7 @@ import DeployPanel from '../DeployPanel';
 // remixClient removed - using plugin from context instead
 import { InBrowserVite } from '../../InBrowserVite';
 import { buildGraphRuntimeConfigScript } from '../../utils/graph-runtime-config';
+import { buildQuickDappUpdateGraphContextBlock } from '@remix/remix-ai-core/quick-dapp-thegraph-prompts';
 
 interface Pages {
   [key: string]: string
@@ -540,14 +541,7 @@ window.addEventListener('unhandledrejection', function(e) {
     }
 
     if (graphSources.length > 0) {
-      promptParts.push(
-        ``,
-        `Existing The Graph data sources:`,
-        ...graphSources.map((source, index) =>
-          `- ${index + 1}. ${source.filePath || source.operationName || source.subgraphId || 'thegraph-source'} (${source.endpointKind || 'unknown'}, needsApiKey=${source.endpointNeedsApiKey === true})`
-        ),
-        `Preserve existing GraphQL fetch logic, loading/error/empty/success states, and QuickDapp runtime Graph config usage. Prefer proxyEndpoint/source.proxyToken for deployed The Graph gateway requests; do not add a runtime API key input or localStorage key fallback unless I explicitly ask to remove The Graph support.`
-      );
+      promptParts.push(...buildQuickDappUpdateGraphContextBlock(graphSources));
     }
 
     if (fileList.length > 0) {
@@ -985,6 +979,7 @@ window.addEventListener('unhandledrejection', function(e) {
                         const progress = appState.generationProgress;
                         const generatedFiles = progress?.generatedFiles || [];
                         const currentFile = progress?.filename;
+                        const fallbackStatusText = activeDapp?.status === 'creating' ? 'Creating DApp' : 'Updating DApp';
                         const statusText = progress?.status === 'generating_file' && currentFile
                           ? `Writing ${currentFile}`
                           : progress?.status === 'validating'
@@ -993,7 +988,9 @@ window.addEventListener('unhandledrejection', function(e) {
                               ? 'Parsing generated output'
                               : progress?.status === 'calling_llm'
                                 ? 'Waiting for AI response'
-                                : 'Updating DApp';
+                                : progress?.status === 'preparing'
+                                  ? 'Preparing...'
+                                  : fallbackStatusText;
 
                         return (
                           <div className="position-absolute w-100 h-100 d-flex flex-column align-items-center justify-content-center qd-progress-overlay" data-id="ai-updating-overlay">

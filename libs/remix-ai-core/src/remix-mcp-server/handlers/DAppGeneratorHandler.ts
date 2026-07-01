@@ -20,6 +20,10 @@ import {
 } from '@remix-ui/helper'
 import isElectron from 'is-electron'
 import { clearQuickDappGenerationContext, markQuickDappGenerationContext } from '../../helpers/quickDappGenerationContext'
+import {
+  buildExistingGraphDataSourceBlock,
+  buildQuickDappGraphDataSourceInstructions
+} from '../prompts/quickDappTheGraphPrompts'
 
 const isLocalVMChainId = (chainId: number | string): boolean => {
   const n = Number(chainId)
@@ -378,9 +382,11 @@ export interface GenerateDAppArgs {
 export interface GenerateGraphDAppArgs {
   description: string
   graphContext: QuickDappGraphContext
+  frontendMode?: 'workspace' | 'inline'
   isBaseMiniApp?: boolean
   setupOptionsConfirmed?: boolean
   setupOptionsSummary?: string
+  confirmOverwrite?: boolean
 }
 
 export interface QuickDappGraphContext {
@@ -399,21 +405,59 @@ export interface QuickDappGraphContext {
   operationType?: 'query' | 'mutation' | 'subscription'
 }
 
-const getQuickDappGraphGatewayRuntimeRules = (graphContext?: QuickDappGraphContext): string => {
-  const subgraphId = graphContext?.subgraphId || '<subgraphId from GRAPH_CONTEXT_JSON>'
-  return `\nTHE GRAPH GATEWAY RUNTIME RULES (CRITICAL - MUST IMPLEMENT WHEN endpointKind="thegraph-gateway" OR endpointNeedsApiKey=true):\n` +
-    `- The sanitized gateway URL "https://gateway.thegraph.com/api/subgraphs/id/..." is NOT fetchable. It causes "auth error: missing authorization header".\n` +
-    `- NEVER create a GRAPHQL_ENDPOINT/GRAPH_ENDPOINT constant with "https://gateway.thegraph.com/api/subgraphs/id/...".\n` +
-    `- Store only SUBGRAPH_ID as a constant, for example SUBGRAPH_ID = "${subgraphId}".\n` +
-    `- Read Remix-injected runtime config from window.__QUICK_DAPP_GRAPH_CONFIG__.\n` +
-    `- Runtime priority: (1) graphConfig.proxyEndpoint + matching source.proxyToken, then (2) Remix preview graphConfig.apiKey, then (3) show a configuration message without fetching.\n` +
-    `- Deployed DApps use the sealed proxy path. When proxyToken is available, POST only { token: proxyToken, variables } to graphConfig.proxyEndpoint. Do not send query, apiKey, subgraphId, or operationName to the proxy.\n` +
-    `- Remix preview may use graphConfig.apiKey when no proxyToken exists. Only in that preview path, build \`https://gateway.thegraph.com/api/\${apiKey}/subgraphs/id/${subgraphId}\` and POST { query, variables, operationName }.\n` +
-    `- Do not render a The Graph API key input. Do not ask the user for a The Graph API key. Do not read or write The Graph API keys in localStorage.\n` +
-    `- Missing proxyToken/apiKey is only a runtime configuration state; it is NOT a reason to refuse DApp generation.\n` +
-    `- Bad code to avoid: fetch('https://gateway.thegraph.com/api/subgraphs/id/...').\n` +
-    `- Good deployed flow: injected proxy token -> POST { token, variables } to Remix proxy.\n`
+const getGraphContextTrace = (graphContext?: QuickDappGraphContext | null) => {
+  if (!graphContext) return { hasGraphContext: false }
+  return {
+    hasGraphContext: true,
+    source: graphContext.source,
+    filePath: graphContext.filePath,
+    endpointKind: graphContext.endpointKind,
+    endpointNeedsApiKey: graphContext.endpointNeedsApiKey === true,
+    apiKeySource: graphContext.apiKeySource,
+    hasSubgraphId: !!graphContext.subgraphId,
+    queryLength: typeof graphContext.query === 'string' ? graphContext.query.length : 0,
+    variablesKeys: graphContext.variables ? Object.keys(graphContext.variables) : [],
+    operationName: graphContext.operationName,
+    operationType: graphContext.operationType
+  }
 }
+
+const getGraphSourcesTrace = (config: any) => {
+  const sources = config?.dataSources?.theGraph
+  const graphSources = Array.isArray(sources) ? sources : []
+  return {
+    graphSourceCount: graphSources.length,
+    sources: graphSources.map((source, index) => ({
+      index: index + 1,
+      source: source?.source,
+      filePath: source?.filePath,
+      endpointKind: source?.endpointKind,
+      endpointNeedsApiKey: source?.endpointNeedsApiKey === true,
+      apiKeySource: source?.apiKeySource,
+      hasSubgraphId: !!source?.subgraphId,
+      queryLength: typeof source?.query === 'string' ? source.query.length : 0,
+      variablesKeys: source?.variables ? Object.keys(source.variables) : [],
+      operationName: source?.operationName,
+      operationType: source?.operationType
+    }))
+  }
+}
+
+const getGenerateDAppArgsTrace = (args: GenerateDAppArgs) => ({
+  descriptionType: typeof args.description,
+  contractName: args.contractName,
+  contractAddress: args.contractAddress,
+  chainId: args.chainId,
+  frontendMode: args.frontendMode,
+  isBaseMiniApp: !!args.isBaseMiniApp,
+  hasFigmaUrl: !!args.figmaUrl,
+  hasFigmaToken: !!args.figmaToken,
+  setupOptionsConfirmed: args.setupOptionsConfirmed === true,
+  hasSetupOptionsSummary: !!args.setupOptionsSummary?.trim(),
+  subgraphFilePath: args.subgraphFilePath,
+  contractAbiLength: Array.isArray(args.contractAbi) ? args.contractAbi.length : 0,
+  graphContext: getGraphContextTrace(args.graphContext)
+})
 
 interface QuickDappSubgraphFileContext extends QuickDappGraphContext {
   validation?: {
@@ -765,11 +809,18 @@ export class GenerateDAppHandler extends BaseToolHandler {
     let progressSlug: string | undefined
     let figmaDesign: FigmaDesignSuccess | undefined
     try {
-      remixAILogger.log('[GenerateDApp] Received args:', args)
+      remixAILogger.log('[GenerateDApp] Received args:', getGenerateDAppArgsTrace(args))
       const isDesktop = isElectron()
       const targetMode = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
       args.frontendMode = targetMode
       this.normalizeGraphContext(args)
+      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+        event: 'generate_dapp.start',
+        isDesktop,
+        targetMode,
+        graphContext: getGraphContextTrace(args.graphContext),
+        subgraphFilePath: args.subgraphFilePath
+      })
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
         return this.createSuccessResult({
@@ -806,6 +857,12 @@ export class GenerateDAppHandler extends BaseToolHandler {
       if (graphResolutionResult) {
         return graphResolutionResult
       }
+      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+        event: 'generate_dapp.afterGraphResolution',
+        targetMode,
+        graphContext: getGraphContextTrace(args.graphContext),
+        subgraphFilePath: args.subgraphFilePath
+      })
 
       const chainResolution = await this.resolveGenerateChainId(args, plugin)
       args.chainId = chainResolution.chainId
@@ -1046,6 +1103,14 @@ export class GenerateDAppHandler extends BaseToolHandler {
           }
           await dappOps.ensureBaseDir()
           await plugin.call('fileManager', 'writeFile', configPath, JSON.stringify(dappConfig, null, 2))
+          remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+            event: 'generate_dapp.inlineConfigWritten',
+            workspaceName: actualWorkspaceName,
+            configPath,
+            mode: 'inline',
+            appKind: 'contract',
+            ...getGraphSourcesTrace(dappConfig)
+          })
           remixAILogger.log(`[QuickDapp] DApp config created at ${configPath}`)
         } catch (configErr) {
           remixAILogger.warn('[QuickDapp] Config creation failed (non-critical):', configErr)
@@ -1072,26 +1137,7 @@ export class GenerateDAppHandler extends BaseToolHandler {
         ? `\nFIGMA: Design preflight succeeded for "${figmaDesign.fileName}"${figmaDesign.nodeId ? ` (node ${figmaDesign.nodeId})` : ''}. Use the simplified design data below as the visual reference. Do NOT call fetch_figma_design again for this URL unless the user explicitly asks.\nFIGMA DESIGN DATA:\n${figmaDesign.designData}\n`
         : ''
       const graphLine = args.graphContext
-        ? `\nTHE GRAPH DATA SOURCE:\n` +
-        `- This DApp must query The Graph using the provided GraphQL query.\n` +
-        `- The Graph query is independent from the smart contract ABI. Do not assume the query entities match the contract.\n` +
-        `- The DApp network and wallet rules are still determined by the contract chainId. The Graph network metadata is informational only.\n` +
-        `- Create a small GraphQL client/helper, for example src/graphClient.js or src/hooks/useGraphQuery.js.\n` +
-        `- The Graph API key is handled by QuickDapp runtime config. Do not refuse generation because an API key is not present during generation.\n` +
-        `- Implement a runtime fetch helper that first tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
-        `- Show loading, error, empty, and success states.\n` +
-        `- Never hardcode an actual The Graph API key in generated source files.\n` +
-        `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use its proxyEndpoint/source.proxyToken when present.\n` +
-        `- For proxyToken requests, POST { token, variables } only. The Remix proxy already has the fixed query.\n` +
-        `- Do not ask users for a The Graph API key. Do not store The Graph API keys in localStorage.\n` +
-        `- For Remix preview only, graphConfig.apiKey may be present; use it only when no proxyToken exists, and POST { query, variables, operationName } to the keyed gateway URL.\n` +
-        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
-        `- If endpointKind is "thegraph-gateway" and neither proxyToken nor preview apiKey is available at runtime, show a configuration message and do not send the GraphQL request yet.\n` +
-        `- For IPFS/ENS static deployments, assume the injected runtime config provides a sealed proxy token.\n` +
-        `- Do not use ethers provider, RPC provider, or wallet calls to fetch GraphQL data.\n` +
-        `- Preserve contract wallet rules separately from GraphQL fetch rules.\n\n` +
-        `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
-        `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
+        ? buildQuickDappGraphDataSourceInstructions({ graphContext: args.graphContext })
         : ''
 
       const isInlineMode = dappOps.isInline()
@@ -1296,38 +1342,7 @@ export class UpdateDAppHandler extends BaseToolHandler {
   }
 
   private getExistingGraphDataSourceBlock(config: any): string {
-    const graphSources = this.getGraphSources(config)
-    if (graphSources.length === 0) return ''
-
-    const safeSources = graphSources.map((source, index) => ({
-      index: index + 1,
-      source: source.source,
-      filePath: source.filePath,
-      endpoint: source.endpoint,
-      endpointKind: source.endpointKind,
-      endpointNeedsApiKey: source.endpointNeedsApiKey === true,
-      apiKeySource: source.apiKeySource,
-      subgraphId: source.subgraphId,
-      network: source.network,
-      description: source.description,
-      operationName: source.operationName,
-      operationType: source.operationType,
-      variables: source.variables || {},
-      query: source.query
-    }))
-
-    const raw = JSON.stringify(safeSources, null, 2)
-    const graphContext = raw.length > 12000 ? `${raw.substring(0, 12000)}\n... [truncated]` : raw
-
-    return `EXISTING THE GRAPH DATA SOURCES:\n${graphContext}\n\n` +
-      `GRAPH DATA PRESERVATION (MANDATORY):\n` +
-      `- Preserve existing GraphQL fetch logic unless the user explicitly asks to remove or replace The Graph data.\n` +
-      `- Preserve loading, error, empty, and success states for Graph data.\n` +
-      `- Preserve window.__QUICK_DAPP_GRAPH_CONFIG__ usage and prefer proxyEndpoint/source.proxyToken for The Graph gateway requests.\n` +
-      `- Do not add a runtime The Graph API key input or localStorage key fallback.\n` +
-      `- Never hardcode an actual The Graph API key in source files.\n` +
-      `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
-      `- Do not use ethers provider, RPC provider, wallet provider, signer, or contract instances to fetch GraphQL data.\n\n`
+    return buildExistingGraphDataSourceBlock(this.getGraphSources(config))
   }
 
   /**
@@ -1699,6 +1714,17 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         const config = targetConfigLookup?.config || await dappOps.readConfig()
         configSlug = config.slug
         remixAILogger.log(`[QuickDapp][FINALIZE] Read slug from config: ${configSlug}`)
+        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+          event: 'finalize.configRead',
+          workspaceName,
+          targetMode,
+          isInlineMode,
+          appKind: config.appKind,
+          configWorkspaceName: config.workspaceName,
+          sourceWorkspaceName: config.sourceWorkspace?.name,
+          sourceWorkspaceFilePath: config.sourceWorkspace?.filePath,
+          ...getGraphSourcesTrace(config)
+        })
 
         const isGraphConfig = config.appKind === 'graph-only' || (config.dataSources?.theGraph?.length || 0) > 0
         if (isGraphConfig && config.workspaceName && config.workspaceName !== dappOps.getWorkspaceName()) {
@@ -1739,6 +1765,17 @@ export class FinalizeDAppGenerationHandler extends BaseToolHandler {
         } else if (config.sourceWorkspace) {
           remixAILogger.log(`[QuickDapp][FINALIZE] sourceWorkspace OK: ${config.sourceWorkspace.name}`)
         }
+        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+          event: 'finalize.beforeConfigWrite',
+          workspaceName: dappOps.getWorkspaceName(),
+          targetMode,
+          isInlineMode,
+          appKind: config.appKind,
+          configWorkspaceName: config.workspaceName,
+          sourceWorkspaceName: config.sourceWorkspace?.name,
+          sourceWorkspaceFilePath: config.sourceWorkspace?.filePath,
+          ...getGraphSourcesTrace(config)
+        })
 
         if (targetConfigLookup?.configPath) {
           await plugin.call('fileManager', 'writeFile', targetConfigLookup.configPath, JSON.stringify(config, null, 2))
@@ -1840,6 +1877,11 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
         type: 'boolean',
         description: 'Whether to mark this Graph-only DApp as a Base mini-app for the later publish wizard.'
       },
+      frontendMode: {
+        type: 'string',
+        enum: ['workspace', 'inline'],
+        description: 'Browser/web only: create in a new dedicated workspace (default) or inline in /frontend. Remix Desktop always forces inline.'
+      },
       setupOptionsConfirmed: {
         type: 'boolean',
         description: 'Must be true after the user answered the setup question.'
@@ -1847,6 +1889,10 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
       setupOptionsSummary: {
         type: 'string',
         description: 'Short summary of the setup choices confirmed by the user.'
+      },
+      confirmOverwrite: {
+        type: 'boolean',
+        description: 'Required only for inline Graph-only generation when /frontend already contains files and the user confirmed overwrite.'
       }
     },
     required: ['description', 'graphContext']
@@ -1861,6 +1907,7 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
     if (!args.graphContext) return 'Missing required argument: graphContext'
     if (!args.graphContext.endpoint?.trim()) return 'graphContext.endpoint is required'
     if (!args.graphContext.query?.trim()) return 'graphContext.query is required'
+    if (args.frontendMode && args.frontendMode !== 'workspace' && args.frontendMode !== 'inline') return 'frontendMode must be "workspace" or "inline"'
     if (/gateway\.thegraph\.com\/api\/[^/]+\/subgraphs\/id\//i.test(args.graphContext.endpoint)) {
       return 'graphContext.endpoint must not include a The Graph API key'
     }
@@ -1904,96 +1951,241 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
 
     try {
       this.normalizeGraphContext(args)
+      const isDesktop = isElectron()
+      const requestedFrontendMode = args.frontendMode
+      const targetMode: 'workspace' | 'inline' = isDesktop ? 'inline' : (args.frontendMode || 'workspace')
+      args.frontendMode = targetMode
+      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+        event: 'generate_graph_dapp.start',
+        isDesktop,
+        targetMode,
+        requestedFrontendMode,
+        setupOptionsConfirmed: args.setupOptionsConfirmed === true,
+        hasSetupOptionsSummary: !!args.setupOptionsSummary?.trim(),
+        graphContext: getGraphContextTrace(args.graphContext)
+      })
 
       if (args.setupOptionsConfirmed !== true || !args.setupOptionsSummary?.trim()) {
+        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+          event: 'generate_graph_dapp.setupOptionsRequired',
+          isDesktop,
+          targetMode,
+          requestedFrontendMode,
+          graphContext: getGraphContextTrace(args.graphContext)
+        })
         return this.createSuccessResult({
           success: false,
           requiresUserInput: true,
           reason: 'setup_options_required',
           message: 'Before generating files, ask the user once for Graph-only DApp setup options.',
-          optionsToAsk: [
-            'Location: Workspace only for Graph-only MVP',
-            'Base mini-app: No (default) or Yes',
-            'Design: defaults or style notes'
-          ],
+          optionsToAsk: isDesktop
+            ? [
+              'Location: Inline in /frontend only for Remix Desktop',
+              'Base mini-app: No (default) or Yes',
+              'Design: defaults or style notes'
+            ]
+            : [
+              'Location: Workspace (default) or Inline in /frontend',
+              'Base mini-app: No (default) or Yes',
+              'Design: defaults or style notes'
+            ],
           defaults: {
-            location: 'workspace',
+            location: targetMode,
             isBaseMiniApp: false,
             design: 'defaults'
           },
-          nextAction: 'Ask only Base mini-app and Design, then STOP. Location is fixed to a new Workspace for Graph-only DApps. After the user answers, call generate_graph_dapp again with setupOptionsConfirmed=true, setupOptionsSummary, isBaseMiniApp, description, and the same graphContext.'
+          fixedLocation: isDesktop ? 'inline' : undefined,
+          nextAction: isDesktop
+            ? 'Ask only Base mini-app and Design, then STOP. Location is fixed to Inline in /frontend for Graph-only DApps on Remix Desktop. After the user answers, call generate_graph_dapp again with setupOptionsConfirmed=true, setupOptionsSummary, frontendMode="inline", isBaseMiniApp, description, and the same graphContext.'
+            : 'Ask Location (Workspace default or Inline), Base mini-app, and Design, then STOP. After the user answers, call generate_graph_dapp again with setupOptionsConfirmed=true, setupOptionsSummary, frontendMode set to the chosen Location, isBaseMiniApp, description, and the same graphContext.'
         })
       }
 
       const sourceWorkspaceInfo = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
       const sourceWorkspaceName = sourceWorkspaceInfo?.name || ''
+      remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+        event: 'generate_graph_dapp.sourceWorkspace',
+        isDesktop,
+        targetMode,
+        requestedFrontendMode,
+        sourceWorkspaceName,
+        sourceWorkspaceIsLocalhost: sourceWorkspaceInfo?.isLocalhost === true,
+        graphContext: getGraphContextTrace(args.graphContext)
+      })
       if (sourceWorkspaceName.startsWith('dapp-')) {
         return this.createErrorResult('Cannot create a Graph-only DApp from within a DApp workspace. Please switch to a source workspace first.')
+      }
+      if (!sourceWorkspaceName) {
+        return this.createErrorResult('Could not determine the current source workspace for Graph-only DApp generation.')
       }
 
       const appName = this.getGraphOnlyName(args)
       const { slug, workspaceName } = this.getWorkspaceName(appName)
       const timestamp = Date.now()
+      let targetSlug = slug
 
-      await plugin.call('filePanel' as any, 'createWorkspace', workspaceName, true)
-      await switchToWorkspaceIfNeeded(plugin, workspaceName)
-      await new Promise(r => setTimeout(r, 300))
+      if (targetMode === 'inline') {
+        dappOps = new DappOperations('inline', sourceWorkspaceName, plugin, appName)
+        targetSlug = dappOps.getSlug()
 
-      const activeWorkspaceAfterSwitch = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
-      if (activeWorkspaceAfterSwitch?.name !== workspaceName) {
-        throw new Error(`Graph-only DApp workspace switch failed. Expected "${workspaceName}", got "${activeWorkspaceAfterSwitch?.name || 'unknown'}".`)
-      }
+        try {
+          const folderPath = dappOps.getSourceRoot().substring(1)
+          const files = await plugin.call('fileManager' as any, 'readdir', folderPath)
+          const fileCount = files ? Object.keys(files).length : 0
 
-      dappOps = new DappOperations('workspace', workspaceName, plugin, appName)
+          if (fileCount > 0 && !args.confirmOverwrite) {
+            remixAILogger.log(`[QuickDapp] /frontend folder exists with ${fileCount} files, requesting user confirmation`)
+            return this.createErrorResult(
+              `OVERWRITE WARNING - USER CONFIRMATION REQUIRED\n\n` +
+              `The /frontend folder in workspace "${sourceWorkspaceName}" already exists and contains ${fileCount} file(s).\n\n` +
+              `These files will be replaced with the new Graph-only DApp.\n\n` +
+              `ASK THE USER which option they prefer:\n\n` +
+              `Option 1: Overwrite existing files\n` +
+              `- Call generate_graph_dapp again with the SAME parameters PLUS confirmOverwrite=true and setupOptionsConfirmed=true\n\n` +
+              `Option 2: Cancel\n` +
+              `- Do not proceed with DApp generation\n\n` +
+              `Do not proceed without user confirmation.`
+            )
+          }
+          if (fileCount > 0) {
+            remixAILogger.log('[QuickDapp] User confirmed overwrite of', fileCount, 'files in /frontend')
+          }
+        } catch (checkErr: any) {
+          const errorMsg = checkErr?.message || String(checkErr)
+          if (errorMsg.includes('not exist') || errorMsg.includes('ENOENT') || errorMsg.includes('no such file')) {
+            remixAILogger.log('[QuickDapp] /frontend folder does not exist, proceeding with creation')
+          } else {
+            remixAILogger.warn('[QuickDapp] Could not check /frontend folder:', errorMsg)
+          }
+        }
 
-      const dappConfig = {
-        _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
-        slug,
-        name: appName,
-        workspaceName,
-        mode: 'workspace',
-        appKind: 'graph-only',
-        sourceWorkspace: {
-          name: sourceWorkspaceName,
-          filePath: args.graphContext.filePath || ''
-        },
-        config: {
-          title: appName,
-          details: typeof args.description === 'string' ? args.description : `Graph-only DApp for ${appName}`,
-          description: args.description,
-          template: 'custom',
-          isBaseMiniApp: !!args.isBaseMiniApp
-        },
-        dataSources: {
-          theGraph: [args.graphContext]
-        },
-        status: 'creating',
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        processingStartedAt: timestamp
-      }
+        let actualWorkspaceName = dappOps.getWorkspaceName()
+        if (isElectron()) {
+          try {
+            const workingDir = await plugin.call('fs' as any, 'getWorkingDir')
+            if (workingDir) {
+              actualWorkspaceName = extractNameFromKey(workingDir)
+              remixAILogger.log(`[QuickDapp] Using folder name for desktop Graph-only DApp: ${actualWorkspaceName}`)
+            }
+          } catch (e) {
+            remixAILogger.warn('[QuickDapp] Could not get working directory:', e)
+          }
+        }
 
-      await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
-      try {
-        await plugin.call('fileManager' as any, 'mkdir', 'src')
-      } catch {
-        // ignore if src already exists
+        const dappConfig = {
+          _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
+          slug: targetSlug,
+          name: appName,
+          workspaceName: actualWorkspaceName,
+          mode: 'inline',
+          appKind: 'graph-only',
+          sourceWorkspace: {
+            name: sourceWorkspaceName,
+            filePath: args.graphContext.filePath || ''
+          },
+          config: {
+            title: appName,
+            details: typeof args.description === 'string' ? args.description : `Graph-only DApp for ${appName}`,
+            description: args.description,
+            template: 'custom',
+            isBaseMiniApp: !!args.isBaseMiniApp
+          },
+          dataSources: {
+            theGraph: [args.graphContext]
+          },
+          status: 'creating',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          processingStartedAt: timestamp
+        }
+
+        await dappOps.ensureBaseDir()
+        await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
+        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+          event: 'generate_graph_dapp.configWritten',
+          isDesktop,
+          targetMode,
+          sourceWorkspaceName,
+          workspaceName: actualWorkspaceName,
+          slug: targetSlug,
+          mode: 'inline',
+          appKind: 'graph-only',
+          sourceWorkspaceFilePath: args.graphContext.filePath || '',
+          ...getGraphSourcesTrace(dappConfig)
+        })
+      } else {
+        await plugin.call('filePanel' as any, 'createWorkspace', workspaceName, true)
+        await switchToWorkspaceIfNeeded(plugin, workspaceName)
+        await new Promise(r => setTimeout(r, 300))
+
+        const activeWorkspaceAfterSwitch = await plugin.call('filePanel' as any, 'getCurrentWorkspace')
+        if (activeWorkspaceAfterSwitch?.name !== workspaceName) {
+          throw new Error(`Graph-only DApp workspace switch failed. Expected "${workspaceName}", got "${activeWorkspaceAfterSwitch?.name || 'unknown'}".`)
+        }
+
+        dappOps = new DappOperations('workspace', workspaceName, plugin, appName)
+
+        const dappConfig = {
+          _warning: 'DO NOT EDIT THIS FILE MANUALLY. MANAGED BY QUICK DAPP.',
+          slug,
+          name: appName,
+          workspaceName,
+          mode: 'workspace',
+          appKind: 'graph-only',
+          sourceWorkspace: {
+            name: sourceWorkspaceName,
+            filePath: args.graphContext.filePath || ''
+          },
+          config: {
+            title: appName,
+            details: typeof args.description === 'string' ? args.description : `Graph-only DApp for ${appName}`,
+            description: args.description,
+            template: 'custom',
+            isBaseMiniApp: !!args.isBaseMiniApp
+          },
+          dataSources: {
+            theGraph: [args.graphContext]
+          },
+          status: 'creating',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          processingStartedAt: timestamp
+        }
+
+        await plugin.call('fileManager' as any, 'writeFile', 'dapp.config.json', JSON.stringify(dappConfig, null, 2))
+        remixAILogger.log('[QD_THEGRAPH_TRACE]', {
+          event: 'generate_graph_dapp.configWritten',
+          isDesktop,
+          targetMode,
+          sourceWorkspaceName,
+          workspaceName,
+          slug,
+          mode: 'workspace',
+          appKind: 'graph-only',
+          sourceWorkspaceFilePath: args.graphContext.filePath || '',
+          ...getGraphSourcesTrace(dappConfig)
+        })
+        try {
+          await plugin.call('fileManager' as any, 'mkdir', 'src')
+        } catch {
+          // ignore if src already exists
+        }
       }
 
       setQuickDappWorkspaceLock({
-        workspaceName,
-        slug,
+        workspaceName: dappOps.getWorkspaceName(),
+        slug: targetSlug,
         operation: 'generate',
         reason: 'generate_graph_dapp'
       })
       markQuickDappGenerationContext({
-        workspaceName,
-        isInlineMode: false,
-        sourceRoot: '/',
+        workspaceName: dappOps.getWorkspaceName(),
+        isInlineMode: dappOps.isInline(),
+        sourceRoot: dappOps.getSourceRoot(),
         operation: 'generate'
       })
 
-      plugin.emit('generationProgress', { status: 'preparing', workspaceName, slug })
+      plugin.emit('generationProgress', { status: 'preparing', workspaceName: dappOps.getWorkspaceName(), slug: targetSlug })
 
       try {
         await plugin.call('manager' as any, 'activatePlugin', 'quick-dapp-v2')
@@ -2003,32 +2195,23 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
         // Non-critical; generation can continue without focusing the dashboard.
       }
 
-      const graphLine =
-        `THE GRAPH DATA SOURCE:\n` +
-        `- This is a Graph-only read-only DApp. Do not create contract, wallet, provider, signer, ethers, transaction, or network switching code.\n` +
-        `- The Graph API key is handled by QuickDapp runtime config. Do not refuse generation because an API key is not present during generation.\n` +
-        `- Implement a runtime fetch helper that first tries graphConfig.proxyEndpoint + source.proxyToken, then falls back to graphConfig.apiKey for Remix preview only.\n` +
-        `- Show loading, error, empty, and success states.\n` +
-        `- Never hardcode an actual The Graph API key in generated source files.\n` +
-        `- If endpointNeedsApiKey is true, read window.__QUICK_DAPP_GRAPH_CONFIG__ and use its proxyEndpoint/source.proxyToken when present.\n` +
-        `- For proxyToken requests, POST { token, variables } only. The Remix proxy already has the fixed query.\n` +
-        `- Do not ask users for a The Graph API key. Do not store The Graph API keys in localStorage.\n` +
-        `- For Remix preview only, graphConfig.apiKey may be present; use it only when no proxyToken exists, and POST { query, variables, operationName } to the keyed gateway URL.\n` +
-        `- For endpointKind "thegraph-gateway", never fetch the sanitized /api/subgraphs/id/... URL directly.\n` +
-        `- If endpointKind is "thegraph-gateway" and neither proxyToken nor preview apiKey is available at runtime, show a configuration message and do not send the GraphQL request yet.\n` +
-        `- For IPFS/ENS static deployments, assume the injected runtime config provides a sealed proxy token.\n\n` +
-        `${getQuickDappGraphGatewayRuntimeRules(args.graphContext)}\n` +
-        `GRAPH_CONTEXT_JSON:\n${JSON.stringify(args.graphContext, null, 2)}\n`
+      const graphLine = buildQuickDappGraphDataSourceInstructions({ graphContext: args.graphContext, graphOnly: true })
+      const isGraphInlineMode = dappOps.isInline()
+      const targetWorkspaceForInstructions = dappOps.getWorkspaceName()
+      const fileWritePaths = isGraphInlineMode
+        ? '/frontend/index.html, /frontend/src/main.jsx, /frontend/src/App.jsx, /frontend/src/index.css'
+        : '/index.html, /src/main.jsx, /src/App.jsx, /src/index.css'
 
       return this.createSuccessResult({
         success: true,
-        workspaceName,
+        workspaceName: targetWorkspaceForInstructions,
         isGraphOnly: true,
+        isInlineMode: isGraphInlineMode,
         workspaceReady: true,
-        message: `Graph-only DApp workspace "${workspaceName}" created successfully.\n\n` +
+        message: `Graph-only DApp target "${targetWorkspaceForInstructions}" prepared successfully.\n\n` +
           `Now generate the DApp files directly using write_file.\n\n` +
           `---\n` +
-          `TASK: Generate a new Graph-only read-only DApp frontend\n` +
+          `TASK: Generate a new Graph-only read-only DApp frontend${isGraphInlineMode ? ' in /frontend folder (inline mode)' : ''}\n` +
           `APP NAME: ${appName}\n` +
           `USER DESIGN REQUEST: ${typeof args.description === 'string' ? args.description : JSON.stringify(args.description)}\n` +
           (args.isBaseMiniApp
@@ -2041,13 +2224,13 @@ export class GenerateGraphDAppHandler extends BaseToolHandler {
           `\n${QUICKDAPP_GRAPH_ONLY_BUILD_RULES}\n` +
           `\n${QUICKDAPP_DESIGN_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
-          `- All file paths are relative to workspace root. Use /index.html, /src/main.jsx, /src/App.jsx, /src/index.css.\n` +
-          `- NEVER include workspace name "${workspaceName}" in paths.\n\n` +
+          `- All file paths are relative to workspace root. Use ${fileWritePaths}.\n` +
+          `- NEVER include workspace name "${targetWorkspaceForInstructions}" in paths.\n\n` +
           `STEPS:\n` +
-          `1. Write files using write_file: /index.html, /src/main.jsx, /src/App.jsx, /src/index.css\n` +
+          `1. Write files using write_file: ${fileWritePaths}\n` +
           `2. Do not create contract or wallet UI.\n` +
           `3. NEVER create or modify dapp.config.json — it is managed by the system.\n` +
-          `4. After ALL files are written, call finalize_dapp_generation with workspaceName="${workspaceName}" only.\n` +
+          `4. After ALL files are written, call finalize_dapp_generation with workspaceName="${targetWorkspaceForInstructions}" only.\n` +
           `---`
       })
     } catch (error: any) {
@@ -2267,7 +2450,7 @@ export function createDAppGeneratorTools(): RemixToolDefinition[] {
     },
     {
       name: 'generate_graph_dapp',
-      description: 'Set up a new read-only Graph-only DApp from a validated graphContext when no deployed contract should be used. Never use this for contract-backed DApps. It creates a dedicated workspace and returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation with workspaceName only.',
+      description: 'Set up a new read-only Graph-only DApp from a validated graphContext when no deployed contract should be used. Never use this for contract-backed DApps. Browser/web may use frontendMode="workspace" (default) or frontendMode="inline"; Remix Desktop always uses inline /frontend mode. Returns generation instructions — you MUST then write each DApp file using write_file, then call finalize_dapp_generation with workspaceName only.',
       inputSchema: new GenerateGraphDAppHandler().inputSchema,
       category: ToolCategory.WORKSPACE,
       permissions: ['dapp:generate', 'file:write'],

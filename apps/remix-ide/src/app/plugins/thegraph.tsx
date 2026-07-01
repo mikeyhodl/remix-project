@@ -3,6 +3,11 @@
 
 import { Plugin } from '@remixproject/engine'
 import { parseGraphQLFile, validateGraphQLSyntax } from '@remix-ui/thegraph'
+import {
+  buildCreateDappFromSubgraphPrompt,
+  buildSubgraphFixPrompt
+} from '@remix/remix-ai-core/quick-dapp-thegraph-prompts'
+import isElectron from 'is-electron'
 import * as packageJson from '../../../../../package.json'
 
 interface SubgraphSettings {
@@ -80,6 +85,31 @@ const profile = {
   events: ['queryExecuted'],
   methods: ['runSubgraphFile', 'getSubgraphFileContext', 'createDappFromSubgraphFile', 'executeQuery', 'getSettings', 'saveSettings', 'getDefaultEndpoint', 'setDefaultEndpoint']
 }
+
+const getCommandTrace = (pathOrCmd: string | { path: string[] }) => {
+  if (typeof pathOrCmd === 'string') return { commandType: 'string', path: pathOrCmd }
+  const pathList = Array.isArray(pathOrCmd?.path) ? pathOrCmd.path : []
+  return {
+    commandType: 'context-menu',
+    pathCount: pathList.length,
+    selectedPath: pathList[pathList.length - 1] || ''
+  }
+}
+
+const getSubgraphContextTrace = (context: SubgraphFileContext) => ({
+  filePath: context.filePath,
+  canGenerateDapp: context.validation?.canGenerateDapp === true,
+  errors: context.validation?.errors || [],
+  warnings: context.validation?.warnings || [],
+  missingFields: context.validation?.missingFields || [],
+  endpointKind: context.endpointKind,
+  endpointNeedsApiKey: context.endpointNeedsApiKey === true,
+  apiKeySource: context.apiKeySource,
+  hasSubgraphId: !!context.subgraphId,
+  queryLength: typeof context.query === 'string' ? context.query.length : 0,
+  operationName: context.operationName,
+  operationType: context.operationType
+})
 
 /**
  * The Graph Plugin
@@ -196,6 +226,11 @@ export class TheGraphPlugin extends Plugin {
       validation
     }
 
+    console.log('[QD_THEGRAPH_TRACE]', {
+      event: 'handoff.getSubgraphFileContext',
+      ...getSubgraphContextTrace(context)
+    })
+
     return context
   }
 
@@ -205,17 +240,35 @@ export class TheGraphPlugin extends Plugin {
    */
   async createDappFromSubgraphFile(pathOrCmd: string | { path: string[] }): Promise<void> {
     const path = this.getPathFromCommand(pathOrCmd)
+    console.log('[QD_THEGRAPH_TRACE]', {
+      event: 'handoff.createDappFromSubgraphFile.start',
+      selectedPath: path,
+      command: getCommandTrace(pathOrCmd)
+    })
 
     try {
       const context = await this.getSubgraphFileContext(path)
+      console.log('[QD_THEGRAPH_TRACE]', {
+        event: 'handoff.createDappFromSubgraphFile.context',
+        ...getSubgraphContextTrace(context)
+      })
       const contractContext = context.validation.canGenerateDapp
         ? await this.getQuickDappContractHandoffContext()
         : undefined
+      const graphContext = this.getPromptGraphContext(context)
       const prompt = context.validation.canGenerateDapp
-        ? this.buildCreateDappFromSubgraphPrompt(context, contractContext)
-        : this.buildSubgraphFixPrompt(context)
+        ? buildCreateDappFromSubgraphPrompt({ graphContext, contractContext, isDesktop: isElectron() })
+        : buildSubgraphFixPrompt({ graphContext, validation: context.validation })
 
       await this.openRemixAiAssistant()
+      console.log('[QD_THEGRAPH_TRACE]', {
+        event: 'handoff.createDappFromSubgraphFile.chatPipe',
+        selectedPath: path,
+        promptLength: prompt.length,
+        includesSelectedSubgraphFilePath: prompt.includes('SELECTED_SUBGRAPH_FILE_PATH'),
+        includesGraphContextJson: prompt.includes('GRAPH_CONTEXT_JSON'),
+        includesCurrentSubgraphContextJson: prompt.includes('CURRENT_SUBGRAPH_CONTEXT_JSON')
+      })
       await this.call('remixaiassistant' as any, 'chatPipe', prompt)
     } catch (error: any) {
       const message = error?.message || 'Failed to create DApp from subgraph file.'
@@ -430,129 +483,6 @@ export class TheGraphPlugin extends Plugin {
     } catch {
       return { candidates: [], chainId, mode: 'none' }
     }
-  }
-
-  private buildCreateDappFromSubgraphPrompt(context: SubgraphFileContext, contractContext?: QuickDappContractHandoffContext): string {
-    const graphContext = this.getPromptGraphContext(context)
-    const contractInstructions = this.buildContractHandoffPrompt(contractContext)
-
-    return [
-      'I want to create a QuickDapp that uses the selected The Graph .subgraph file as an independent read-only data source.',
-      '',
-      'IMPORTANT HANDOFF RULES:',
-      '- The .subgraph file is already selected and validated. Do not ask me whether I want to use a subgraph, and do not ask me to select it again.',
-      '- The Graph query may be unrelated to the contract ABI. Treat it as a separate read-only GraphQL data source.',
-      '- The contract network/provider rules still come from the deployed contract. Do not infer the wallet network from graphContext.network.',
-      '- Do not put The Graph API key values into generated source files, config files, or chat output.',
-      '- The Graph API key is not required to ask setup options or generate files. Remix preview/deployment injects runtime Graph config later.',
-      '- Keep this flow in QuickDapp_Specialist. Do not delegate to Contract_Runner just to list or select already deployed contracts.',
-      '- Use Contract_Runner only if I explicitly ask to compile/deploy a contract. If no deployed contract is available, continue as a Graph-only DApp instead.',
-      '',
-      ...contractInstructions,
-      '',
-      'GRAPH_CONTEXT_JSON:',
-      '```json',
-      JSON.stringify(graphContext, null, 2),
-      '```',
-      '',
-      'Start by asking STEP 1 only, then STOP.'
-    ].join('\n')
-  }
-
-  private buildContractHandoffPrompt(contractContext?: QuickDappContractHandoffContext): string[] {
-    const context = contractContext || { candidates: [], chainId: 'unknown', mode: 'none' as const }
-    const contractLines = this.formatContractCandidatesForPrompt(context.candidates)
-
-    if (context.mode === 'single') {
-      const contract = context.candidates[0]
-      return [
-        'DEPLOYED_CONTRACT_CANDIDATES:',
-        ...contractLines,
-        '',
-        'STEP 1 - ASK FOR SETUP OPTIONS:',
-        `Use ${contract.name} at ${contract.address} on chain ${contract.chainId} unless I explicitly ask to choose another contract.`,
-        'Ask me once: "How should I create your DApp?"',
-        '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
-        '- Base mini-app: No (default) or Yes',
-        '- Design: defaults, style notes, or a Figma URL',
-        '',
-        'Ask exactly those three setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, contract choice, or any other design subquestions.',
-        'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
-        '',
-        'STEP 2 - GENERATE DAPP:',
-        'After I answer, call generate_dapp with the contractName, contractAddress, and chainId from the single deployed contract above, plus the confirmed setup options.',
-        'Include graphContext exactly from the GRAPH_CONTEXT_JSON below.'
-      ]
-    }
-
-    if (context.mode === 'multiple') {
-      return [
-        'DEPLOYED_CONTRACT_CANDIDATES:',
-        ...contractLines,
-        '',
-        'STEP 1 - ASK FOR SETUP OPTIONS AND CONTRACT:',
-        'Ask me once: "How should I create your DApp?"',
-        '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)',
-        '- Base mini-app: No (default) or Yes',
-        '- Design: defaults, style notes, or a Figma URL',
-        '- Contract: choose one deployed contract from DEPLOYED_CONTRACT_CANDIDATES above',
-        '',
-        'Ask exactly those four options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, or any other design subquestions.',
-        'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_dapp, or write files in the same turn as this setup question.',
-        '',
-        'STEP 2 - GENERATE DAPP:',
-        'After I answer, call generate_dapp with the selected contractName, contractAddress, and chainId from DEPLOYED_CONTRACT_CANDIDATES, plus the confirmed setup options.',
-        'Include graphContext exactly from the GRAPH_CONTEXT_JSON below.'
-      ]
-    }
-
-    return [
-      'DEPLOYED_CONTRACT_CANDIDATES:',
-      '- none found',
-      '',
-      'STEP 1 - ASK FOR GRAPH-ONLY SETUP OPTIONS:',
-      'Ask me once: "How should I create your DApp?"',
-      '- Location: Workspace only for Graph-only MVP',
-      '- Base mini-app: No (default) or Yes',
-      '- Design: defaults or style notes',
-      '',
-      'Tell me no deployed contract was found, so this will be a read-only Graph-only DApp unless I explicitly ask to deploy a contract first.',
-      'Ask exactly those setup options. Do not ask Theme, Primary Color, DApp Title, Layout, Subgraph, Contract, or any other design subquestions.',
-      'After asking, STOP and wait for my next reply. Do not compile, deploy, call generate_graph_dapp, or write files in the same turn as this setup question.',
-      '',
-      'STEP 2 - GENERATE GRAPH-ONLY DAPP:',
-      'After I answer, call generate_graph_dapp with setupOptionsConfirmed=true, setupOptionsSummary, isBaseMiniApp if selected, description, and graphContext exactly from the GRAPH_CONTEXT_JSON below.',
-      'Do not call generate_dapp for this no-contract path.'
-    ]
-  }
-
-  private formatContractCandidatesForPrompt(candidates: QuickDappContractCandidate[]): string[] {
-    return candidates.map((contract, index) =>
-      `${index + 1}. ${contract.name} at ${contract.address} on chain ${contract.chainId}`
-    )
-  }
-
-  private buildSubgraphFixPrompt(context: SubgraphFileContext): string {
-    const graphContext = this.getPromptGraphContext(context)
-
-    return [
-      'I tried to create a QuickDapp from the selected The Graph .subgraph file, but the subgraph context is incomplete.',
-      '',
-      'Do not call generate_dapp, do not compile/deploy contracts, and do not write files yet.',
-      'Ask me only for the missing or invalid .subgraph fields listed below. Do not ask QuickDapp setup options until this subgraph context is valid.',
-      '',
-      `File: ${context.filePath}`,
-      `Errors: ${context.validation.errors.join(', ') || 'none'}`,
-      `Missing fields: ${context.validation.missingFields.join(', ') || 'none'}`,
-      `Warnings: ${context.validation.warnings.join(', ') || 'none'}`,
-      '',
-      'CURRENT_SUBGRAPH_CONTEXT_JSON:',
-      '```json',
-      JSON.stringify(graphContext, null, 2),
-      '```',
-      '',
-      'Ask for the smallest correction needed, then STOP.'
-    ].join('\n')
   }
 
   private getPromptGraphContext(context: SubgraphFileContext): Record<string, any> {
