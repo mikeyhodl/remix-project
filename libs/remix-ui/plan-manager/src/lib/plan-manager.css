@@ -1678,6 +1678,38 @@
   background: color-mix(in srgb, var(--pm-state) 10%, var(--custom-onsurface-layer-1));
 }
 
+/* Resume abandoned checkout — informational, not urgent. Uses the primary
+   accent so it reads as an opportunity rather than a warning, and reserves
+   room on the right for the dismiss affordance. */
+.pm-alert--resume {
+  --pm-state: var(--bs-primary);
+  padding-right: 52px;
+}
+
+.pm-alert__dismiss {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--bs-border-radius);
+  background: transparent;
+  color: var(--bs-secondary-color, var(--pm-state));
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity .15s ease, background .15s ease;
+}
+
+.pm-alert__dismiss:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--pm-state) 14%, transparent);
+}
+
 @keyframes pm-alert-in {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }

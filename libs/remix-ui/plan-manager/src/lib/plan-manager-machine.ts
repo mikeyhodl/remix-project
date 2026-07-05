@@ -31,7 +31,8 @@ import type {
   UserSubscription,
   SubscriptionPlan,
   CreditPackage,
-  PermissionsResponse
+  PermissionsResponse,
+  PendingCheckout
 } from '@remix-api'
 import { Features } from '@remix-api'
 import { planManagerLogger, setPlanManagerLoggingEnabled } from './plan-manager-logger'
@@ -113,6 +114,14 @@ export interface PlanManagerSnapshot {
   checkoutBreakdown: CheckoutBreakdown | null
   /** Multi-item checkout cart (subscription + credit add-ons). */
   cartItems: CartItem[]
+  /**
+   * Unfinished checkouts the user can pick back up (most recent first).
+   * Loaded lazily on auth/panel-open via GET /billing/checkouts/pending —
+   * never part of the account-data payload.
+   */
+  resumeCheckouts: PendingCheckout[]
+  /** User dismissed the resume nudge for this session. */
+  resumeNudgeDismissed: boolean
   errorMessage: string | null
   /**
    * Why the panel was opened. Set on the most recent OPEN_OVERLAY when a
@@ -234,6 +243,9 @@ interface MachineContext {
   checkoutBreakdown: CheckoutBreakdown | null
   /** Multi-item checkout cart — subscription + optional credit add-ons. */
   cartItems: CartItem[]
+  // resume abandoned checkouts (out-of-band from account data)
+  resumeCheckouts: PendingCheckout[]
+  resumeNudgeDismissed: boolean
   // overlay routing
   openIntent: OpenIntent | null
   // confirm dialog
@@ -266,6 +278,9 @@ export type PlanManagerEvent =
   | { type: 'CART_ADD'; item: CartItem }
   | { type: 'CART_REMOVE'; slug: string }
   | { type: 'CART_CLEAR' }
+  // Resume abandoned checkouts
+  | { type: 'RESUME_CHECKOUTS_LOADED'; checkouts: PendingCheckout[] }
+  | { type: 'RESUME_NUDGE_DISMISS' }
   // Plugin-side signal: backend confirmed the purchase + we just refreshed
   // permissions/credits/sub. Promotes 'processing' → 'success' regardless of
   // current data substate (DATA_LOADED alone only fires inside `refreshing`).
@@ -295,6 +310,8 @@ const initialContext: MachineContext = {
   checkoutResult: null,
   checkoutBreakdown: null,
   cartItems: [],
+  resumeCheckouts: [],
+  resumeNudgeDismissed: false,
   openIntent: null,
   confirmDialog: null,
   lastError: null
@@ -327,6 +344,9 @@ export const planManagerMachine = setup({
       context.permissions = null
       context.isTrialEligible = false
       context.lastError = null
+      // Resume nudge is per-user — drop it (and its dismissal) on sign-out.
+      context.resumeCheckouts = []
+      context.resumeNudgeDismissed = false
     },
     setData: ({ context, event }) => {
       if (event.type !== 'DATA_LOADED') return
@@ -443,6 +463,13 @@ export const planManagerMachine = setup({
     },
     clearConfirmDialog: ({ context }) => {
       context.confirmDialog = null
+    },
+    setResumeCheckouts: ({ context, event }) => {
+      if (event.type !== 'RESUME_CHECKOUTS_LOADED') return
+      context.resumeCheckouts = event.checkouts
+    },
+    dismissResumeNudge: ({ context }) => {
+      context.resumeNudgeDismissed = true
     }
   }
 }).createMachine({
@@ -634,7 +661,9 @@ export const planManagerMachine = setup({
     DEV_INJECT: { actions: ['devInject']},
     CONFIRM_REQUEST: { actions: ['setConfirmDialog']},
     CONFIRM_DISMISS: { actions: ['clearConfirmDialog']},
-    PURCHASE_CONFIRMED: { actions: ['setCheckoutSuccess']}
+    PURCHASE_CONFIRMED: { actions: ['setCheckoutSuccess']},
+    RESUME_CHECKOUTS_LOADED: { actions: ['setResumeCheckouts']},
+    RESUME_NUDGE_DISMISS: { actions: ['dismissResumeNudge']}
   }
 })
 
@@ -671,6 +700,8 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     pendingCheckout: ctx.pendingCheckout,
     checkoutBreakdown: ctx.checkoutBreakdown,
     cartItems: ctx.cartItems,
+    resumeCheckouts: ctx.resumeCheckouts,
+    resumeNudgeDismissed: ctx.resumeNudgeDismissed,
     errorMessage: ctx.lastError,
     isTrialEligible: ctx.isTrialEligible,
     openIntent: ctx.openIntent,

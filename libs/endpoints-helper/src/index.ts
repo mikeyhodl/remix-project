@@ -29,6 +29,7 @@ export type EndpointUrls = {
   sso: string;
   billing: string;
   products: string;
+  checkouts: string;
   credits: string;
   audio: string;
   storage: string;
@@ -76,6 +77,7 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   sso: 'sso',
   billing: 'billing',
   products: 'products',
+  checkouts: 'checkouts',
   credits: 'credits',
   audio: 'ai/audio',
   storage: 'storage',
