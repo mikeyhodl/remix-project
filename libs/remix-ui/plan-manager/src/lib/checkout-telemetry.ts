@@ -12,7 +12,7 @@
  * Rules:
  *   - MUST NEVER throw into the checkout flow (every call is wrapped).
  *   - MUST NEVER block the UI — the fetch is fired with `keepalive` so it
- *     survives the `_ptxn` navigation / tab close and we never await it.
+ *     survives navigation / tab close and we never await it.
  *   - Auth is optional; when we have a JWT we attach it so the admin viewer
  *     can filter by user. When we don't, the event is still recorded.
  */
