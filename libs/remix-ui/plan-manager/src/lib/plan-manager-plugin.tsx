@@ -1819,28 +1819,34 @@ export class PlanManagerPlugin extends ViewPlugin {
       break
     }
     // ─── OBSERVE-ONLY (intervention temporarily disabled) ───────────────
-    // We discovered that Paddle emits recoverable field-validation problems
-    // (e.g. "enter a valid postal code") as `checkout.error` with
-    // `type: 'api_error'`, `code: 'validation'` — indistinguishable by name
-    // from a genuinely fatal error. Paddle's own iframe already renders these
-    // messages inline and keeps the checkout open for the user to correct.
+    // Paddle surfaces very different situations through the SAME event shape:
+    // a field the user can fix in-frame (bad postal code) and a checkout that
+    // could not open at all (bad transaction id, balance below minimum) BOTH
+    // arrive as `checkout.error` with `type: 'api_error'`, `code: 'validation'`
+    // — there's no reliable discriminator in the payload. And for the "can't
+    // open" cases Paddle's iframe only shows a generic "Something went wrong /
+    // Contact support", which would send users to Paddle instead of us.
     //
-    // So for now we do NOT react to any error/warning/payment event: no
-    // CHECKOUT_ERROR (frame teardown) and no CHECKOUT_NOTICE. We only log +
-    // report telemetry so we can watch what the iframe does on its own before
-    // deciding how (or whether) to intervene. Re-enable dispatch once we know
-    // how to reliably tell fatal from recoverable.
+    // So we take a single general approach for every error/warning/payment
+    // event: show a NON-destructive banner above the still-mounted iframe. We
+    // never tear the checkout down (no CHECKOUT_ERROR result screen). If the
+    // problem was a correctable field, Paddle keeps the frame usable and the
+    // banner auto-clears on the next successful recalculation (CHECKOUT_BREAKDOWN);
+    // if the checkout truly can't open, the banner stays with our own message.
     case 'checkout.error' as any:
     case 'checkout.warning' as any:
     case 'checkout.payment.failed' as any:
     case 'checkout.payment.error' as any: {
+      const isWarning = event.name === ('checkout.warning' as any)
       const message = this.extractPaddleErrorMessage(event)
-      planManagerLogger.warn('[PlanManager:paddle-observe] not intervening — letting Paddle iframe handle it', {
+        || 'Something went wrong with this checkout. Please review your details and try again.'
+      planManagerLogger.warn('[PlanManager:paddle-notice] showing in-frame banner', {
         name: event.name,
         message,
         data: (event as any)?.data
       })
-      this.trackCheckout('error', this.store.getSnapshot().pendingCheckout?.intent, message || (event.name as string))
+      this.trackCheckout('error', this.store.getSnapshot().pendingCheckout?.intent, message)
+      this.store.send({ type: 'CHECKOUT_NOTICE', level: isWarning ? 'warning' : 'error', message })
       break
     }
     default:
@@ -3018,7 +3024,15 @@ const PlanManagerOverlay: React.FC<{
                             role="alert"
                           >
                             <i className={`fas ${snap.checkoutNotice.level === 'error' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation'}`}></i>
-                            <span>{snap.checkoutNotice.message}</span>
+                            <div className="pm-inline-checkout__notice-body">
+                              <span>{snap.checkoutNotice.message}</span>
+                              <span className="pm-inline-checkout__notice-help">
+                                Having trouble?{' '}
+                                <a href={DISCORD_URL} target="_blank" rel="noreferrer">
+                                  <i className="fab fa-discord"></i> Reach out to us on Discord
+                                </a>
+                              </span>
+                            </div>
                             <button
                               type="button"
                               className="pm-inline-checkout__notice-dismiss"
