@@ -25,6 +25,7 @@ import { reportCheckoutTelemetry, setCheckoutTelemetryToken, setCheckoutTelemetr
 import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 import type { CreditsUsageQuery, FeatureGroup, UsageReport, PendingCheckout } from '@remix-api'
 import { Features, FEATURE_LABELS, trackMatomoEvent } from '@remix-api'
+import { QueryParams } from '@remix-project/remix-lib'
 import type { CheckoutEvent } from '@remix-api'
 import * as packageJson from '../../../../../package.json'
 
@@ -1431,39 +1432,31 @@ export class PlanManagerPlugin extends ViewPlugin {
   private readAndStripResumeMarker(): string | null {
     try {
       if (typeof window === 'undefined') return null
-      let found: string | null = null
+      // `QueryParams` is the app-wide utility that already handles both
+      // `?search` and `#hash` params (and migrates the former to the latter).
+      // By the time onActivation fires, app.ts has already run its constructor
+      // QueryParams.get() so the migration has happened and the params are in
+      // the hash — so this read is safe and consistent with the rest of the app.
+      const params = (new QueryParams()).get() as Record<string, string | undefined>
+      const txn = params['_ptxn']
+      planManagerLogger.log('[PlanManager:resume] readAndStripResumeMarker', {
+        hash: window.location.hash,
+        _ptxn: txn ?? null
+      })
+      if (!txn) return null
 
-      const search = new URLSearchParams(window.location.search)
-      if (search.get('_ptxn')) {
-        found = search.get('_ptxn')
-        search.delete('_ptxn')
-      }
-
-      // Paddle only reads the query string, but mirror the hash for parity
-      // with how the desktop marker is carried.
-      const hash = window.location.hash || ''
-      const hasHashQuery = hash.includes('?')
-      const hashQuery = hasHashQuery ? hash.slice(hash.indexOf('?') + 1) : ''
-      const hashParams = new URLSearchParams(hashQuery)
-      if (hashParams.get('_ptxn')) {
-        found = found ?? hashParams.get('_ptxn')
-        hashParams.delete('_ptxn')
-      }
-
-      if (!found) return null
-
-      // Rewrite the URL without `_ptxn` so a reload / Paddle bootstrap can't
-      // re-trigger the auto-open. Keep everything else intact.
-      const newSearch = search.toString()
-      const newHashQuery = hashParams.toString()
-      const newHash = hasHashQuery
-        ? `${hash.slice(0, hash.indexOf('?'))}${newHashQuery ? `?${newHashQuery}` : ''}`
-        : hash
-      const newUrl = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}${newHash}`
-      window.history.replaceState(window.history.state, '', newUrl)
-
-      return found
-    } catch {
+      // Strip _ptxn so Paddle.js can't auto-open on a reload. Rebuild the
+      // hash without it and use replaceState (no hashchange event fired).
+      delete params['_ptxn']
+      const newHashBody = Object.entries(params)
+        .map(([k, v]) => v != null ? `${k}=${v}` : k)
+        .join('&')
+      const newHash = newHashBody ? `#${newHashBody}` : ''
+      window.history.replaceState(window.history.state, '', window.location.pathname + newHash)
+      planManagerLogger.log('[PlanManager:resume] readAndStripResumeMarker: stripped _ptxn', { txn, newHash })
+      return txn
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager:resume] readAndStripResumeMarker threw', err)
       return null
     }
   }
@@ -1478,6 +1471,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     const txn = this.pendingResumeDeepLinkTxn
     this.pendingResumeDeepLinkTxn = null
     if (!txn) return
+    planManagerLogger.log('[PlanManager:resume] processResumeDeepLink: dispatching resumeCheckout', { txn })
     await this.resumeCheckout(txn, { fromDeepLink: true })
   }
 
@@ -1491,14 +1485,37 @@ export class PlanManagerPlugin extends ViewPlugin {
     if (!this.store.getSnapshot().isAuthenticated) return
     try {
       const checkoutsApi = await this.call('auth', 'getCheckoutsApi').catch(() => null) as any
-      if (!checkoutsApi?.getPendingCheckouts) return
+      if (!checkoutsApi?.getPendingCheckouts) {
+        planManagerLogger.warn('[PlanManager:resume] loadPendingCheckouts: checkoutsApi unavailable')
+        return
+      }
       const res = await checkoutsApi.getPendingCheckouts()
+      planManagerLogger.log('[PlanManager:resume] loadPendingCheckouts response', { ok: res?.ok, count: Array.isArray(res?.data?.checkouts) ? res.data.checkouts.length : 'n/a', data: res?.data })
       if (!res?.ok || !res.data) return
       const checkouts: PendingCheckout[] = Array.isArray(res.data.checkouts) ? res.data.checkouts : []
       this.resumeCheckoutsLoaded = true
       this.store.send({ type: 'RESUME_CHECKOUTS_LOADED', checkouts })
+
+      // If a ?_ptxn deep link is pending, compare it against the returned list
+      // right here — the server already filtered by owner, so presence in the
+      // list is the ownership proof. No extra verifyCheckout call needed.
+      if (this.pendingResumeDeepLinkTxn) {
+        const deepLinkCheckout = checkouts.find(c => c.transaction_id === this.pendingResumeDeepLinkTxn)
+        planManagerLogger.log('[PlanManager:resume] deep link txn vs pending list', {
+          txn: this.pendingResumeDeepLinkTxn,
+          foundInList: !!deepLinkCheckout,
+          pendingCount: checkouts.length,
+          ids: checkouts.map(c => c.transaction_id)
+        })
+        if (deepLinkCheckout) {
+          // Clear now so processResumeDeepLink (verifyCheckout fallback) doesn't also fire.
+          this.pendingResumeDeepLinkTxn = null
+          void this.resumeCheckout(deepLinkCheckout.transaction_id, { fromDeepLink: true, alreadyVerified: deepLinkCheckout })
+        }
+        // else: txn not in list — processResumeDeepLink will still run as fallback
+      }
     } catch (err) {
-      planManagerLogger.warn('[PlanManager] loadPendingCheckouts failed', err)
+      planManagerLogger.warn('[PlanManager:resume] loadPendingCheckouts failed', err)
     }
   }
 
@@ -1513,34 +1530,63 @@ export class PlanManagerPlugin extends ViewPlugin {
    * the inline Paddle overlay for the transaction. Falls back to the hosted
    * `resume_link` when the inline SDK isn't available.
    */
-  async resumeCheckout(transactionId: string, opts: { fromDeepLink?: boolean } = {}): Promise<void> {
+  async resumeCheckout(transactionId: string, opts: { fromDeepLink?: boolean; alreadyVerified?: PendingCheckout } = {}): Promise<void> {
+    planManagerLogger.log('[PlanManager:resume] resumeCheckout called', { transactionId, fromDeepLink: opts.fromDeepLink, alreadyVerified: !!opts.alreadyVerified })
     if (!transactionId) return
     if (!this.store.getSnapshot().isAuthenticated) {
+      planManagerLogger.log('[PlanManager:resume] not authenticated — prompting login')
       try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
       return
     }
 
-    const checkoutsApi = await this.call('auth', 'getCheckoutsApi').catch(() => null) as any
-    if (!checkoutsApi?.verifyCheckout) {
-      this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
-      this.store.send({ type: 'OPEN_OVERLAY' })
-      return
-    }
+    // Ownership / existence check. Skip when we already have the checkout data
+    // from loadPendingCheckouts (server-filtered list = ownership already proven).
+    let checkout: PendingCheckout | null = opts.alreadyVerified ?? null
+    if (checkout) {
+      planManagerLogger.log('[PlanManager:resume] skipping verifyCheckout — checkout provided from pending list', {
+        product_slug: checkout.product_slug,
+        product_kind: checkout.product_kind,
+        product_name: checkout.product_name,
+        line_items_count: Array.isArray(checkout.line_items) ? checkout.line_items.length : 'absent'
+      })
+    } else {
+      const checkoutsApi = await this.call('auth', 'getCheckoutsApi').catch(() => null) as any
+      if (!checkoutsApi?.verifyCheckout) {
+        this.store.send({ type: 'CHECKOUT_ERROR', message: 'Billing service is not available right now.' })
+        this.store.send({ type: 'OPEN_OVERLAY' })
+        return
+      }
 
-    // Ownership / existence check. 404 → unknown or not-yours (treated the
-    // same, by design). Anything non-ok → surface a friendly result.
-    let checkout: PendingCheckout | null = null
-    try {
-      const res = await checkoutsApi.verifyCheckout(transactionId)
-      if (res?.ok && res.data?.checkout) {
-        checkout = res.data.checkout as PendingCheckout
-      } else {
-        reportCheckoutTelemetry('transaction.error', {
-          errorCode: 'resume_not_available',
-          transactionId,
-          message: 'Resume checkout not found or not owned by user.',
-          detail: { fromDeepLink: !!opts.fromDeepLink, status: res?.status },
-        })
+      // 404 → unknown or not-yours (treated the same, by design).
+      try {
+        const res = await checkoutsApi.verifyCheckout(transactionId)
+        planManagerLogger.log('[PlanManager:resume] verifyCheckout response', { ok: res?.ok, status: res?.status, hasCheckout: !!res?.data?.checkout, data: res?.data })
+        if (res?.ok && res.data?.checkout) {
+          checkout = res.data.checkout as PendingCheckout
+          planManagerLogger.log('[PlanManager:resume] checkout verified', {
+            product_slug: checkout.product_slug,
+            product_kind: checkout.product_kind,
+            product_name: checkout.product_name,
+            line_items_count: Array.isArray(checkout.line_items) ? checkout.line_items.length : 'absent',
+            line_items: checkout.line_items
+          })
+        } else {
+          reportCheckoutTelemetry('transaction.error', {
+            errorCode: 'resume_not_available',
+            transactionId,
+            message: 'Resume checkout not found or not owned by user.',
+            detail: { fromDeepLink: !!opts.fromDeepLink, status: res?.status },
+          })
+          this.store.send({
+            type: 'CHECKOUT_ERROR',
+            message: "This checkout isn't available anymore. Head to plans to start a new one.",
+            transactionId
+          })
+          this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans' } })
+          return
+        }
+      } catch (err: any) {
+        planManagerLogger.warn('[PlanManager] verifyCheckout failed', err)
         this.store.send({
           type: 'CHECKOUT_ERROR',
           message: "This checkout isn't available anymore. Head to plans to start a new one.",
@@ -1549,16 +1595,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans' } })
         return
       }
-    } catch (err: any) {
-      planManagerLogger.warn('[PlanManager] verifyCheckout failed', err)
-      this.store.send({
-        type: 'CHECKOUT_ERROR',
-        message: "This checkout isn't available anymore. Head to plans to start a new one.",
-        transactionId
-      })
-      this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans' } })
-      return
-    }
+    }   // end: else (verify path)
 
     const intent: CheckoutIntent = checkout.product_kind === 'subscription' ? 'subscription' : 'topup'
     const itemLabel = checkout.product_name ?? undefined
@@ -1575,6 +1612,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // mapping onto our internal CartItem model lives here (single place that
     // knows the shape), keeping the API free of per-component data concerns.
     const reconstructedCart = this.buildCartFromLineItems(checkout)
+    planManagerLogger.log('[PlanManager:resume] reconstructed cart', { items: reconstructedCart })
     this.store.send({ type: 'CART_CLEAR' })
     for (const item of reconstructedCart) {
       this.store.send({ type: 'CART_ADD', item })
@@ -1599,7 +1637,9 @@ export class PlanManagerPlugin extends ViewPlugin {
         // POST awaits (yielding to React); resume has no such gap, so Paddle's
         // `appendChild` into the frame target would hit `undefined`. Wait for
         // the container to actually exist first.
+        planManagerLogger.log('[PlanManager:resume] waiting for .paddle-checkout-container to mount…')
         const container = await this.waitForCheckoutContainer()
+        planManagerLogger.log('[PlanManager:resume] waitForCheckoutContainer result', { found: !!container })
         if (!container) {
           if (checkout.resume_link) {
             reportCheckoutTelemetry('checkout.hosted_fallback', {
