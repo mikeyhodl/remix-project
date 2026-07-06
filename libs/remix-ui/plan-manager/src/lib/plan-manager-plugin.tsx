@@ -1756,6 +1756,27 @@ export class PlanManagerPlugin extends ViewPlugin {
   /** Translate Paddle SDK events into machine events. */
   private handlePaddleEvent(event: PaddleEventData): void {
     console.debug('[PlanManager] Paddle event', event.name, event.data)
+    // Diagnostics: error/warning events often arrive with `data: undefined`,
+    // hiding whatever Paddle actually put on the event. Dump the *entire*
+    // event object (all keys, not just name+data) so we can see where the
+    // validation payload lives. Note: the human-readable message a user sees
+    // in the frame (e.g. "enter a valid postal code") is a console.error from
+    // inside Paddle's cross-origin iframe — that specific string is NOT
+    // accessible to us; we can only read what Paddle emits via this callback.
+    const name = event?.name as string | undefined
+    if (name === 'checkout.error' || name === 'checkout.warning' || name === ('checkout.payment.failed' as any) || name === ('checkout.payment.error' as any)) {
+      let dump = ''
+      try { dump = JSON.stringify(event, null, 2) } catch { dump = '(unserializable)' }
+      planManagerLogger.log('[PlanManager:paddle-error] full event object', {
+        name,
+        keys: Object.keys(event || {}),
+        error: (event as any)?.error,
+        warning: (event as any)?.warning,
+        data: (event as any)?.data,
+        raw: event
+      })
+      planManagerLogger.log('[PlanManager:paddle-error] serialized', dump)
+    }
     // Mirror every notable Paddle overlay event into checkout telemetry before
     // running the machine logic. This is the browser-side signal the billing
     // admin funnel keys off: overlay rendered (loaded) → completed, or a
@@ -1797,15 +1818,29 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.store.send({ type: 'CHECKOUT_CLOSED' })
       break
     }
-    // Paddle uses dot-separated names in TS, but the runtime payload may
-    // also be `checkout.payment.failed`; handle both spellings.
+    // ─── OBSERVE-ONLY (intervention temporarily disabled) ───────────────
+    // We discovered that Paddle emits recoverable field-validation problems
+    // (e.g. "enter a valid postal code") as `checkout.error` with
+    // `type: 'api_error'`, `code: 'validation'` — indistinguishable by name
+    // from a genuinely fatal error. Paddle's own iframe already renders these
+    // messages inline and keeps the checkout open for the user to correct.
+    //
+    // So for now we do NOT react to any error/warning/payment event: no
+    // CHECKOUT_ERROR (frame teardown) and no CHECKOUT_NOTICE. We only log +
+    // report telemetry so we can watch what the iframe does on its own before
+    // deciding how (or whether) to intervene. Re-enable dispatch once we know
+    // how to reliably tell fatal from recoverable.
+    case 'checkout.error' as any:
+    case 'checkout.warning' as any:
     case 'checkout.payment.failed' as any:
-    case 'checkout.error' as any: {
-      const message = (event as any)?.error?.message
-        || (event as any)?.data?.error?.message
-        || 'Payment failed'
-      this.trackCheckout('error', this.store.getSnapshot().pendingCheckout?.intent, message)
-      this.store.send({ type: 'CHECKOUT_ERROR', message, transactionId })
+    case 'checkout.payment.error' as any: {
+      const message = this.extractPaddleErrorMessage(event)
+      planManagerLogger.warn('[PlanManager:paddle-observe] not intervening — letting Paddle iframe handle it', {
+        name: event.name,
+        message,
+        data: (event as any)?.data
+      })
+      this.trackCheckout('error', this.store.getSnapshot().pendingCheckout?.intent, message || (event.name as string))
       break
     }
     default:
@@ -1813,6 +1848,37 @@ export class PlanManagerPlugin extends ViewPlugin {
       // not interesting for the panel right now.
       break
     }
+  }
+
+  /**
+   * Best-effort extraction of a human-readable message from a Paddle
+   * error/warning event. Paddle Billing has shifted these field paths between
+   * versions, so we probe every known location. Returns null when nothing
+   * usable is present (the caller supplies a fallback). The full raw event is
+   * always dumped separately in handlePaddleEvent for deeper inspection.
+   */
+  private extractPaddleErrorMessage(event: PaddleEventData): string | null {
+    const e: any = event
+    const candidates: Array<unknown> = [
+      e?.error?.detail,
+      e?.error?.message,
+      e?.error?.reason,
+      e?.data?.error?.detail,
+      e?.data?.error?.message,
+      e?.warning?.detail,
+      e?.warning?.message,
+      e?.data?.warning?.detail,
+      e?.data?.warning?.message,
+      e?.detail,
+      e?.message,
+      // Some payloads carry an array of field errors.
+      Array.isArray(e?.data?.errors) ? e.data.errors.map((x: any) => x?.detail || x?.message).filter(Boolean).join('; ') : null,
+      Array.isArray(e?.errors) ? e.errors.map((x: any) => x?.detail || x?.message).filter(Boolean).join('; ') : null,
+    ]
+    for (const c of candidates) {
+      if (typeof c === 'string' && c.trim()) return c.trim()
+    }
+    return null
   }
 
   /**
@@ -1834,16 +1900,20 @@ export class PlanManagerPlugin extends ViewPlugin {
       'checkout.error': 'checkout.error',
       'checkout.warning': 'checkout.warning',
       'checkout.payment.failed': 'checkout.error',
+      'checkout.payment.error': 'checkout.error',
     }
     const reported = map[name]
     if (!reported) return
     const d: any = (event as any)?.data || {}
+    const extractedMessage = this.extractPaddleErrorMessage(event)
     reportCheckoutTelemetry(reported, {
       transactionId: d.transaction_id || d.id,
       paddleCustomerId: d.customer?.id,
-      errorCode: d.error?.code || d.reason || (event as any)?.error?.code,
-      message: d.error?.detail || d.error?.message || (event as any)?.error?.message || name,
-      detail: d,
+      errorCode: d.error?.code || d.reason || (event as any)?.error?.code || (event as any)?.warning?.code,
+      message: extractedMessage || name,
+      // Keep the whole event (not just `data`) so error/warning payloads that
+      // live outside `data` still reach the admin telemetry viewer.
+      detail: { data: d, error: (event as any)?.error, warning: (event as any)?.warning },
     })
   }
 
@@ -2942,6 +3012,23 @@ const PlanManagerOverlay: React.FC<{
                       </aside>
                       {/* Paddle inline frame */}
                       <div className="pm-inline-checkout__frame">
+                        {snap.checkoutNotice && (
+                          <div
+                            className={`pm-inline-checkout__notice pm-inline-checkout__notice--${snap.checkoutNotice.level}`}
+                            role="alert"
+                          >
+                            <i className={`fas ${snap.checkoutNotice.level === 'error' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation'}`}></i>
+                            <span>{snap.checkoutNotice.message}</span>
+                            <button
+                              type="button"
+                              className="pm-inline-checkout__notice-dismiss"
+                              aria-label="Dismiss"
+                              onClick={() => plugin.store.send({ type: 'CHECKOUT_NOTICE_DISMISS' })}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        )}
                         <div className="paddle-checkout-container" />
                       </div>
                     </div>

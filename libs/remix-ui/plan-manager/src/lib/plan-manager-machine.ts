@@ -95,6 +95,20 @@ export interface CheckoutBreakdown {
   billingCycle: { interval: 'day' | 'week' | 'month' | 'year'; frequency: number } | null
 }
 
+/**
+ * A recoverable, non-destructive message surfaced while the inline checkout
+ * stays open. Unlike a `CheckoutResult` of kind `error` (which tears the frame
+ * down and shows a restart screen), a notice keeps the Paddle frame mounted so
+ * the user can correct the problem in place (e.g. fix an invalid postal code,
+ * retry a declined card). Sourced from Paddle's `checkout.warning`,
+ * `checkout.payment.failed` and `checkout.payment.error` events — all of which
+ * leave the checkout open.
+ */
+export interface CheckoutNotice {
+  level: 'warning' | 'error'
+  message: string
+}
+
 /** Snapshot the UI consumes — purely derived, never mutated outside the machine. */
 export interface PlanManagerSnapshot {
   isAuthenticated: boolean
@@ -112,6 +126,11 @@ export interface PlanManagerSnapshot {
   pendingCheckout: CheckoutIntentRecord | null
   /** Live price breakdown from Paddle while the inline checkout is open. */
   checkoutBreakdown: CheckoutBreakdown | null
+  /**
+   * Recoverable in-frame notice (invalid field, declined payment, …). Rendered
+   * alongside the still-open checkout; never tears the frame down.
+   */
+  checkoutNotice: CheckoutNotice | null
   /** Multi-item checkout cart (subscription + credit add-ons). */
   cartItems: CartItem[]
   /**
@@ -241,6 +260,8 @@ interface MachineContext {
   pendingCheckout: CheckoutIntentRecord | null
   checkoutResult: CheckoutResult | null
   checkoutBreakdown: CheckoutBreakdown | null
+  /** Recoverable in-frame notice shown while the checkout stays open. */
+  checkoutNotice: CheckoutNotice | null
   /** Multi-item checkout cart — subscription + optional credit add-ons. */
   cartItems: CartItem[]
   // resume abandoned checkouts (out-of-band from account data)
@@ -273,6 +294,9 @@ export type PlanManagerEvent =
   | { type: 'CHECKOUT_COMPLETED'; transactionId?: string; meta?: Record<string, string> }
   | { type: 'CHECKOUT_CLOSED' }
   | { type: 'CHECKOUT_ERROR'; message?: string; transactionId?: string; meta?: Record<string, string> }
+  // Recoverable, non-destructive in-frame message — checkout stays open.
+  | { type: 'CHECKOUT_NOTICE'; level: 'warning' | 'error'; message: string }
+  | { type: 'CHECKOUT_NOTICE_DISMISS' }
   | { type: 'CHECKOUT_RESULT_DISMISS' }
   // Cart
   | { type: 'CART_ADD'; item: CartItem }
@@ -309,6 +333,7 @@ const initialContext: MachineContext = {
   pendingCheckout: null,
   checkoutResult: null,
   checkoutBreakdown: null,
+  checkoutNotice: null,
   cartItems: [],
   resumeCheckouts: [],
   resumeNudgeDismissed: false,
@@ -378,10 +403,22 @@ export const planManagerMachine = setup({
       }
       // A fresh checkout starts with no breakdown until Paddle loads it.
       context.checkoutBreakdown = null
+      // Drop any stale in-frame notice from a previous attempt.
+      context.checkoutNotice = null
     },
     setCheckoutBreakdown: ({ context, event }) => {
       if (event.type !== 'CHECKOUT_BREAKDOWN') return
       context.checkoutBreakdown = event.breakdown
+      // A successful recalculation means the user changed something valid —
+      // clear any recoverable notice so it doesn't linger after they've fixed it.
+      context.checkoutNotice = null
+    },
+    setCheckoutNotice: ({ context, event }) => {
+      if (event.type !== 'CHECKOUT_NOTICE') return
+      context.checkoutNotice = { level: event.level, message: event.message }
+    },
+    clearCheckoutNotice: ({ context }) => {
+      context.checkoutNotice = null
     },
     setCheckoutProcessing: ({ context, event }) => {
       if (event.type !== 'CHECKOUT_COMPLETED') return
@@ -403,6 +440,7 @@ export const planManagerMachine = setup({
       // reset (selectPurchasingProductId reads from pendingCheckout).
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.checkoutNotice = null
       context.cartItems = []
     },
     setCheckoutClosed: ({ context }) => {
@@ -411,6 +449,7 @@ export const planManagerMachine = setup({
       context.checkoutResult = { kind: 'closed', intent, itemLabel }
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.checkoutNotice = null
       context.cartItems = []
     },
     setCheckoutError: ({ context, event }) => {
@@ -427,6 +466,7 @@ export const planManagerMachine = setup({
       }
       context.pendingCheckout = null
       context.checkoutBreakdown = null
+      context.checkoutNotice = null
       context.cartItems = []
     },
     clearCheckoutResult: ({ context }) => {
@@ -599,6 +639,13 @@ export const planManagerMachine = setup({
             CHECKOUT_BREAKDOWN: {
               actions: ['setCheckoutBreakdown']
             },
+            // Recoverable in-frame message — stays in inProgress, frame is kept.
+            CHECKOUT_NOTICE: {
+              actions: ['setCheckoutNotice']
+            },
+            CHECKOUT_NOTICE_DISMISS: {
+              actions: ['clearCheckoutNotice']
+            },
             CHECKOUT_COMPLETED: {
               target: 'result',
               actions: ['setCheckoutProcessing']
@@ -699,6 +746,7 @@ export function snapshotFromActor(actor: AnyActorRef): PlanManagerSnapshot {
     checkoutResult: ctx.checkoutResult,
     pendingCheckout: ctx.pendingCheckout,
     checkoutBreakdown: ctx.checkoutBreakdown,
+    checkoutNotice: ctx.checkoutNotice,
     cartItems: ctx.cartItems,
     resumeCheckouts: ctx.resumeCheckouts,
     resumeNudgeDismissed: ctx.resumeNudgeDismissed,
