@@ -1495,6 +1495,11 @@ export class PlanManagerPlugin extends ViewPlugin {
       }
       const res = await checkoutsApi.deleteCheckout(transactionId)
       planManagerLogger.log('[PlanManager:resume] discardCheckout response', { ok: res?.ok, transactionId })
+      this.trackCheckout('discard', 'banner', transactionId)
+      reportCheckoutTelemetry('checkout.discard', {
+        transactionId,
+        detail: { ok: !!res?.ok, status: res?.status },
+      })
     } catch (err) {
       planManagerLogger.warn('[PlanManager:resume] discardCheckout failed', err)
     } finally {
@@ -1508,14 +1513,22 @@ export class PlanManagerPlugin extends ViewPlugin {
    * inline Paddle overlay for the transaction. Falls back to the hosted
    * `resume_link` when the inline SDK isn't available.
    */
-  async resumeCheckout(transactionId: string): Promise<void> {
-    planManagerLogger.log('[PlanManager:resume] resumeCheckout called', { transactionId })
+  async resumeCheckout(transactionId: string, source: 'banner' | 'cart' = 'banner'): Promise<void> {
+    planManagerLogger.log('[PlanManager:resume] resumeCheckout called', { transactionId, source })
     if (!transactionId) return
     if (!this.store.getSnapshot().isAuthenticated) {
       planManagerLogger.log('[PlanManager:resume] not authenticated — prompting login')
       try { await this.call('auth', 'login', 'github') } catch { /* user closed */ }
       return
     }
+
+    // User acted on an unfinished checkout — record which surface drove it so
+    // the admin viewer can compare resume-banner vs top-bar-cart conversion.
+    this.trackCheckout('resume', source, transactionId)
+    reportCheckoutTelemetry('checkout.resume', {
+      transactionId,
+      detail: { source },
+    })
 
     // Ownership / existence check against the server (returns the checkout only
     // when it exists and belongs to the signed-in user).

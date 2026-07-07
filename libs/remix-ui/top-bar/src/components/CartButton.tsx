@@ -43,7 +43,7 @@ export function CartButton({ className = '' }: CartButtonProps) {
   if (count === 0) return null
 
   const onClick = () => {
-    plugin.call('planManager', 'resumeCheckout', checkouts[0].transaction_id).catch(() => {})
+    plugin.call('planManager', 'open')
   }
 
   const tooltip = count === 1
@@ -60,7 +60,7 @@ export function CartButton({ className = '' }: CartButtonProps) {
       >
         <span
           className="position-relative"
-          style={{ fontSize: '1rem', color: 'var(--bs-body-color, #a2a3bd)', padding: '4px 8px', lineHeight: 1 }}
+          style={{ fontSize: '1rem', color: 'var(--bs-body-color, #a2a3bd)', padding: '4px 8px' }}
         >
           <i className="fas fa-bag-shopping"></i>
           <span

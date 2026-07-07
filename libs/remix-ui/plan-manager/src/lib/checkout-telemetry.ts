@@ -40,6 +40,8 @@ export type CheckoutTelemetryEvent =
   | 'transaction.error' // * backend never produced a checkout ref — overlay never shown
   | 'checkout.hosted_fallback' // * opened the hosted URL instead of the inline overlay
   | 'checkout.abandoned' // * user closed the Remix modal hosting the Paddle frame
+  | 'checkout.resume' // * user reopened an unfinished checkout (resume banner / top-bar cart)
+  | 'checkout.discard' // * user discarded an unfinished checkout
 
 export interface CheckoutTelemetryFields {
   message?: string
