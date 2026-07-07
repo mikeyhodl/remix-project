@@ -71,8 +71,8 @@ const profile = {
   name: 'planManager',
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
-  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm', 'cancelCheckout', 'resumeCheckout', 'dismissResumeNudge'],
-  events: ['opened', 'closed', 'checkoutResultChanged'],
+  methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm', 'cancelCheckout', 'resumeCheckout', 'dismissResumeNudge', 'getPendingCheckouts', 'discardCheckout'],
+  events: ['opened', 'closed', 'checkoutResultChanged', 'pendingCheckoutsChanged'],
   icon: PLAN_ICON,
   location: 'sidePanel',
   version: packageJson.version,
@@ -152,6 +152,35 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.emit(open ? 'opened' : 'closed')
         this.renderComponent()
       }
+    })
+
+    // Broadcast the unfinished-checkout list so surfaces outside this panel
+    // (notably the top-bar cart button) can render the exact same state
+    // without re-fetching. The machine already resets `resumeCheckouts` on
+    // sign-out, so listeners stay in sync with auth for free.
+    let lastResume: PendingCheckout[] = []
+    this.store.subscribe(() => {
+      const next = this.store.getSnapshot().resumeCheckouts
+      if (next !== lastResume) {
+        lastResume = next
+        this.emit('pendingCheckoutsChanged', next)
+      }
+    })
+
+    // When the user leaves an in-progress checkout (completed, closed or
+    // cancelled — i.e. `pendingCheckout` goes from set → null), refresh the
+    // account data and the unfinished-checkout list so credits/plan and the
+    // resume surfaces reflect whatever just happened.
+    let hadPending = false
+    this.store.subscribe(() => {
+      const pending = !!this.store.getSnapshot().pendingCheckout
+      if (hadPending && !pending) {
+        if (this.store.getSnapshot().isAuthenticated) {
+          void this.loadAccountData()
+          void this.loadPendingCheckouts()
+        }
+      }
+      hadPending = pending
     })
   }
 
@@ -1441,6 +1470,39 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   /**
+   * Public getter for the signed-in user's unfinished checkouts. Lets other
+   * plugins (e.g. the top-bar cart button) read the current list without
+   * subscribing to the store; pair it with the `pendingCheckoutsChanged`
+   * event for live updates.
+   */
+  getPendingCheckouts(): PendingCheckout[] {
+    return this.store.getSnapshot().resumeCheckouts
+  }
+
+  /**
+   * Discard an unfinished checkout: DELETE /checkouts/:transactionId, then
+   * reload the pending list (which drops it from both the resume banner and
+   * the top-bar cart button). Best-effort — a failure just leaves the entry
+   * in place for the user to try again.
+   */
+  async discardCheckout(transactionId: string): Promise<void> {
+    if (!transactionId) return
+    try {
+      const checkoutsApi = await this.call('auth', 'getCheckoutsApi').catch(() => null) as any
+      if (!checkoutsApi?.deleteCheckout) {
+        planManagerLogger.warn('[PlanManager:resume] discardCheckout: checkoutsApi unavailable')
+        return
+      }
+      const res = await checkoutsApi.deleteCheckout(transactionId)
+      planManagerLogger.log('[PlanManager:resume] discardCheckout response', { ok: res?.ok, transactionId })
+    } catch (err) {
+      planManagerLogger.warn('[PlanManager:resume] discardCheckout failed', err)
+    } finally {
+      void this.loadPendingCheckouts()
+    }
+  }
+
+  /**
    * Resume a previously abandoned checkout. Verifies ownership first (so a
    * stale transaction can't open someone else's checkout), then opens the
    * inline Paddle overlay for the transaction. Falls back to the hosted
@@ -2625,15 +2687,14 @@ const PlanManagerOverlay: React.FC<{
             )}
 
             {/* Resume nudge — surfaces an unfinished checkout the user can
-              pick back up. Dismissible for the session. Sits above the
-              credit/plan alerts so it's the first thing they see, but only
-              when the billing surfaces are visible. */}
-            {!checkoutActive && ui.anyVisible && !snap.resumeNudgeDismissed
-              && snap.resumeCheckouts.length > 0 && (
+              pick back up. Always shown while a pending checkout exists (and
+              we're not already inside checkout), so it stays in lock-step
+              with the top-bar cart button. Not dismissible by design. */}
+            {!checkoutActive && snap.resumeCheckouts.length > 0 && (
               <ResumeCheckoutBanner
                 checkout={snap.resumeCheckouts[0]}
                 onResume={() => { void plugin.resumeCheckout(snap.resumeCheckouts[0].transaction_id) }}
-                onDismiss={() => plugin.dismissResumeNudge()}
+                onDiscard={() => { void plugin.discardCheckout(snap.resumeCheckouts[0].transaction_id) }}
               />
             )}
 
@@ -4842,8 +4903,8 @@ const ALERT_COPY: Record<Exclude<CreditState, 'healthy' | 'unknown'>, {
 const ResumeCheckoutBanner: React.FC<{
   checkout: PendingCheckout
   onResume: () => void
-  onDismiss: () => void
-}> = ({ checkout, onResume, onDismiss }) => {
+  onDiscard: () => void
+}> = ({ checkout, onResume, onDiscard }) => {
   const isSub = checkout.product_kind === 'subscription'
   const name = checkout.product_name ?? (isSub ? 'your plan' : 'your credits')
   const title = isSub ? `Finish setting up ${name}` : `Pick up where you left off — ${name}`
@@ -4856,14 +4917,6 @@ const ResumeCheckoutBanner: React.FC<{
   return (
     <section className="pm-alert pm-alert--resume">
       <div className="pm-alert__glow" aria-hidden />
-      <button
-        className="pm-alert__dismiss"
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        data-id="resumeCheckoutDismiss"
-      >
-        <i className="fas fa-times"></i>
-      </button>
       <div className="pm-alert__icon">
         <i className={isSub ? 'fas fa-rotate-right' : 'fas fa-cart-arrow-down'}></i>
       </div>
@@ -4881,6 +4934,13 @@ const ResumeCheckoutBanner: React.FC<{
           data-id="resumeCheckoutButton"
         >
           <i className="fas fa-arrow-right"></i> Resume
+        </button>
+        <button
+          className="pm-alert__btn pm-alert__btn--link"
+          onClick={onDiscard}
+          data-id="resumeCheckoutDiscard"
+        >
+          Discard
         </button>
       </div>
     </section>

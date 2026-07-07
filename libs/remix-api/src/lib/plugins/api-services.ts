@@ -949,6 +949,17 @@ export class CheckoutsApiService {
   async verifyCheckout(transactionId: string): Promise<ApiResponse<VerifyCheckoutResponse>> {
     return this.apiClient.get<VerifyCheckoutResponse>(`/${encodeURIComponent(transactionId)}`)
   }
+
+  /**
+   * Discard an unfinished checkout so it no longer shows up in the resume
+   * nudge / cart. DELETE /checkouts/:transactionId
+   *
+   * Only affects the caller's own pending checkout; safe to call for a
+   * transaction that's already gone (backend treats it idempotently).
+   */
+  async deleteCheckout(transactionId: string): Promise<ApiResponse<GenericSuccessResponse>> {
+    return this.apiClient.delete<GenericSuccessResponse>(`/${encodeURIComponent(transactionId)}`)
+  }
 }
 
 /**

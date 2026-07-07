@@ -27,6 +27,7 @@ import { LoginButton } from '@remix-ui/login'
 import { LoginModal } from 'libs/remix-ui/login/src/lib/modals/login-modal'
 import { appActionTypes } from 'libs/remix-ui/app/src/lib/remix-app/actions/app'
 import { NotificationBell } from '../components/NotificationBell'
+import { CartButton } from '../components/CartButton'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { BetaPromoPill } from '../components/BetaPromoPill'
 
@@ -890,6 +891,7 @@ export function RemixUiTopbar() {
             )}
           </div>
           {showJoinBetaTopButton && <BetaPromoPill plugin={plugin} />}
+          <CartButton />
           {showNotificationBell && <NotificationBell className="ms-3" />}
           {supportEnabled && isAuthenticated && token && (
             <CustomTooltip placement="bottom" tooltipText="Premium Support">
