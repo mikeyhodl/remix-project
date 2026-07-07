@@ -12,7 +12,7 @@
  * Rules:
  *   - MUST NEVER throw into the checkout flow (every call is wrapped).
  *   - MUST NEVER block the UI — the fetch is fired with `keepalive` so it
- *     survives the `_ptxn` navigation / tab close and we never await it.
+ *     survives navigation / tab close and we never await it.
  *   - Auth is optional; when we have a JWT we attach it so the admin viewer
  *     can filter by user. When we don't, the event is still recorded.
  */
@@ -40,6 +40,8 @@ export type CheckoutTelemetryEvent =
   | 'transaction.error' // * backend never produced a checkout ref — overlay never shown
   | 'checkout.hosted_fallback' // * opened the hosted URL instead of the inline overlay
   | 'checkout.abandoned' // * user closed the Remix modal hosting the Paddle frame
+  | 'checkout.resume' // * user reopened an unfinished checkout (resume banner / top-bar cart)
+  | 'checkout.discard' // * user discarded an unfinished checkout
 
 export interface CheckoutTelemetryFields {
   message?: string
