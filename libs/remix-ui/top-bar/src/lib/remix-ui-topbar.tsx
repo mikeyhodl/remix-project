@@ -929,6 +929,30 @@ export function RemixUiTopbar() {
                 publishToGist={publishToGist}
               />
             )}
+            <CustomTooltip placement="bottom" tooltipText="Upgrade for extended usage. Security and Gas audit, Code helper, Web3 API connectors (TheGraph, Etherscan, Alchemy) and more...">
+              <span
+                className="btn btn-sm btn-warning d-flex align-items-center gap-1 ms-3 text-nowrap"
+                style={{ cursor: 'pointer', padding: '0.25rem 0.6rem' }}
+                onClick={() => {
+                  try { plugin.call('planManager', 'open', 'plans') } catch { /* plugin not ready */ }
+                }}
+                data-id="topbar-upgradeBtn"
+              >
+                {!compactRightLabels && <span>See Plans</span>}
+              </span>
+            </CustomTooltip>
+            <CustomTooltip placement="bottom" tooltipText="Use RemixAI for editing contracts, code analysis, deployments and more...">
+              <span
+                className="btn btn-sm btn-warning d-flex align-items-center gap-1 ms-3 text-nowrap"
+                style={{ cursor: 'pointer', padding: '0.25rem 0.6rem' }}
+                onClick={() => {
+                  try { plugin.call('planManager', 'open', 'topup') } catch { /* plugin not ready */ }
+                }}
+                data-id="topbar-upgradeBtn"
+              >
+                {!compactRightLabels && <span>Get AI Credits</span>}
+              </span>
+            </CustomTooltip>
           </div>
           {showJoinBetaTopButton && <BetaPromoPill plugin={plugin} />}
           <CartButton />

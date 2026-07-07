@@ -3061,6 +3061,7 @@ const PlanManagerOverlay: React.FC<{
                   purchasingId={purchasingProductId}
                   localizedPrices={catalogPrices?.byPaddlePriceId ?? null}
                   onPurchase={(packageId) => plugin.purchaseCredits(packageId)}
+                  totalAvailable={status.hasUnlimitedIncluded ? null : status.paidRemaining + status.includedRemaining}
                 />
               )}
               {ui.showUsage && activeSection === 'usage' && <UsageSection plugin={plugin} />}
@@ -4598,7 +4599,9 @@ const TopUpSection: React.FC<{
   onPurchase: (packageId: string) => void
   /** Localized list prices keyed by Paddle price id; null = USD fallback. */
   localizedPrices: Record<string, LocalizedCatalogPrice> | null
-}> = ({ packages, purchasingId, onPurchase, localizedPrices }) => {
+  /** Total spendable credits (included + paid); null means unlimited. */
+  totalAvailable: number | null
+}> = ({ packages, purchasingId, onPurchase, localizedPrices, totalAvailable }) => {
   if (packages.length === 0) {
     return (
       <div className="pm-empty">
@@ -4612,6 +4615,10 @@ const TopUpSection: React.FC<{
       <div className="pm-topup__intro">
         <h3>One-off credits</h3>
         <p>Top up without changing your plan. Credits never expire.</p>
+        <span className="pm-topup__total-num">
+          Currently {totalAvailable === null ? '∞' : totalAvailable.toLocaleString()}
+        </span>
+        <span className="pm-topup__total-label"> Credits available</span>
       </div>
       <div className="pm-topup__grid">
         {packages.map(t => {
