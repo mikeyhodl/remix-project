@@ -1903,6 +1903,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         message,
         data: (event as any)?.data
       })
+      break
     }
     case 'checkout.error' as any: {
       const isWarning = event.name === ('checkout.warning' as any)
