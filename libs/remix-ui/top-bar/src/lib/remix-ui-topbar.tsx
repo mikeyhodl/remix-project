@@ -935,6 +935,7 @@ export function RemixUiTopbar() {
                 style={{ cursor: 'pointer', padding: '0.25rem 0.6rem' }}
                 onClick={() => {
                   try { plugin.call('planManager', 'open', 'plans') } catch { /* plugin not ready */ }
+                  trackMatomoEvent({ category: 'topbar', action: 'upgrade', name: 'SeePlans', isClick: true })
                 }}
                 data-id="topbar-upgradeBtn"
               >
@@ -947,6 +948,7 @@ export function RemixUiTopbar() {
                 style={{ cursor: 'pointer', padding: '0.25rem 0.6rem' }}
                 onClick={() => {
                   try { plugin.call('planManager', 'open', 'topup') } catch { /* plugin not ready */ }
+                  trackMatomoEvent({ category: 'topbar', action: 'upgrade', name: 'GetAICredits', isClick: true })
                 }}
                 data-id="topbar-upgradeBtn"
               >
