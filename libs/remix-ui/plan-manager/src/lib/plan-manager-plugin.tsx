@@ -1579,7 +1579,7 @@ export class PlanManagerPlugin extends ViewPlugin {
         this.store.send({ type: 'OPEN_OVERLAY', intent: { initialSection: 'plans' } })
         return
       }
-    }   // end: ownership verify
+    } // end: ownership verify
 
     const intent: CheckoutIntent = checkout.product_kind === 'subscription' ? 'subscription' : 'topup'
     const itemLabel = checkout.product_name ?? undefined
