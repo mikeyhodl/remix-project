@@ -1895,8 +1895,7 @@ export class PlanManagerPlugin extends ViewPlugin {
     // if the checkout truly can't open, the banner stays with our own message.
     case 'checkout.warning' as any:
     case 'checkout.payment.failed' as any:
-    case 'checkout.payment.error' as any: {
-      const isWarning = event.name === ('checkout.warning' as any)
+    case 'checkout.payment.error' as any: {      
       const message = this.extractPaddleErrorMessage(event)
         || 'Something went wrong with this checkout. Please review your details and try again.'
       planManagerLogger.warn('[PlanManager:paddle-notice] showing in-frame banner', {
@@ -1904,7 +1903,9 @@ export class PlanManagerPlugin extends ViewPlugin {
         message,
         data: (event as any)?.data
       })
+    }
     case 'checkout.error' as any: {
+      const isWarning = event.name === ('checkout.warning' as any)
       this.clearCheckoutLoadWatchdog()
       const message = (event as any)?.error?.message
         || (event as any)?.data?.error?.message
