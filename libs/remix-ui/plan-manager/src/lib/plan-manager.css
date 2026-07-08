@@ -1288,6 +1288,19 @@
   color: var(--bs-body-color);
 }
 
+.pm-topup__total-num {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  opacity: 0.85;
+}
+
+.pm-topup__total-label {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 .pm-topup__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

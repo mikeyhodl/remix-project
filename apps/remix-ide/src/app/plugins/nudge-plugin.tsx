@@ -255,7 +255,7 @@ export class NudgePlugin extends Plugin {
     this.on('planManager', 'pendingCheckoutsChanged', (items: PendingCheckout[]) => {
       if (Array.isArray(items) && items.length > 0) {
         this.engine_.fire('user:unfinished_checkout')
-      }else{
+      } else {
         this.engine_.unfire('user:unfinished_checkout')
       }
     })
