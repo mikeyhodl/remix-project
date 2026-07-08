@@ -1369,10 +1369,6 @@ export class PlanManagerPlugin extends ViewPlugin {
         // token succeeded — allow config.missing to report again if it breaks.
         this.paddleConfigMissingReported = false
         this.lastPaddleInitIssue = null
-        reportCheckoutTelemetry('paddle.init.ok', {
-          paddleEnv: config.environment,
-          detail: { environment: config.environment },
-        })
       }
     } catch (err) {
       planManagerLogger.warn('[PlanManager] Paddle init failed', err)
