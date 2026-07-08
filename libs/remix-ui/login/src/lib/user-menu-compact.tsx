@@ -79,7 +79,7 @@ export const UserMenuCompact: React.FC<UserMenuCompactProps> = ({
 
   const hasBeta = featureGroups?.some(fg => fg.name === 'beta')
   const buttonClass = `btn btn-sm d-flex flex-nowrap align-items-center user-menu-compact-button ${
-    hasBeta ? 'user-menu-compact-button--beta' : ''
+    hasBeta ? 'user-menu-compact-button--beta' : 'btn-success'
   }`
 
   return (
