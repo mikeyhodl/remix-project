@@ -930,10 +930,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     // Create new model instance
     this.model = await createModelInstance(selectedModel, DAPP_MAX_TOKENS, this.userApiKeys)
 
-    if (!this.agent) await this.createAgentWithTools(this.tools)
-    else {
-      this.agent.options.model = this.model
-    }
+    // do not swap the model, recreate the agent with the new model and existing tools
+    await this.createAgentWithTools(this.tools)
   }
 
   private async handleError(error: any, method: string, prompt: string, params: IParams): Promise<string> {

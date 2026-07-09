@@ -134,7 +134,7 @@ contract HelloWorld {
         plugin.call('notification', 'toast', `Error loading Gas optimization skills ${e.message}`)
       }
       setTimeout(() => {
-        plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.`, true)
+        plugin.call('remixaiassistant', 'chatPipe', `Start gas optimization checks. Use the skill solidity-gas-optimization for reference and propose me to go over some specific focussed areas instead of general checks. Ask me which contract file to optimize.`, true, { source: 'home-tab', presetId: 'gas-optimization' })
       })
     }
   }
