@@ -61,10 +61,9 @@ export function GenerateWorkspaceWithAi() {
             await plugin.call('remixaiassistant', 'chatPipe', '/generate ' + state.workspaceName, false, { source: 'template-explorer', presetId: 'generate-workspace' })
             // further matomo events handled by generate function
           }}>
-            <i className="fa-solid fa-magic me-2"></i>
+          <i className="fa-solid fa-magic me-2"></i>
           Generate my Workspace
-          </button>
-        </div>
+        </button>
       </div>
     </section>
   )
