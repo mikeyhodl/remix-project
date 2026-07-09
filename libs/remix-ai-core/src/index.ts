@@ -53,3 +53,4 @@ export { onDeepAgentApiKeysChanged, onApiKeysChange } from './inferencers/deepag
 export * from './types/deepagent'
 export * from './types/humanInTheLoop'
 export * from './remix-mcp-server/prompts/quickDappTheGraphPrompts'
+export * from './remix-mcp-server/prompts/quickDappZkPrompts'

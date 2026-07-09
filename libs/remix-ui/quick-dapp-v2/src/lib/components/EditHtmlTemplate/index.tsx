@@ -8,6 +8,7 @@ import DeployPanel from '../DeployPanel';
 // remixClient removed - using plugin from context instead
 import { InBrowserVite } from '../../InBrowserVite';
 import { buildGraphRuntimeConfigScript } from '../../utils/graph-runtime-config';
+import { buildZkRuntimeConfigScript } from '../../utils/zkverify-runtime-config';
 import { buildQuickDappUpdateGraphContextBlock } from '@remix/remix-ai-core/quick-dapp-thegraph-prompts';
 
 interface Pages {
@@ -344,6 +345,7 @@ function EditHtmlTemplate(): JSX.Element {
       </script>
     `;
     const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
+    const zkRuntimeScript = await buildZkRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
     const debugScript = `<script>
 window.onerror = function(msg, url, line, col, error) {
   try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}
@@ -435,9 +437,9 @@ window.addEventListener('unhandledrejection', function(e) {
         let finalHtml = indexHtmlContent || '<html><body><div id="root"></div></body></html>';
 
         if (finalHtml.includes('</head>')) {
-          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
+          finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${zkRuntimeScript}\n${ext}\n</head>`);
         } else {
-          finalHtml = `<html><head>${debugScript}${injectionScript}${graphRuntimeScript}${ext}</head>${finalHtml}</html>`;
+          finalHtml = `<html><head>${debugScript}${injectionScript}${graphRuntimeScript}${zkRuntimeScript}${ext}</head>${finalHtml}</html>`;
         }
 
         const scriptTag = `\n<script type="module">\n${result.js}\n</script>\n`;
@@ -457,7 +459,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
       } else {
         let finalHtml = indexHtmlContent;
-        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${ext}\n</head>`);
+        finalHtml = finalHtml.replace('</head>', `${debugScript}\n${injectionScript}\n${graphRuntimeScript}\n${zkRuntimeScript}\n${ext}\n</head>`);
         doc.open();
         doc.write(finalHtml);
         doc.close();
