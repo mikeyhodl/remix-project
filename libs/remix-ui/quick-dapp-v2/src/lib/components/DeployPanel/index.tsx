@@ -387,12 +387,49 @@ function DeployPanel(): JSX.Element {
       modifiedHtml = modifiedHtml.replace(/<script type="module"[^>]*src="(?:\/|\.\/)?src\/main\.jsx"[^>]*><\/script>/, inlineScript);
       modifiedHtml = modifiedHtml.replace(/<link rel="stylesheet"[^>]*href="(?:\/|\.\/)?src\/index\.css"[^>]*>/, '');
 
-      // Step 3: Final IPFS deploy with HTML + screenshot
+      // Step 3: Final IPFS deploy with HTML + screenshot + ZK artifacts
       const formData = new FormData();
       const htmlBlob = new Blob([modifiedHtml], { type: 'text/html' });
       formData.append('files', htmlBlob, 'index.html');
       if (screenshotBlob) {
         formData.append('files', screenshotBlob, 'screenshot.png');
+      }
+
+      // Include ZK artifacts if this is a ZK DApp
+      // Note: Files are uploaded at root level (no subdirectories) because IPFS endpoint
+      // doesn't support directory structures. The runtime config paths are adjusted accordingly.
+      if (hasZkCircuit(activeDapp)) {
+        const isInlineMode = activeDapp?.mode === 'inline';
+        const zkFolder = isInlineMode ? 'frontend/zk' : 'zk';
+
+        // Read and append circuit.wasm (at root level for IPFS compatibility)
+        try {
+          const wasmData = await plugin.call('fileManager', 'readFile', `${zkFolder}/circuit.wasm`, { encoding: null });
+          const wasmContent = wasmData instanceof Uint8Array ? wasmData : new TextEncoder().encode(wasmData as string);
+          const wasmBlob = new Blob([wasmContent], { type: 'application/wasm' });
+          formData.append('files', wasmBlob, 'circuit.wasm');
+        } catch (e) {
+          console.warn('[IPFS Deploy] Failed to read circuit.wasm:', e);
+        }
+
+        // Read and append circuit.zkey (at root level for IPFS compatibility)
+        try {
+          const zkeyData = await plugin.call('fileManager', 'readFile', `${zkFolder}/circuit.zkey`, { encoding: null });
+          const zkeyContent = zkeyData instanceof Uint8Array ? zkeyData : new TextEncoder().encode(zkeyData as string);
+          const zkeyBlob = new Blob([zkeyContent], { type: 'application/octet-stream' });
+          formData.append('files', zkeyBlob, 'circuit.zkey');
+        } catch (e) {
+          console.warn('[IPFS Deploy] Failed to read circuit.zkey:', e);
+        }
+
+        // Read and append verification_key.json (at root level for IPFS compatibility)
+        try {
+          const vkeyData = await plugin.call('fileManager', 'readFile', `${zkFolder}/verification_key.json`);
+          const vkeyBlob = new Blob([vkeyData], { type: 'application/json' });
+          formData.append('files', vkeyBlob, 'verification_key.json');
+        } catch (e) {
+          console.warn('[IPFS Deploy] Failed to read verification_key.json:', e);
+        }
       }
 
       const uploadHeaders: Record<string, string> = {};

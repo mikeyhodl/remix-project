@@ -77,6 +77,14 @@ export const runSetupAndExport = async (plugin: CircomPluginClient, appState: Ap
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/groth16/zk/build/zk_verifier.sol`, solidityContract)
         trackMatomoEvent(plugin, { category: 'circuit-compiler', action: 'runSetupAndExport', name: 'zKey.exportSolidityVerifier', value: `${extractParentFromKey(appState.filePath)}/groth16/zk/build/zk_verifier.sol`, isClick: true })
       }
+
+      if ((zkey_final as any).data) {
+        const circuitName = fileName.replace('.circom', '')
+        const zkeyPath = `${extractParentFromKey(appState.filePath)}/groth16/zk/keys/${circuitName}_final.zkey`
+        // @ts-ignore - fileManager.writeFile accepts Uint8Array at runtime for binary files
+        await plugin.call('fileManager', 'writeFile', zkeyPath, new Uint8Array((zkey_final as any).data))
+        trackMatomoEvent(plugin, { category: 'circuit-compiler', action: 'runSetupAndExport', name: 'zKey.writeZkey', value: zkeyPath, isClick: true })
+      }
       dispatch({ type: 'SET_ZKEY', payload: zkey_final })
       dispatch({ type: 'SET_VERIFICATION_KEY', payload: vKey })
     } else if (appState.provingScheme === 'plonk') {
@@ -94,6 +102,14 @@ export const runSetupAndExport = async (plugin: CircomPluginClient, appState: Ap
 
         await plugin.call('fileManager', 'writeFile', `${extractParentFromKey(appState.filePath)}/plonk/zk/build/zk_verifier.sol`, solidityContract)
         trackMatomoEvent(plugin, { category: 'circuit-compiler', action: 'runSetupAndExport', name: 'zKey.exportSolidityVerifier', value: `${extractParentFromKey(appState.filePath)}/plonk/zk/build/zk_verifier.sol`, isClick: true })
+      }
+
+      if ((zkey_final as any).data) {
+        const circuitName = fileName.replace('.circom', '')
+        const zkeyPath = `${extractParentFromKey(appState.filePath)}/plonk/zk/keys/${circuitName}_final.zkey`
+        // @ts-ignore - fileManager.writeFile accepts Uint8Array at runtime for binary files
+        await plugin.call('fileManager', 'writeFile', zkeyPath, new Uint8Array((zkey_final as any).data))
+        trackMatomoEvent(plugin, { category: 'circuit-compiler', action: 'runSetupAndExport', name: 'zKey.writeZkey', value: zkeyPath, isClick: true })
       }
       dispatch({ type: 'SET_ZKEY', payload: zkey_final })
       dispatch({ type: 'SET_VERIFICATION_KEY', payload: vKey })

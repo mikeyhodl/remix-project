@@ -15,8 +15,6 @@ const getZkVerifyEndpoint = (): string => {
   return endpointUrls.zkverify;
 };
 
-const hasText = (value: any): boolean => typeof value === 'string' && value.trim().length > 0;
-
 const getRemixAccessToken = (): string => {
   try {
     return typeof localStorage !== 'undefined' ? localStorage.getItem('remix_access_token') || '' : '';
@@ -47,7 +45,6 @@ const getZkVerifyNetwork = async (plugin: any): Promise<'testnet' | 'mainnet'> =
  * This allows deployed DApps to verify proofs without exposing API keys.
  */
 const createZkVerifyProxyToken = async (
-  zkCircuit: any,
   apiKey: string,
   network: 'testnet' | 'mainnet'
 ): Promise<string> => {
@@ -63,9 +60,6 @@ const createZkVerifyProxyToken = async (
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     },
     body: JSON.stringify({
-      circuitName: zkCircuit.circuitName,
-      provingScheme: zkCircuit.provingScheme,
-      primeValue: zkCircuit.primeValue,
       apiKey,
       network
     })
@@ -117,27 +111,38 @@ export const buildZkRuntimeConfigScript = async (
   let proxyEndpoint: string | undefined;
 
   // For deployment, create a sealed proxy token instead of exposing the API key
+  const zkverifyEndpoint = getZkVerifyEndpoint();
+
   if (!options.includeApiKey && apiKey) {
     try {
-      proxyToken = await createZkVerifyProxyToken(zkCircuit, apiKey, network);
-      proxyEndpoint = `${getZkVerifyEndpoint()}/verify`;
+      proxyToken = await createZkVerifyProxyToken(apiKey, network);
+      proxyEndpoint = `${zkverifyEndpoint}/submit-proof`;
       apiKey = ''; // Clear API key for deployed version
     } catch (error: any) {
-      console.warn('[zkverify-runtime-config] Failed to create proxy token:', error);
       // Continue without proxy token - DApp will need manual API key
     }
   }
+
+  // For IPFS deployment, use root-level paths since IPFS endpoint doesn't support subdirectories
+  // For preview, use the paths from the config (which include zk/ or frontend/zk/ prefix)
+  const useRootPaths = options.target === 'ipfs-deploy';
 
   const runtimeConfig: ZkRuntimeConfig = {
     circuitName: zkCircuit.circuitName,
     provingScheme: zkCircuit.provingScheme,
     primeValue: zkCircuit.primeValue,
     signalInputs: zkCircuit.signalInputs || [],
-    zkArtifacts: {
-      wasmPath: zkCircuit.zkArtifacts?.wasmPath || 'zk/circuit.wasm',
-      zkeyPath: zkCircuit.zkArtifacts?.zkeyPath || 'zk/circuit.zkey',
-      vkeyPath: zkCircuit.zkArtifacts?.vkeyPath || 'zk/verification_key.json'
-    },
+    zkArtifacts: useRootPaths
+      ? {
+        wasmPath: 'circuit.wasm',
+        zkeyPath: 'circuit.zkey',
+        vkeyPath: 'verification_key.json'
+      }
+      : {
+        wasmPath: zkCircuit.zkArtifacts?.wasmPath || 'zk/circuit.wasm',
+        zkeyPath: zkCircuit.zkArtifacts?.zkeyPath || 'zk/circuit.zkey',
+        vkeyPath: zkCircuit.zkArtifacts?.vkeyPath || 'zk/verification_key.json'
+      },
     zkVerify: {
       network,
       ...(options.includeApiKey && apiKey ? { apiKey } : {}),

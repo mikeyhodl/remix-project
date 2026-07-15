@@ -2335,20 +2335,29 @@ const QUICKDAPP_ZK_BUILD_RULES =
   `INDEX.HTML IMPORT MAP (must include):\n` +
   `<script type="importmap">{ "imports": { "react": "https://esm.sh/react@18.2.0", "react-dom/client": "https://esm.sh/react-dom@18.2.0/client", "snarkjs": "https://esm.sh/snarkjs@0.7.4" } }</script>\n\n` +
   `SNARKJS PROOF GENERATION RULES:\n` +
-  `- Load circuit.wasm and circuit.zkey from the /zk folder using fetch\n` +
+  `- Get artifact paths from window.__ZK_DAPP_CONFIG__.zkArtifacts: { wasmPath, zkeyPath, vkeyPath }\n` +
+  `- FETCH ALL artifacts at runtime - they are NOT embedded in the config, only paths are provided:\n` +
+  `  * const wasmResponse = await fetch(config.zkArtifacts.wasmPath)\n` +
+  `  * const zkeyResponse = await fetch(config.zkArtifacts.zkeyPath)\n` +
+  `  * const vkResponse = await fetch(config.zkArtifacts.vkeyPath); const vk = await vkResponse.json()\n` +
+  `- NEVER hardcode paths like '/zk/circuit.wasm' - ALWAYS use config.zkArtifacts paths\n` +
+  `- NEVER access config.verificationKey directly - it does not exist, fetch from vkeyPath instead\n` +
   `- Use snarkjs.groth16.fullProve(inputs, wasmBuffer, zkeyBuffer) for proof generation\n` +
   `- Public signals are in the result.publicSignals array\n` +
   `- The proof object contains pi_a, pi_b, pi_c arrays\n` +
+  `- The verification key (vk) has properties like nPublic - get it from fetched vk, not config\n` +
   `- Use window.__ZK_DAPP_CONFIG__ for circuit metadata (signalInputs, circuitName, etc.)\n\n` +
-  `ZKVERIFY INTEGRATION (use runtime config - NEVER hardcode API keys):\n` +
+  `ZKVERIFY INTEGRATION (proxy mode only - NEVER hardcode API keys):\n` +
   `- Read zkVerify config from window.__ZK_DAPP_CONFIG__.zkVerify\n` +
-  `- The config contains: { network, apiKey?, proxyEndpoint?, proxyToken? }\n` +
-  `- PRIORITY ORDER for verification:\n` +
-  `  1. If proxyEndpoint && proxyToken exist: POST to proxyEndpoint with body { token: proxyToken, proof, publicSignals, vk }\n` +
-  `  2. Else if apiKey exists: POST to https://api-testnet.kurier.xyz/api/v1/submit-proof/{apiKey}\n` +
-  `  3. Else: Show message "Configure zkVerify API key in Remix settings to enable verification"\n` +
-  `- Request body for direct API: { proofType: 'groth16', vkRegistered: false, proofOptions: { library: 'snarkjs', curve: 'bn128' }, proofData: { proof, publicSignals, vk } }\n` +
-  `- Poll job status: GET /job-status/{apiKey}/{jobId} (or proxy handles polling if using proxyEndpoint)\n` +
+  `- The config contains: { network, proxyEndpoint?, proxyToken? }\n` +
+  `- If proxyEndpoint && proxyToken do NOT exist: Show message "Configure zkVerify API key in Remix settings to enable verification"\n` +
+  `- SUBMIT PROOF (POST to proxyEndpoint):\n` +
+  `  Request body: { token: proxyToken, proofType: 'groth16', proofData: { proof, publicSignals, vk }, proofOptions: { library: 'snarkjs', curve: config.primeValue } }\n` +
+  `  CRITICAL: Use config.primeValue ('bn128' or 'bls12381') from window.__ZK_DAPP_CONFIG__ - do NOT hardcode the curve value\n` +
+  `  Response: { jobId: '...', status: '...' }\n` +
+  `- POLL JOB STATUS (GET {proxyEndpoint.replace('/submit-proof', '/job-status')}/{jobId}):\n` +
+  `  Headers: { 'x-zkverify-token': proxyToken }\n` +
+  `  Response: { status: '...', attestationId?: '...' }\n` +
   `- Success statuses: 'Completed', 'Finalized', 'Aggregated'\n` +
   `- Display attestation ID on success\n` +
   `- NEVER tell users to replace API keys in code - the runtime config handles this automatically\n\n` +
@@ -2661,17 +2670,13 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
         await this.copyCircuitArtifacts(plugin, args, 'frontend/zk')
       }
 
-      // Emit progress event
-      try {
-        await plugin.call('remixAI' as any, 'emit', 'generationProgress', {
-          status: 'preparing',
-          slug: progressSlug || dappOps.getSlug(),
-          workspaceName: dappOps.getWorkspaceName(),
-          message: 'Setting up ZK DApp workspace...'
-        })
-      } catch (e: any) {
-        remixAILogger.warn('[ZkDAppGenerator] Could not emit progress:', e?.message)
-      }
+      // Emit progress event (use plugin.emit() directly, same as regular dapp flow)
+      plugin.emit('generationProgress', {
+        status: 'preparing',
+        slug: progressSlug || dappOps.getSlug(),
+        workspaceName: dappOps.getWorkspaceName(),
+        message: 'Setting up ZK DApp workspace...'
+      })
 
       // Generate the delegation message for the AI to create the code
       const targetWorkspaceForInstructions = dappOps.getWorkspaceName()
