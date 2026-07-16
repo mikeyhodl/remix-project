@@ -3163,7 +3163,7 @@ const PlanManagerOverlay: React.FC<{
                               <span>Due today</span>
                               <span>{fmtMoney(bd.total)}</span>
                             </div>
-                            
+
                             {bd.recurring && bd.billingCycle && (
                               <div className="pm-inline-checkout__renews">
                               Then {fmtMoney(bd.recurring.total)} {cadenceLabel(bd.billingCycle)}
@@ -4584,7 +4584,7 @@ const CartUpsellStep: React.FC<{
             )}
           </div>
         </div>
-        
+
         {renewalLabel && (
           <div className="pm-cart-upsell__renewal-note">{renewalLabel}</div>
         )}
