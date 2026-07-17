@@ -27,8 +27,8 @@ export const buildCreateZkDappPrompt = (args: {
   const { zkContext, isDesktop = false } = args
 
   const locationLine = isDesktop
-    ? '- Location: Inline in /frontend only (Remix Desktop requirement - only option)'
-    : '- Location: Workspace (default, new dedicated workspace) or Inline (in /frontend folder of current workspace)'
+    ? '1. **Location**: Inline in /frontend only (Remix Desktop requirement - only option)'
+    : '1. **Location**: Workspace (new dedicated workspace, default) or Inline (/frontend folder)?'
 
   return [
     'I want to create a QuickDapp for a ZK circuit with in-browser proof generation and zkVerify verification.',
@@ -46,12 +46,20 @@ export const buildCreateZkDappPrompt = (args: {
     '',
     'CRITICAL: All circuit data above is ALREADY provided. Do NOT ask me for ZK_CONTEXT_JSON or any circuit details.',
     '',
-    'STEP 1 - ASK ONLY THESE TWO SETUP OPTIONS:',
+    'STEP 1 - ASK ALL FOUR SETUP OPTIONS:',
     'Ask me once: "How should I create your ZK DApp?"',
-    locationLine,
-    '- Design: defaults, style notes, or a description of the desired UI',
     '',
-    'Ask exactly those two options only. Do not ask for circuit details, ZK_CONTEXT_JSON, Theme, Primary Color, DApp Title, or any other questions.',
+    locationLine,
+    '',
+    `2. **DApp Description** (optional): How should users interact with your DApp to generate proofs? For example: "Users deposit ETH and receive a commitment note, then use the note to withdraw privately" (like Tornado Cash). If you skip this, I'll create a simple form with the signal inputs: ${zkContext.signalInputs.join(', ')}.`,
+    '',
+    '3. **Wallet Connection**: Should users be able to connect their wallet? This is useful if your DApp uses wallet data (address, balance, etc.) as inputs for proof generation.',
+    '   - No (default)',
+    '   - Yes (if yes, which data: address, chainId, balance, nonce?)',
+    '',
+    '4. **Design**: Any style preferences or UI description? Or use defaults?',
+    '',
+    'Ask exactly those four options only. Do not ask for circuit details, ZK_CONTEXT_JSON, Theme, Primary Color, DApp Title, or any other questions.',
     'After asking, STOP and wait for my reply.',
     '',
     'STEP 2 - AFTER I ANSWER:',
@@ -68,6 +76,9 @@ export const buildCreateZkDappPrompt = (args: {
     '- setupOptionsConfirmed: true',
     '- setupOptionsSummary: summary of my confirmed options',
     '- description: based on my Design choice',
+    '- interactionDescription: based on my DApp Description (if provided, otherwise omit)',
+    '- enableWalletConnect: true/false based on my Wallet Connection choice',
+    '- walletDataFields: ["address", "balance", etc.] if wallet enabled',
     '',
     'ZK_CONTEXT_JSON (contains verificationKey - use this for generate_zk_dapp):',
     '```json',

@@ -2380,6 +2380,36 @@ const QUICKDAPP_ZK_DESIGN_RULES =
   `- Use appropriate error handling and user feedback\n` +
   `- Make the signal input form intuitive and accessible\n`
 
+// Wallet integration rules for ZK DApps (only included when enableWalletConnect is true)
+const QUICKDAPP_ZK_WALLET_RULES =
+  `WALLET INTEGRATION RULES (for privacy-preserving DApps like Tornado Cash):\n` +
+  `- Use EIP-6963 for wallet discovery (modern standard, supports multiple wallets)\n` +
+  `- Fallback to window.ethereum if EIP-6963 not available\n` +
+  `- Store wallet preference in localStorage for reconnection\n\n` +
+  `WALLET CONNECTION IMPLEMENTATION:\n` +
+  `- Create a useWallet hook or context that provides: { address, chainId, balance, nonce, isConnected, connect, disconnect }\n` +
+  `- Use ethers.js or viem via esm.sh: import { ethers } from 'https://esm.sh/ethers@6'\n` +
+  `- Add to import map: "ethers": "https://esm.sh/ethers@6"\n` +
+  `- Show "Connect Wallet" button when not connected\n` +
+  `- Display truncated address (0x1234...5678) when connected\n` +
+  `- Allow disconnect/switch wallet\n\n` +
+  `WALLET DATA AS SIGNAL INPUTS:\n` +
+  `- When wallet data is used as signal input, auto-populate the field but allow manual override\n` +
+  `- Convert address to BigInt: BigInt(address) for circuit input\n` +
+  `- Clearly label which inputs come from wallet vs manual entry\n` +
+  `- Show wallet icon next to auto-populated fields\n\n` +
+  `PRIVACY-PRESERVING INTERACTION PATTERNS (Tornado Cash style):\n` +
+  `- Commitment generation: Generate random secret + nullifier, hash them for commitment\n` +
+  `- Note management: Allow users to save/export encrypted notes for later use\n` +
+  `- Withdrawal flow: User provides note, generates proof of valid commitment without revealing which deposit\n` +
+  `- NEVER expose secrets in UI or logs - only show commitments and nullifier hashes\n` +
+  `- Use crypto.getRandomValues() for secure random number generation\n` +
+  `- Consider adding "Download Note" functionality for users to save their commitment data\n\n` +
+  `CHAIN-SPECIFIC CONSIDERATIONS:\n` +
+  `- Display current network name and warn if on wrong network\n` +
+  `- For DApps using on-chain data, fetch necessary data after wallet connection\n` +
+  `- Handle chain switching gracefully\n`
+
 interface GenerateZkDAppArgs {
   description: string
   circuitName: string
@@ -2394,6 +2424,10 @@ interface GenerateZkDAppArgs {
   setupOptionsConfirmed?: boolean
   setupOptionsSummary?: string
   confirmOverwrite?: boolean
+  // New fields for enhanced DApp creation
+  interactionDescription?: string
+  enableWalletConnect?: boolean
+  walletDataFields?: ('address' | 'chainId' | 'balance' | 'nonce')[]
 }
 
 export class GenerateZkDAppHandler extends BaseToolHandler {
@@ -2457,6 +2491,19 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
       confirmOverwrite: {
         type: 'boolean',
         description: 'Set to true to confirm overwriting existing files in inline mode'
+      },
+      interactionDescription: {
+        type: 'string',
+        description: 'Description of how users should interact with the DApp to generate proofs. For example: "Users deposit ETH and receive a commitment note, then use the note to withdraw privately" (like Tornado Cash). If not provided, a simple form-based input UI will be generated.'
+      },
+      enableWalletConnect: {
+        type: 'boolean',
+        description: 'Enable wallet connection in the DApp. Useful for DApps that use wallet data (address, balance, transaction history) as inputs for proof generation.'
+      },
+      walletDataFields: {
+        type: 'array',
+        items: { type: 'string', enum: ['address', 'chainId', 'balance', 'nonce']},
+        description: 'Which wallet data fields to make available as potential signal inputs. Only used if enableWalletConnect is true.'
       }
     },
     required: ['description', 'circuitName', 'circuitPath', 'signalInputs', 'provingScheme', 'primeValue', 'wasmPath', 'zkeyPath', 'verificationKey']
@@ -2519,7 +2566,21 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
             provingScheme: args.provingScheme,
             primeValue: args.primeValue
           },
-          instructions: `Ask the user once: "How should I create your ZK DApp?"\n${locationLine}\n- Design: defaults, style notes, or a description of the desired UI\n\nAfter asking, STOP and wait for the user's reply. Then call this tool again with setupOptionsConfirmed=true, setupOptionsSummary containing the confirmed options, and frontendMode set to their choice.`
+          instructions: `Ask the user ALL of these questions:\n\n` +
+            `"How should I create your ZK DApp?"\n\n` +
+            `1. **Location**: ${isDesktop ? 'Inline in /frontend (Remix Desktop requirement)' : 'Workspace (new dedicated workspace, default) or Inline (/frontend folder)?'}\n\n` +
+            `2. **DApp Description** (optional): How should users interact with your DApp to generate proofs? For example: "Users deposit ETH and receive a commitment note, then use the note to withdraw privately" (like Tornado Cash). If you skip this, I'll create a simple form with the signal inputs: ${args.signalInputs.join(', ')}.\n\n` +
+            `3. **Wallet Connection**: Should users be able to connect their wallet? This is useful if your DApp uses wallet data (address, balance, etc.) as inputs for proof generation.\n` +
+            `   - No (default)\n` +
+            `   - Yes (if yes, which data: address, chainId, balance, nonce?)\n\n` +
+            `4. **Design**: Any style preferences or UI description? Or use defaults?\n\n` +
+            `After the user replies, call this tool again with:\n` +
+            `- setupOptionsConfirmed=true\n` +
+            `- setupOptionsSummary: summary of their choices\n` +
+            `- frontendMode: "workspace" or "inline"\n` +
+            `- interactionDescription: their DApp description (if provided, otherwise omit)\n` +
+            `- enableWalletConnect: true/false\n` +
+            `- walletDataFields: ["address", "balance", etc.] if wallet enabled`
         })
       }
 
@@ -2678,6 +2739,14 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
         message: 'Setting up ZK DApp workspace...'
       })
 
+      // Mark generation context so write_file can validate paths correctly
+      markQuickDappGenerationContext({
+        workspaceName: dappOps.getWorkspaceName(),
+        isInlineMode: dappOps.isInline(),
+        sourceRoot: dappOps.getSourceRoot(),
+        operation: 'generate'
+      })
+
       // Generate the delegation message for the AI to create the code
       const targetWorkspaceForInstructions = dappOps.getWorkspaceName()
       const sourceRoot = dappOps.getSourceRoot()
@@ -2691,6 +2760,22 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
 
       const signalInputsList = args.signalInputs.map(s => `  - ${s}`).join('\n')
 
+      // Build interaction section
+      const interactionSection = args.interactionDescription
+        ? `USER INTERACTION FLOW:\n${args.interactionDescription}\n\n`
+        : `DEFAULT INTERACTION: Simple form with signal inputs (${args.signalInputs.join(', ')}) for proof generation.\n\n`
+
+      // Build wallet section
+      const walletSection = args.enableWalletConnect
+        ? `WALLET INTEGRATION: ENABLED\n` +
+          `- Wallet data fields available: ${args.walletDataFields?.join(', ') || 'address'}\n` +
+          `- Auto-populate signal inputs with wallet data where applicable\n` +
+          `- Allow users to connect/disconnect wallet\n\n`
+        : ''
+
+      // Include wallet rules only if wallet connection is enabled
+      const walletRules = args.enableWalletConnect ? `\n${QUICKDAPP_ZK_WALLET_RULES}\n` : ''
+
       return this.createSuccessResult({
         success: true,
         action: 'generate_zk_dapp_files',
@@ -2703,16 +2788,21 @@ export class GenerateZkDAppHandler extends BaseToolHandler {
         provingScheme: args.provingScheme,
         primeValue: args.primeValue,
         zkFolder,
+        enableWalletConnect: args.enableWalletConnect || false,
+        walletDataFields: args.walletDataFields || [],
         delegationMessage:
           `TASK: Generate a new ZK DApp frontend${targetMode === 'inline' ? ' in /frontend folder (inline mode)' : ''}\n` +
           `APP NAME: ${args.circuitName}\n` +
           `CIRCUIT INFO:\n` +
           `- Proving Scheme: ${args.provingScheme}\n` +
           `- Prime Field: ${args.primeValue}\n` +
-          `- Signal Inputs:\n${signalInputsList}\n` +
+          `- Signal Inputs:\n${signalInputsList}\n\n` +
+          `${interactionSection}` +
+          `${walletSection}` +
           `USER DESIGN REQUEST: ${args.description}\n` +
           `${args.setupOptionsSummary ? `CONFIRMED OPTIONS: ${args.setupOptionsSummary}\n` : ''}` +
           `\n${QUICKDAPP_ZK_BUILD_RULES}\n` +
+          `${walletRules}` +
           `\n${QUICKDAPP_ZK_DESIGN_RULES}\n` +
           `CRITICAL PATH RULES:\n` +
           `- All file paths must start with / and be relative to workspace root. ${correctPathExample}\n` +

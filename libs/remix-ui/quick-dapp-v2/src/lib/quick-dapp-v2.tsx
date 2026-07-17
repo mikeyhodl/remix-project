@@ -152,27 +152,28 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
       if (data?.workspaceName) {
         clearQuickDappWorkspaceLock(data.workspaceName);
       }
-      if (!data.workspaceName || !data.slug) {
-        console.log('[QuickDapp] handleDappGenerated: missing workspaceName or slug');
+      if (!data.slug) {
+        console.log('[QuickDapp] handleDappGenerated: missing slug');
         return;
       }
 
       const { workspaceName, slug } = data;
 
       try {
-        console.log('[QuickDapp] Refreshing dashboard for:', workspaceName);
+        console.log('[QuickDapp] Refreshing dashboard for slug:', slug);
 
         // Files already saved by handler — refresh dashboard state
         const freshDapps = await dappManagerRef.current.getDapps();
         console.log('[QuickDapp] Fetched', freshDapps.length, 'dapps from disk');
         dispatch({ type: 'SET_DAPPS', payload: freshDapps });
 
-        const thisDapp = freshDapps.find((d: DappConfig) => d.slug === slug || d.workspaceName === workspaceName);
+        // Match by slug only to avoid matching wrong DApp
+        const thisDapp = freshDapps.find((d: DappConfig) => d.slug === slug);
         if (thisDapp) {
-          console.log('[QuickDapp] Found matching dapp:', thisDapp.name, thisDapp.workspaceName);
+          console.log('[QuickDapp] Found matching dapp:', thisDapp.name, thisDapp.slug);
           dispatch({ type: 'SET_ACTIVE_DAPP', payload: thisDapp });
         } else {
-          console.log('[QuickDapp] No matching dapp found for workspace:', workspaceName);
+          console.log('[QuickDapp] No matching dapp found for slug:', slug);
         }
 
         dispatch({ type: 'SET_DAPP_PROCESSING', payload: { slug, isProcessing: false } });
@@ -285,9 +286,8 @@ export function RemixUiQuickDappV2({ plugin }: RemixUiQuickDappV2Props): JSX.Ele
           } catch (e) {
             console.warn('[QuickDapp] Failed to refresh dapps on preparing:', e);
           }
-          const newDappInList = freshDapps.find((d: DappConfig) =>
-            d.slug === enrichedData.slug || d.workspaceName === enrichedData.workspaceName
-          );
+          // Match by slug only to avoid matching wrong DApp
+          const newDappInList = freshDapps.find((d: DappConfig) => d.slug === enrichedData.slug);
 
           if (!newDappInList && enrichedData.workspaceName) {
             console.log('[QuickDapp] New dapp not found in list, trying to read config directly from workspace:', enrichedData.workspaceName);
