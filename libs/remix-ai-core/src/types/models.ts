@@ -26,6 +26,7 @@ export interface AIModel {
   available: boolean
   /** Backend-supplied reason when `available === false`. e.g. 'feature_required'. */
   reason?: string
+  requireAPIKey?: boolean
   /** Backend ordering hint. */
   sortOrder: number
 }
@@ -67,6 +68,7 @@ export const BEDROCK_MODELS: AIModel[] = [
     requiresAuth: false,
     requiredFeature: null,
     available: true,
+    requireAPIKey: true,
     sortOrder: 900
   },
   {
@@ -80,6 +82,7 @@ export const BEDROCK_MODELS: AIModel[] = [
     requiresAuth: false,
     requiredFeature: null,
     available: true,
+    requireAPIKey: true,
     sortOrder: 901
   },
   {
@@ -93,6 +96,7 @@ export const BEDROCK_MODELS: AIModel[] = [
     requiresAuth: false,
     requiredFeature: null,
     available: true,
+    requireAPIKey: true,
     sortOrder: 902
   },
   {
@@ -108,6 +112,7 @@ export const BEDROCK_MODELS: AIModel[] = [
     requiresAuth: false,
     requiredFeature: null,
     available: true,
+    requireAPIKey: true,
     sortOrder: 903
   }
 ]
@@ -190,6 +195,7 @@ export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null
       requiredFeature: typeof m.required_feature === 'string' ? m.required_feature : null,
       available: m.available !== false,
       reason: typeof m.reason === 'string' ? m.reason : undefined,
+      requireAPIKey: !!(m.require_api_key ?? m.requireAPIKey),
       sortOrder: typeof m.sort_order === 'number' ? m.sort_order : 0
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder)
