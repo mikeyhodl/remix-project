@@ -1,4 +1,4 @@
-import { remixAILogger, CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, getBestAvailableModel } from '@remix/remix-ai-core'
+import { remixAILogger, CONVERSATION_THREAD_PREFIX, DeepAgentInferencer, getBestAvailableModel, isUsingOwnKeyForProvider } from '@remix/remix-ai-core'
 import type { IRemixAIPlugin, ToolApprovalResponse } from './types'
 import type { DeepAgentEventBridge } from './DeepAgentEventBridge'
 import type { MCPServerManager } from './MCPServerManager'
@@ -88,8 +88,9 @@ export class DeepAgentManager {
         remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
       }
       const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
-      // Don't use remote fallback for Ollama - user explicitly chose local models
-      const fallbackInferencer = plugin.selectedModel.provider === 'ollama' ? null : plugin.remoteInferencer
+      const fallbackInferencer = (plugin.selectedModel.provider === 'ollama' || isUsingOwnKeyForProvider(plugin.selectedModel.provider, userApiKeys))
+        ? null
+        : plugin.remoteInferencer
 
       // Clean up old instance if it exists
       if (plugin.deepAgentInferencer && typeof plugin.deepAgentInferencer.cleanup === 'function') {
@@ -309,8 +310,9 @@ export class DeepAgentManager {
           remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent (reinitialize)')
         }
         const resolvedModelId = await this.resolveOllamaModelId(plugin.selectedModel.provider, plugin.selectedModelId)
-        // Don't use remote fallback for Ollama - user explicitly chose local models
-        const fallbackInferencer = plugin.selectedModel.provider === 'ollama' ? null : plugin.remoteInferencer
+        const fallbackInferencer = (plugin.selectedModel.provider === 'ollama' || isUsingOwnKeyForProvider(plugin.selectedModel.provider, userApiKeys))
+          ? null
+          : plugin.remoteInferencer
 
         // Clean up old instance if it exists
         if (plugin.deepAgentInferencer && typeof plugin.deepAgentInferencer.cleanup === 'function') {
