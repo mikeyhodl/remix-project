@@ -199,11 +199,9 @@ export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null
       sortOrder: typeof m.sort_order === 'number' ? m.sort_order : 0
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder)
+
   // Append the local Ollama option only when the user has the `ai:ollama`
-  // feature enabled. The backend doesn't ship Ollama in `ai_models[]`
-  // (it's a local capability), so the feature flag is the only signal.
   const features = permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
-  console.log('Parsed AI models from /permissions:', features, parsed)
 
   if (features && features[Features.AI_OLLAMA]?.is_enabled === true) {
     parsed.push(OLLAMA_MODEL)
