@@ -20,6 +20,28 @@ export interface IUserApiKeyConfig {
   bedrockBearerToken?: string
 }
 
+export function isUsingOwnKeyForProvider(
+  provider: ModelProvider | string,
+  keys?: IUserApiKeyConfig
+): boolean {
+  if (!keys) return false
+  switch (provider) {
+  case 'bedrock':
+    // Bedrock has no proxy — a configured key means own-key, always.
+    return !!keys.bedrockBearerToken
+  case 'anthropic':
+    return !!(keys.useOwnKeys && keys.anthropicApiKey)
+  case 'mistralai':
+    return !!(keys.useOwnKeys && keys.mistralApiKey)
+  case 'openai':
+    return !!(keys.useOwnKeys && keys.openaiApiKey)
+  case 'moonshot':
+    return !!(keys.useOwnKeys && keys.moonshotApiKey)
+  default:
+    return false
+  }
+}
+
 /**
  * Auto model selection configuration
  */
