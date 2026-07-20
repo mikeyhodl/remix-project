@@ -132,6 +132,7 @@ export interface SettingsState {
   'deepagent-mistral-api-key': ConfigState,
   'deepagent-openai-api-key': ConfigState,
   'deepagent-moonshot-api-key': ConfigState,
+  'deepagent-bedrock-bearer-token': ConfigState,
   'editor/code-analysis-popover': ConfigState,
   toaster: ConfigState
 }

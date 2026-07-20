@@ -11,7 +11,7 @@ import { Features } from '@remix-api';
  */
 export interface AIModel {
   id: string
-  provider: 'openai' | 'mistralai' | 'moonshot' | 'anthropic' | 'ollama'
+  provider: 'openai' | 'mistralai' | 'moonshot' | 'anthropic' | 'ollama' | 'bedrock'
   /** Display name as the backend wants it shown. */
   displayName: string
   description: string
@@ -47,6 +47,70 @@ export const OLLAMA_MODEL: AIModel = {
   available: true,
   sortOrder: 1000
 }
+
+/**
+ * AWS Bedrock model catalogue. Bedrock has no Remix proxy — these run only
+ * when the user supplies their own AWS credentials (access key id / secret /
+ * optional session token / region) via the Bring-Your-Own-Keys settings.
+ * The ModelFactory routes `provider: 'bedrock'` through `@langchain/aws`
+ * (ChatBedrockConverse).
+ */
+export const BEDROCK_MODELS: AIModel[] = [
+  {
+    id: 'amazon.nova-micro-v1:0',
+    provider: 'bedrock',
+    displayName: 'Amazon Nova Micro (Bedrock)',
+    description: 'Amazon Nova Micro — cheapest Bedrock model, fast text-only, tool use',
+    category: 'general',
+    capabilities: ['chat', 'code', 'tools'],
+    isDefault: false,
+    requiresAuth: false,
+    requiredFeature: null,
+    available: true,
+    sortOrder: 900
+  },
+  {
+    id: 'amazon.nova-lite-v1:0',
+    provider: 'bedrock',
+    displayName: 'Amazon Nova Lite (Bedrock)',
+    description: 'Amazon Nova Lite — very low cost, multimodal, tool use',
+    category: 'general',
+    capabilities: ['chat', 'code', 'tools'],
+    isDefault: false,
+    requiresAuth: false,
+    requiredFeature: null,
+    available: true,
+    sortOrder: 901
+  },
+  {
+    id: 'amazon.nova-pro-v1:0',
+    provider: 'bedrock',
+    displayName: 'Amazon Nova Pro (Bedrock)',
+    description: 'Amazon Nova Pro — higher capability multimodal model, tool use',
+    category: 'general',
+    capabilities: ['chat', 'code', 'tools'],
+    isDefault: false,
+    requiresAuth: false,
+    requiredFeature: null,
+    available: true,
+    sortOrder: 902
+  },
+  {
+    // Cross-region inference profile. ModelFactory re-maps the `us.` geo
+    // prefix to the caller's region (eu./apac.) at request time.
+    id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    provider: 'bedrock',
+    displayName: 'Claude Haiku 4.5 (Bedrock)',
+    description: 'Anthropic Claude Haiku 4.5 via AWS Bedrock — latest low-cost Claude, tool use',
+    category: 'coding',
+    capabilities: ['chat', 'code', 'tools'],
+    isDefault: false,
+    requiresAuth: false,
+    requiredFeature: null,
+    available: true,
+    sortOrder: 903
+  }
+]
 
 /**
  * Anonymous fallback. The picker shows a single placeholder row that
@@ -133,8 +197,13 @@ export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null
   // feature enabled. The backend doesn't ship Ollama in `ai_models[]`
   // (it's a local capability), so the feature flag is the only signal.
   const features = permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
+  console.log('Parsed AI models from /permissions:', features, parsed)
+
   if (features && features[Features.AI_OLLAMA]?.is_enabled === true) {
     parsed.push(OLLAMA_MODEL)
+  }
+  if (features && features[Features.AI_PROVIDER_BEDROCK]?.is_enabled === true) {
+    parsed.push(...BEDROCK_MODELS)
   }
   return parsed
 }

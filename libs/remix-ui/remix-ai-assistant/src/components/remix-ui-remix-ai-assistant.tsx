@@ -1676,6 +1676,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       // stopped turn — otherwise new chunks could append into an old
       // bubble that belongs to a different conversation/turn.
       streamingAssistantIdRef.current = null
+      // Clear any error notice from a previous turn so the old warning
+      // doesn't linger while a new request is in flight. If this request
+      // also fails, refreshChatNotice picks up the fresh notice afterwards.
+      dismissChatNotice()
 
       // optimistic user message
       const userMsg: ChatMessage = {
@@ -2092,7 +2096,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         ])
       }
     },
-    [isStreaming, props.plugin, selectedModel, assistantChoice]
+    [isStreaming, props.plugin, selectedModel, assistantChoice, dismissChatNotice]
   )
 
   const handleSend = useCallback(async () => {
