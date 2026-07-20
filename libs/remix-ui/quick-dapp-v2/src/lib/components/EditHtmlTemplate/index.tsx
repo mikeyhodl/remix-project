@@ -345,7 +345,7 @@ function EditHtmlTemplate(): JSX.Element {
       </script>
     `;
     const graphRuntimeScript = await buildGraphRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
-    const zkRuntimeScript = await buildZkRuntimeConfigScript(plugin, activeDapp, { includeApiKey: true, target: 'preview' });
+    const zkRuntimeScript = await buildZkRuntimeConfigScript(plugin, activeDapp, { includeApiKey: false, target: 'preview' });
     const debugScript = `<script>
 window.onerror = function(msg, url, line, col, error) {
   try { parent.console.error('[DApp-iframe] Error:', msg, 'at', url, 'line', line); } catch(e) {}

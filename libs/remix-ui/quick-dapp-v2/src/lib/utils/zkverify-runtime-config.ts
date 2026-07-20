@@ -2,6 +2,31 @@ import { endpointUrls } from '@remix-endpoints-helper';
 
 const safeScriptJson = (value: any): string => JSON.stringify(value).replace(/<\//g, '<\\/');
 
+const uint8ToBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  const chunkSize = 0x8000; // avoid call stack limits from String.fromCharCode.apply on large arrays
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize) as any);
+  }
+  return btoa(binary);
+};
+
+/**
+ * Read a file from the Remix filesystem and return it as a `data:` URL.
+ * Preview runs the built DApp in an iframe populated via doc.write() with no real
+ * origin backing it, so relative fetch() paths (e.g. 'zk/circuit.wasm') can't resolve
+ * to the Remix filesystem. Embedding the content as a data URL sidesteps that.
+ */
+const readFileAsDataUrl = async (plugin: any, path: string, mimeType: string): Promise<string | null> => {
+  try {
+    const data = await plugin.call('fileManager', 'readFile', path, { encoding: null });
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
+    return `data:${mimeType};base64,${uint8ToBase64(bytes)}`;
+  } catch (e) {
+    return null;
+  }
+};
+
 export const getZkCircuitConfig = (activeDapp: any): any | null => {
   return activeDapp?.zkCircuit || null;
 };
@@ -123,26 +148,41 @@ export const buildZkRuntimeConfigScript = async (
     }
   }
 
-  // For IPFS deployment, use root-level paths since IPFS endpoint doesn't support subdirectories
-  // For preview, use the paths from the config (which include zk/ or frontend/zk/ prefix)
-  const useRootPaths = options.target === 'ipfs-deploy';
+  // For IPFS deployment, use root-level paths since IPFS endpoint doesn't support subdirectories.
+  // For preview, the built DApp runs in an iframe with no real origin backing it, so relative
+  // paths can't be fetched from the Remix filesystem - embed the artifacts as data URLs instead.
+  let zkArtifacts: ZkRuntimeConfig['zkArtifacts'];
+
+  if (options.target === 'ipfs-deploy') {
+    zkArtifacts = {
+      wasmPath: 'circuit.wasm',
+      zkeyPath: 'circuit.zkey',
+      vkeyPath: 'verification_key.json'
+    };
+  } else {
+    const wasmPath = zkCircuit.zkArtifacts?.wasmPath || 'zk/circuit.wasm';
+    const zkeyPath = zkCircuit.zkArtifacts?.zkeyPath || 'zk/circuit.zkey';
+    const vkeyPath = zkCircuit.zkArtifacts?.vkeyPath || 'zk/verification_key.json';
+
+    const [wasmDataUrl, zkeyDataUrl, vkeyDataUrl] = await Promise.all([
+      readFileAsDataUrl(plugin, wasmPath, 'application/wasm'),
+      readFileAsDataUrl(plugin, zkeyPath, 'application/octet-stream'),
+      readFileAsDataUrl(plugin, vkeyPath, 'application/json')
+    ]);
+
+    zkArtifacts = {
+      wasmPath: wasmDataUrl || wasmPath,
+      zkeyPath: zkeyDataUrl || zkeyPath,
+      vkeyPath: vkeyDataUrl || vkeyPath
+    };
+  }
 
   const runtimeConfig: ZkRuntimeConfig = {
     circuitName: zkCircuit.circuitName,
     provingScheme: zkCircuit.provingScheme,
     primeValue: zkCircuit.primeValue,
     signalInputs: zkCircuit.signalInputs || [],
-    zkArtifacts: useRootPaths
-      ? {
-        wasmPath: 'circuit.wasm',
-        zkeyPath: 'circuit.zkey',
-        vkeyPath: 'verification_key.json'
-      }
-      : {
-        wasmPath: zkCircuit.zkArtifacts?.wasmPath || 'zk/circuit.wasm',
-        zkeyPath: zkCircuit.zkArtifacts?.zkeyPath || 'zk/circuit.zkey',
-        vkeyPath: zkCircuit.zkArtifacts?.vkeyPath || 'zk/verification_key.json'
-      },
+    zkArtifacts,
     zkVerify: {
       network,
       ...(options.includeApiKey && apiKey ? { apiKey } : {}),
