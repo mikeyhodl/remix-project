@@ -1054,21 +1054,27 @@ export class Blockchain extends Plugin {
       if (await this.call('terminal', 'isPanelHidden')) this.call('terminal', 'togglePanel')
       this._triggerEvent(eventName, [null, tx.from, tx.to, tx.data, tx.useCall, result, timestamp, payLoad])
 
-      if (!tx.to && !tx.useCall && !tx.isVM) {
-        const auth = await this.call('auth', 'getCredits')
-        if (auth && auth.balance > 12000) {
-          const copy = { ...args.data }
-          delete copy.contractBytecode
-          delete copy.contractDeployedBytecode
-          delete copy.dataHex
+      try {
+        const isEnabled = await this.call('settings', 'get', 'settings/ai-feedback')
+        const creditThreshold = await this.call('settings', 'get', 'settings/ai-feedback-credit-threshold')
+        if (isEnabled && !tx.to && !tx.useCall && !tx.isVM) {
+          const auth = await this.call('auth', 'getCredits')
+          if (auth && auth.balance > creditThreshold) {
+            const copy = { ...args.data }
+            delete copy.contractBytecode
+            delete copy.contractDeployedBytecode
+            delete copy.dataHex
 
-          const copyResult = { ...result }
-          delete copyResult.data
+            const copyResult = { ...result }
+            delete copyResult.data
 
-          const prompt = `The following contract has been deployed: ${JSON.stringify(copy)} , ${JSON.stringify(copyResult)}. Sum it up (deployment details) and propose me to go over some specific focussed areas.
-          Additionaly mention that RemixAI can load Skills to analyze the contract and provide insights by typing /load-skills in the AI chat. /gas-audit and /load-audit-checklist are also integrated to provide gas optimization and security audit insights.`
-          this.call('remixaiassistant', 'chatPipe', prompt, true, { source: 'udapp', presetId: 'deploy-contract' })
+            const prompt = `The following contract has been deployed: ${JSON.stringify(copy)} , ${JSON.stringify(copyResult)}. Sum it up (deployment details) and propose me to go over some specific focussed areas.
+            Additionaly mention that RemixAI can load Skills to analyze the contract and provide insights by typing /load-skills in the AI chat. /gas-audit and /load-audit-checklist are also integrated to provide gas optimization and security audit insights. Go to settings => RemixAI Assistant => AI Feedback to disable automatic feedback feature.`
+            this.call('remixaiassistant', 'chatPipe', prompt, true, { source: 'udapp', presetId: 'deploy-contract' })
+          }
         }
+      } catch (e) {
+        console.warn(e)
       }
       return new Promise((resolve) => resolve({ result, tx }))
     } catch (err) {
