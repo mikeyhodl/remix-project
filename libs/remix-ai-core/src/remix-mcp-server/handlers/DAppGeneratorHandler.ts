@@ -2382,13 +2382,15 @@ const QUICKDAPP_ZK_DESIGN_RULES =
 
 // Wallet integration rules for ZK DApps (only included when enableWalletConnect is true)
 const QUICKDAPP_ZK_WALLET_RULES =
-  `WALLET INTEGRATION RULES (for privacy-preserving DApps like Tornado Cash):\n` +
-  `- Use EIP-6963 for wallet discovery (modern standard, supports multiple wallets)\n` +
-  `- Fallback to window.ethereum if EIP-6963 not available\n` +
-  `- Store wallet preference in localStorage for reconnection\n\n` +
+  `WALLET INTEGRATION RULES (CRITICAL - use EXACT pattern below):\n` +
+  `- Use window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum for wallet discovery (EIP-6963).\n` +
+  `- This calls into the rich multi-wallet picker (EIP-6963 discovery + Coinbase Smart Wallet + selection modal) that QuickDapp already injects into the deployed page. It handles multi-wallet discovery, the selection UI, and localStorage-based reconnection on its own.\n` +
+  `- Do NOT hand-roll a separate EIP-6963 announceProvider/requestProvider listener or a custom wallet-picker modal - window.__qdapp_getProvider already does this.\n` +
+  `- Store the raw provider returned by window.__qdapp_getProvider() in a React ref for reuse (e.g. for network switching).\n\n` +
   `WALLET CONNECTION IMPLEMENTATION:\n` +
   `- Create a useWallet hook or context that provides: { address, chainId, balance, nonce, isConnected, connect, disconnect }\n` +
-  `- Use ethers.js or viem via esm.sh: import { ethers } from 'https://esm.sh/ethers@6'\n` +
+  `- connect() should do: const rawProvider = window.__qdapp_getProvider ? await window.__qdapp_getProvider() : window.ethereum; const provider = new ethers.BrowserProvider(rawProvider); await provider.send('eth_requestAccounts', []); const signer = await provider.getSigner();\n` +
+  `- Use ethers.js via esm.sh: import { ethers } from 'https://esm.sh/ethers@6'\n` +
   `- Add to import map: "ethers": "https://esm.sh/ethers@6"\n` +
   `- Show "Connect Wallet" button when not connected\n` +
   `- Display truncated address (0x1234...5678) when connected\n` +
