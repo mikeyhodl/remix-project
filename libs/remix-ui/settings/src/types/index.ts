@@ -64,7 +64,11 @@ export interface SettingsSection {
       }[],
       toggleUIOptions?: {
         name: keyof SettingsState,
-        type: 'text' | 'password' | 'number'
+        type: 'text' | 'password' | 'number' | 'select',
+        selectOptions?: {
+          label: string,
+          value: string
+        }[]
       }[],
       toggleUIDescription?: string | JSX.Element,
       buttonOptions?: {
@@ -135,6 +139,9 @@ export interface SettingsState {
   'editor/code-analysis-popover': ConfigState,
   'ai-feedback': ConfigState,
   'ai-feedback-credit-threshold': ConfigState,
+  'zkverify-config': ConfigState,
+  'zkverify-api-key': ConfigState,
+  'zkverify-network': ConfigState,
   toaster: ConfigState
 }
 export interface SettingsActionPayloadTypes {
