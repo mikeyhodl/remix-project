@@ -237,6 +237,9 @@ const settingsSections: SettingsSection[] = [
           }, {
             name: 'deepagent-moonshot-api-key' as keyof typeof initialState,
             type: 'password'
+          }, {
+            name: 'deepagent-openrouter-api-key' as keyof typeof initialState,
+            type: 'password'
           }]
         }]
       }]

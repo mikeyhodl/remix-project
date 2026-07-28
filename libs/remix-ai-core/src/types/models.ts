@@ -11,7 +11,7 @@ import { Features } from '@remix-api';
  */
 export interface AIModel {
   id: string
-  provider: 'openai' | 'mistralai' | 'moonshot' | 'anthropic' | 'ollama'
+  provider: 'openai' | 'mistralai' | 'moonshot' | 'openrouter' | 'anthropic' | 'ollama'
   /** Display name as the backend wants it shown. */
   displayName: string
   description: string

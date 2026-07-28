@@ -69,12 +69,13 @@ export class ApiKeySettingsHelper {
       }
 
       // Read settings via plugin calls (parallel for performance)
-      const [useOwnKeysValue, anthropicApiKey, mistralApiKey, openaiApiKey, moonshotApiKey] = await Promise.all([
+      const [useOwnKeysValue, anthropicApiKey, mistralApiKey, openaiApiKey, moonshotApiKey, openrouterApiKey] = await Promise.all([
         this.getSetting('deepagent-api-keys-config'),
         this.getSetting('deepagent-anthropic-api-key'),
         this.getSetting('deepagent-mistral-api-key'),
         this.getSetting('deepagent-openai-api-key'),
-        this.getSetting('deepagent-moonshot-api-key')
+        this.getSetting('deepagent-moonshot-api-key'),
+        this.getSetting('deepagent-openrouter-api-key')
       ])
 
       const useOwnKeys = useOwnKeysValue === 'true' || useOwnKeysValue === true
@@ -85,11 +86,12 @@ export class ApiKeySettingsHelper {
         hasAnthropicKey: !!anthropicApiKey,
         hasMistralKey: !!mistralApiKey,
         hasOpenaiKey: !!openaiApiKey,
-        hasMoonshotKey: !!moonshotApiKey
+        hasMoonshotKey: !!moonshotApiKey,
+        hasOpenrouterKey: !!openrouterApiKey
       })
 
       // Auto-enable if any API key is set
-      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey
+      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey || openrouterApiKey
       if (!useOwnKeys && !hasAnyKey) {
         return undefined
       }
@@ -99,7 +101,8 @@ export class ApiKeySettingsHelper {
         anthropicApiKey: String(anthropicApiKey || ''),
         mistralApiKey: String(mistralApiKey || ''),
         openaiApiKey: String(openaiApiKey || ''),
-        moonshotApiKey: String(moonshotApiKey || '')
+        moonshotApiKey: String(moonshotApiKey || ''),
+        openrouterApiKey: String(openrouterApiKey || '')
       }
     } catch (error) {
       remixAILogger.warn('[ApiKeySettingsHelper] Failed to read user API keys config:', error)
@@ -130,6 +133,9 @@ export class ApiKeySettingsHelper {
         break
       case 'moonshot':
         apiKey = await this.getSetting('deepagent-moonshot-api-key')
+        break
+      case 'openrouter':
+        apiKey = await this.getSetting('deepagent-openrouter-api-key')
         break
       default:
         return false

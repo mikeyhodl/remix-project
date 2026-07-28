@@ -396,6 +396,31 @@ export async function createModelInstance(
     }), `moonshot/${modelId}`)
   }
 
+  case 'openrouter': {
+    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.openrouterApiKey)
+    remixAILogger.log(`[ModelFactory] Creating OpenRouter model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    return wrapModelForDebug(new ChatOpenAI({
+      apiKey: useDirectApi ? (userApiKeys!.openrouterApiKey as string) : 'proxy-handled',
+      model: modelId,
+      temperature: 0.7,
+      maxTokens: maxTokens,
+      streaming: true,
+      maxRetries: 0,
+      ...(useDirectApi
+        ? {
+          configuration: {
+            baseURL: 'https://openrouter.ai/api/v1'
+          }
+        }
+        : {
+          configuration: {
+            baseURL: `${endpointUrls.langchain}/openrouter`,
+            fetch: authedFetch
+          }
+        })
+    }), `openrouter/${modelId}`)
+  }
+
   case 'anthropic':
   default: {
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.anthropicApiKey)

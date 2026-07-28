@@ -79,6 +79,23 @@ export function validateApiKeyFormat(provider: ModelProvider, apiKey: string): A
     }
     break
 
+  case 'openrouter':
+    if (!trimmedKey.startsWith('sk-or-')) {
+      return {
+        isValid: false,
+        provider,
+        error: 'OpenRouter API key should start with "sk-or-"'
+      }
+    }
+    if (trimmedKey.length < 20) {
+      return {
+        isValid: false,
+        provider,
+        error: 'OpenRouter API key appears to be too short'
+      }
+    }
+    break
+
   case 'ollama':
     return {
       isValid: true,
@@ -116,6 +133,9 @@ export async function testApiKey(provider: ModelProvider, apiKey: string): Promi
 
     case 'moonshot':
       return await testMoonshotKey(trimmedKey)
+
+    case 'openrouter':
+      return await testOpenRouterKey(trimmedKey)
 
     case 'ollama':
       return { isValid: true, provider }
@@ -311,8 +331,52 @@ async function testMoonshotKey(apiKey: string): Promise<ApiKeyValidationResult> 
   }
 }
 
+/**
+ * Test OpenRouter API key with a minimal models list request
+ */
+async function testOpenRouterKey(apiKey: string): Promise<ApiKeyValidationResult> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    if (response.ok) {
+      return { isValid: true, provider: 'openrouter' }
+    }
+
+    if (response.status === 401) {
+      return {
+        isValid: false,
+        provider: 'openrouter',
+        error: 'Invalid API key - authentication failed'
+      }
+    }
+
+    if (response.status === 429) {
+      return { isValid: true, provider: 'openrouter' }
+    }
+
+    const errorData = await response.json().catch(() => ({}))
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      error: errorData?.error?.message || `API returned status ${response.status}`
+    }
+  } catch (error: any) {
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      error: error?.message || 'Network error testing API key'
+    }
+  }
+}
+
 export function getProviderFromSettingKey(settingKey: string): ModelProvider | null {
   if (settingKey.includes('anthropic')) return 'anthropic'
+  if (settingKey.includes('openrouter')) return 'openrouter'
   if (settingKey.includes('openai')) return 'openai'
   if (settingKey.includes('mistral')) return 'mistralai'
   if (settingKey.includes('moonshot')) return 'moonshot'

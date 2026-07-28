@@ -27,6 +27,7 @@ const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-ke
 const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
 const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
 const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
+const deepagentOpenrouterApiKey = config.get('settings/deepagent-openrouter-api-key') || ''
 const enableCodeAnalysisPopover = config.get('settings/editor/code-analysis-popover')
 const aiFeedbackCreditThreshold = config.get('settings/ai-feedback-credit-threshold') || '0'
 const zkverifyApiKey = config.get('settings/zkverify-api-key') || ''
@@ -300,6 +301,10 @@ export const initialState: SettingsState = {
     value: deepagentMoonshotApiKey,
     isLoading: false
   },
+  'deepagent-openrouter-api-key': {
+    value: deepagentOpenrouterApiKey,
+    isLoading: false
+  },
   //@ts-ignore
   'editor/code-analysis-popover': {
     value: enableCodeAnalysisPopoverBoolean,
@@ -350,7 +355,8 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
         action.payload.name === 'deepagent-anthropic-api-key' ||
         action.payload.name === 'deepagent-mistral-api-key' ||
         action.payload.name === 'deepagent-openai-api-key' ||
-        action.payload.name === 'deepagent-moonshot-api-key') {
+        action.payload.name === 'deepagent-moonshot-api-key' ||
+        action.payload.name === 'deepagent-openrouter-api-key') {
       try {
         onDeepAgentApiKeysChanged();
       } catch (error) {
