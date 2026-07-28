@@ -2237,7 +2237,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           severity: 'warning',
           code: 'API_KEY_REQUIRED',
           title: `${model.displayName} needs an API key`,
-          message: 'Add the required API key under Settings → Bring Your Own API Keys, then select this model again.',
+          message: 'Add the required API key under Settings → RemixAI Assistant -> Bring Your Own API Keys, then select this model again.',
           actionable: false
         })
         setShowModelSelector(false)
