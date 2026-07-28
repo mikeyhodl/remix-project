@@ -744,7 +744,6 @@ export class RemixAIPlugin extends Plugin {
         }
       }
       remixAILogger.log('[answer][route-flow]', routeFlow)
-      console.log('[answer][route-flow] route', route)
       if (!remoteRouteCheck && route === 'remote') {
         remixAILogger.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
       }
