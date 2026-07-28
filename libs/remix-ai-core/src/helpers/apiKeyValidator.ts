@@ -337,7 +337,7 @@ async function testBedrockKey(apiKey: string): Promise<ApiKeyValidationResult> {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: [{ text: 'ping' }] }],
+          messages: [{ role: 'user', content: [{ text: 'ping' }]}],
           inferenceConfig: { maxTokens: 1 }
         })
       }
