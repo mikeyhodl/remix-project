@@ -52,7 +52,9 @@ export type EndpointUrls = {
   ensContractNames: string;
   learneth: string;
   rss: string;
-  langchain: string
+  langchain: string;
+  langfuse: string
+  zkverify: string;
 };
 
 /**
@@ -99,7 +101,9 @@ const servicePathMap: Record<keyof Omit<EndpointUrls, 'solidityScanWebSocket' | 
   ensContractNames: 'endpoints/contract-ens',
   learneth: 'learneth',
   rss: 'endpoints/rss',
-  langchain: 'ai/langchain'
+  langchain: 'ai/langchain',
+  langfuse: 'ai/langfuse',
+  zkverify: 'zkverify'
 };
 
 /** Build all endpoint URLs from a single base URL */

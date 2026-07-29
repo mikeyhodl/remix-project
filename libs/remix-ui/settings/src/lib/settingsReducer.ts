@@ -29,6 +29,9 @@ const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') ||
 const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 const deepagentBedrockBearerToken = config.get('settings/deepagent-bedrock-bearer-token') || ''
 const enableCodeAnalysisPopover = config.get('settings/editor/code-analysis-popover')
+const aiFeedbackCreditThreshold = config.get('settings/ai-feedback-credit-threshold') || '0'
+const zkverifyApiKey = config.get('settings/zkverify-api-key') || ''
+const zkverifyNetwork = config.get('settings/zkverify-network') || 'testnet'
 
 let githubConfig = config.get('settings/github-config') || false
 let ipfsConfig = config.get('settings/ipfs-config') || false
@@ -43,6 +46,7 @@ let autoCompletion = config.get('settings/auto-completion')
 let showGas = config.get('settings/show-gas')
 let displayErrors = config.get('settings/display-errors')
 let saveEvmState = config.get('settings/save-evm-state')
+let aiFeedback = config.get('settings/ai-feedback')
 
 if (!githubConfig && (githubUserName || githubEmail || gistAccessToken)) {
   config.set('settings/github-config', true)
@@ -79,6 +83,11 @@ if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistral
   config.set('settings/deepagent-api-keys-config', true)
   deepagentApiKeysConfigAuto = true
 }
+let zkverifyConfig = config.get('settings/zkverify-config') || false
+if (!zkverifyConfig && zkverifyApiKey) {
+  config.set('settings/zkverify-config', true)
+  zkverifyConfig = true
+}
 if (typeof generateContractMetadata !== 'boolean') {
   config.set('settings/generate-contract-metadata', true)
   generateContractMetadata = true
@@ -98,6 +107,10 @@ if (typeof displayErrors !== 'boolean') {
 if (typeof saveEvmState !== 'boolean') {
   config.set('settings/save-evm-state', true)
   saveEvmState = true
+}
+if (typeof aiFeedback !== 'boolean') {
+  config.set('settings/ai-feedback', true)
+  aiFeedback = true
 }
 
 let enableCodeAnalysisPopoverBoolean = enableCodeAnalysisPopover
@@ -295,6 +308,26 @@ export const initialState: SettingsState = {
   //@ts-ignore
   'editor/code-analysis-popover': {
     value: enableCodeAnalysisPopoverBoolean,
+    isLoading: false,
+  },
+  'zkverify-config': {
+    value: zkverifyConfig,
+    isLoading: false
+  },
+  'zkverify-api-key': {
+    value: zkverifyApiKey,
+    isLoading: false
+  },
+  'zkverify-network': {
+    value: zkverifyNetwork,
+    isLoading: false
+  },
+  'ai-feedback': {
+    value: aiFeedback,
+    isLoading: false
+  },
+  'ai-feedback-credit-threshold': {
+    value: aiFeedbackCreditThreshold,
     isLoading: false
   },
   toaster: {
