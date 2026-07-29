@@ -107,6 +107,7 @@
   "settings.deepagent-mistral-api-key": "MistralAI API Key",
   "settings.deepagent-openai-api-key": "OpenAI API Key",
   "settings.deepagent-moonshot-api-key": "Moonshot/Kimi API Key",
+  "settings.deepagent-bedrock-bearer-token": "AWS Bedrock API Key",
   "settings.testApiKey": "Test",
   "settings.testing": "Testing...",
   "settings.apiKeyValid": "API key is valid",
