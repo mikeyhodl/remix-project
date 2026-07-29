@@ -28,6 +28,7 @@ const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') 
 const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
 const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 const deepagentOpenrouterApiKey = config.get('settings/deepagent-openrouter-api-key') || ''
+const deepagentBedrockBearerToken = config.get('settings/deepagent-bedrock-bearer-token') || ''
 const enableCodeAnalysisPopover = config.get('settings/editor/code-analysis-popover')
 const aiFeedbackCreditThreshold = config.get('settings/ai-feedback-credit-threshold') || '0'
 const zkverifyApiKey = config.get('settings/zkverify-api-key') || ''
@@ -79,7 +80,7 @@ if (!thegraphConfig && thegraphAccessToken) {
 // }
 // Auto-enable deepagent API keys config if any API key is set
 let deepagentApiKeysConfigAuto = deepagentApiKeysConfig
-if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey || deepagentMoonshotApiKey)) {
+if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey || deepagentMoonshotApiKey || deepagentBedrockBearerToken)) {
   config.set('settings/deepagent-api-keys-config', true)
   deepagentApiKeysConfigAuto = true
 }
@@ -301,6 +302,10 @@ export const initialState: SettingsState = {
     value: deepagentMoonshotApiKey,
     isLoading: false
   },
+  'deepagent-bedrock-bearer-token': {
+    value: deepagentBedrockBearerToken,
+    isLoading: false
+  },
   'deepagent-openrouter-api-key': {
     value: deepagentOpenrouterApiKey,
     isLoading: false
@@ -357,6 +362,7 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
         action.payload.name === 'deepagent-openai-api-key' ||
         action.payload.name === 'deepagent-moonshot-api-key' ||
         action.payload.name === 'deepagent-openrouter-api-key') {
+        action.payload.name === 'deepagent-bedrock-bearer-token') {
       try {
         onDeepAgentApiKeysChanged();
       } catch (error) {
