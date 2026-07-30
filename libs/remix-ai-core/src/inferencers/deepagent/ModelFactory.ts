@@ -2,6 +2,7 @@ import { remixAILogger } from '../../helpers/logger'
 import { ChatAnthropic } from '@langchain/anthropic'
 import { ChatMistralAI } from '@langchain/mistralai'
 import { ChatOpenAI } from '@langchain/openai'
+import { ChatOpenRouter } from '@langchain/openrouter'
 import { ChatOllama } from '@langchain/ollama'
 import { ChatBedrockConverse } from '@langchain/aws'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
@@ -9,7 +10,7 @@ import { HTTPClient } from '@mistralai/mistralai/lib/http.js'
 import { endpointUrls } from '@remix-endpoints-helper'
 import { ModelSelection, IUserApiKeyConfig } from '../../types/deepagent'
 import { DAPP_MAX_TOKENS } from './constants'
-import { getRemixAuthHeader } from '../auth'
+import { getRemixAuthHeader, getRemixAccessToken } from '../auth'
 import { discoverOllamaHost, getBestAvailableModel, getModelCapabilities } from '../local/ollama'
 
 const AI_DEBUG = (() => {
@@ -460,39 +461,58 @@ export async function createModelInstance(
   case 'openrouter': {
     const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.openrouterApiKey)
     remixAILogger.log(`[ModelFactory] Creating OpenRouter model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    // Own key → talk to OpenRouter directly through its dedicated LangChain SDK.
+    if (useDirectApi) {
+      return wrapModelForDebug(new ChatOpenRouter({
+        apiKey: userApiKeys!.openrouterApiKey as string,
+        model: modelId,
+        temperature: 0.7,
+        maxTokens: maxTokens,
+        maxRetries: 0,
+      }), `openrouter/${modelId}`)
+    }
+    // No key → route through the Remix proxy (OpenAI-compatible endpoint).
     return wrapModelForDebug(new ChatOpenAI({
-      apiKey: useDirectApi ? (userApiKeys!.openrouterApiKey as string) : 'proxy-handled',
+      apiKey: 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
       maxRetries: 0,
-      ...(useDirectApi
-        ? {
-          configuration: {
-            baseURL: 'https://openrouter.ai/api/v1'
-          }
-        }
-        : {
-          configuration: {
-            baseURL: `${endpointUrls.langchain}/openrouter`,
-            fetch: authedFetch
-          }
-        })
+      configuration: {
+        baseURL: `${endpointUrls.langchain}/openrouter`,
+        fetch: authedFetch
+      }
     }), `openrouter/${modelId}`)
+  }
+
   case 'bedrock': {
     const bedrockBearerToken = userApiKeys?.bedrockBearerToken?.trim()
-    if (!bedrockBearerToken) {
-      throw new Error('[ModelFactory] AWS Bedrock models requires a Bedrock API key. Add it under Settings → Bring Your Own API Keys.')
-    }
-
     const region = DEFAULT_BEDROCK_REGION
     const bedrockModelId = resolveBedrockModelId(modelId, region)
-    remixAILogger.log(`[ModelFactory] Creating AWS Bedrock model: ${bedrockModelId} @ ${region}`)
+    const useDirectApi = !!bedrockBearerToken
+
+    if (useDirectApi) {
+      remixAILogger.log(`[ModelFactory] Creating AWS Bedrock model: ${bedrockModelId} @ ${region} (direct API)`)
+      return wrapModelForDebug(patchBedrockBindTools(new ChatBedrockConverse({
+        model: bedrockModelId,
+        region,
+        bedrockBearerToken,
+      })), `bedrock/${bedrockModelId}`)
+    }
+
+    // Proxy mode: no user-provided key. Route the Bedrock Converse calls through
+    const remixToken = getRemixAccessToken()
+    if (!remixToken) {
+      throw new Error('[ModelFactory] AWS Bedrock requires you to be signed in to use the Remix proxy, or add your own Bedrock API key under Settings → Bring Your Own API Keys.')
+    }
+    const proxyEndpointHost = `${endpointUrls.langchain}/bedrock`.replace(/^https?:\/\//, '')
+    remixAILogger.log(`[ModelFactory] Creating AWS Bedrock model: ${bedrockModelId} @ ${region} (proxy)`)
     return wrapModelForDebug(patchBedrockBindTools(new ChatBedrockConverse({
       model: bedrockModelId,
       region,
-      bedrockBearerToken,
+      bedrockBearerToken: remixToken,
+      endpointHost: proxyEndpointHost,
     })), `bedrock/${bedrockModelId}`)
   }
 

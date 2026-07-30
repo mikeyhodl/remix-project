@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger, modelKey, parseModelKey, findModel } from '@remix/remix-ai-core'
 import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -399,7 +399,10 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     const initializeModel = async () => {
       try {
         const currentModelId = await props.plugin.call('remixAI', 'getSelectedModel')
-        const model = availableModels.find(m => m.id === currentModelId)
+        // Resolve with the provider too — ids aren't unique across providers.
+        let currentProvider: string | undefined
+        try { currentProvider = await props.plugin.call('remixAI', 'getAssistantProvider') } catch { /* no selection yet */ }
+        const model = findModel(availableModels, currentModelId, currentProvider)
         if (model) {
           setSelectedModelId(currentModelId)
           setSelectedModel(model)
@@ -415,7 +418,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     const handleModelChanged = async (modelId: string) => {
       remixAILogger.log('[RemixAI Assistant UI] Model changed to:', modelId)
-      const model = availableModels.find(m => m.id === modelId)
+      let changedProvider: string | undefined
+      try { changedProvider = await props.plugin.call('remixAI', 'getAssistantProvider') } catch { /* no selection */ }
+      const model = findModel(availableModels, modelId, changedProvider)
       if (model) {
         setSelectedModelId(modelId)
         setSelectedModel(model)
@@ -2165,10 +2170,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setShowModelSelector(prev => !prev)
   }, [])
 
-  const handleModelSelection = useCallback(async (modelId: string) => {
+  const handleModelSelection = useCallback(async (selectionKey: string) => {
     setChatNotice(null)
+    const { id: modelId, provider: selectedProvider } = parseModelKey(selectionKey)
     // Handle auto mode selection
-    if (modelId === 'auto') {
+    if (selectionKey === 'auto') {
       setAutoModeEnabled(true)
       try {
         await props.plugin.call('remixAI', 'setAutoMode', true)
@@ -2188,7 +2194,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           setSelectedModel(def)
           setAssistantChoice(def.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
           try {
-            await props.plugin.call('remixAI', 'setModel', def.id)
+            await props.plugin.call('remixAI', 'setModel', def.id, def.provider)
           } catch (e) {
             remixAILogger.warn('[remix-ai-assistant] setModel(default) failed when entering Auto Mode', e)
           }
@@ -2209,7 +2215,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     }
 
-    const model = availableModels.find(m => m.id === modelId)
+    const model = findModel(availableModels, modelId, selectedProvider)
     if (!model) return
 
     // Check access — backend's `available` flag is the source of truth.
@@ -2254,8 +2260,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
 
     if (model.provider === 'ollama') {
       try {
-        await props.plugin.call('remixAI', 'setModel', modelId)
-        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
+        await props.plugin.call('remixAI', 'setModel', model.id, model.provider)
+        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelKey(model), isClick: true })
         const models: { name: string; supported: boolean }[] = await props.plugin.call('remixAI', 'getOllamaModels')
         setOllamaModels(models || [])
         if (!models || models.length === 0) {
@@ -2271,7 +2277,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           const def: AIModel | null = await props.plugin.call('assistantState' as any, 'getDefaultModel')
           const fallbackModel = def || availableModels.find(m => m.available && m.provider !== 'ollama')
           if (fallbackModel) {
-            await props.plugin.call('remixAI', 'setModel', fallbackModel.id)
+            await props.plugin.call('remixAI', 'setModel', fallbackModel.id, fallbackModel.provider)
             setSelectedModelId(fallbackModel.id)
             setSelectedModel(fallbackModel)
             setAssistantChoice(fallbackModel.provider as 'openai' | 'mistralai' | 'anthropic' | 'ollama')
@@ -2282,8 +2288,8 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       }
     } else {
       try {
-        await props.plugin.call('remixAI', 'setModel', modelId)
-        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelId, isClick: true })
+        await props.plugin.call('remixAI', 'setModel', model.id, model.provider)
+        trackMatomoEvent({ category: 'ai', action: 'remixAI', name: 'model_selected', value: modelKey(model), isClick: true })
       } catch (error) {
         remixAILogger.warn('Failed to set model:', error)
       }
@@ -2292,8 +2298,9 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     setShowModelSelector(false)
   }, [props.plugin, modelAccess, pushSystemNotice])
 
-  const handleLockedModelClick = useCallback((modelId: string, modelName: string) => {
-    const model = availableModels.find(m => m.id === modelId)
+  const handleLockedModelClick = useCallback((selectionKey: string, _modelName: string) => {
+    const { id: modelId, provider } = parseModelKey(selectionKey)
+    const model = findModel(availableModels, modelId, provider)
     let reason: 'auth-required' | 'email-unverified' | 'feature-required' | 'quota-exhausted' = 'feature-required'
     let requiredFeature: string | null = null
     if (model?.reason === 'auth_required' || modelId === '__signin__') {

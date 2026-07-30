@@ -87,6 +87,8 @@ export function validateApiKeyFormat(provider: ModelProvider, apiKey: string): A
         error: 'OpenRouter API key should start with "sk-or-"'
       }
     }
+    break
+
   case 'bedrock':
     if (trimmedKey.length < 20) {
       return {
@@ -137,7 +139,7 @@ export async function testApiKey(provider: ModelProvider, apiKey: string): Promi
 
     case 'openrouter':
       return await testOpenRouterKey(trimmedKey)
-        
+
     case 'bedrock':
       return await testBedrockKey(trimmedKey)
 
@@ -335,6 +337,47 @@ async function testMoonshotKey(apiKey: string): Promise<ApiKeyValidationResult> 
   }
 }
 
+async function testOpenRouterKey(apiKey: string): Promise<ApiKeyValidationResult> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/key', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    })
+
+    if (response.ok) {
+      return { isValid: true, provider: 'openrouter' }
+    }
+
+    if (response.status === 401) {
+      return {
+        isValid: false,
+        provider: 'openrouter',
+        error: 'Invalid API key - authentication failed'
+      }
+    }
+
+    if (response.status === 429) {
+      // Rate limited but key is valid
+      return { isValid: true, provider: 'openrouter' }
+    }
+
+    const errorData = await response.json().catch(() => ({}))
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      error: errorData?.error?.message || `API returned status ${response.status}`
+    }
+  } catch (error: any) {
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      error: error?.message || 'Network error testing API key'
+    }
+  }
+}
+
 async function testBedrockKey(apiKey: string): Promise<ApiKeyValidationResult> {
   const region = 'us-east-1'
   const modelId = 'amazon.nova-micro-v1:0'
@@ -369,8 +412,6 @@ async function testBedrockKey(apiKey: string): Promise<ApiKeyValidationResult> {
       }
     }
 
-    // Throttled, or a request-shape validation error — the token still
-    // authenticated (an invalid one is rejected with 401/403 first).
     if (response.status === 429 || response.status === 400) {
       return { isValid: true, provider: 'bedrock' }
     }

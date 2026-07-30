@@ -131,7 +131,7 @@ export class RemixAIPlugin extends Plugin {
     this.mcpManager.setDeps({
       plugin: this as any,
       permissionChecker: this.permissionChecker,
-      setModel: (modelId: string) => this.modelManager.setModel(modelId),
+      setModel: (modelId: string, provider?: string) => this.modelManager.setModel(modelId, [], provider),
       reinitializeDeepAgent: () => this.deepAgentManager.reinitialize()
     })
 
@@ -357,7 +357,7 @@ export class RemixAIPlugin extends Plugin {
         // GenerationParams/CompletionParams pick up the provider+model
         // and DeepAgent (if enabled) reinitialises.
         try {
-          await this.setModel(def.id)
+          await this.setModel(def.id, def.provider)
         } catch (e) {
           remixAILogger.warn('[RemixAI Plugin] setModel failed during initial /permissions resolution', e)
         }
@@ -562,7 +562,7 @@ export class RemixAIPlugin extends Plugin {
     // resolved one. Without an id the picker is empty and downstream
     // setModel would throw — we let the assistantState subscription do it.
     if (this.selectedModelId) {
-      await this.setModel(this.selectedModelId)
+      await this.setModel(this.selectedModelId, this.selectedModel?.provider)
     } else {
       remixAILogger.log('[RemixAI Plugin] initialize: no selectedModelId yet, deferring setModel until /permissions loads')
     }
@@ -744,15 +744,10 @@ export class RemixAIPlugin extends Plugin {
         }
       }
       remixAILogger.log('[answer][route-flow]', routeFlow)
-      console.log('[answer][route-flow] route', route)
       if (!remoteRouteCheck && route === 'remote') {
         remixAILogger.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
       }
       if (route === 'deepagent') {
-        // If a previous cancelRequest is still rebuilding the inferencer,
-        // wait for it to finish so this dispatch lands on the new
-        // instance with a clean LangGraph pipe rather than racing the
-        // about-to-be-discarded one.
         await this.deepAgentManager.awaitReady()
         remixAILogger.log('[answer][route-flow] dispatch=deepagent.answer')
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')
@@ -1014,8 +1009,8 @@ export class RemixAIPlugin extends Plugin {
     return this.modelManager.setAssistantProvider(provider)
   }
 
-  async setModel(modelId: string, allowedModels: string[] = []) {
-    return this.modelManager.setModel(modelId, allowedModels)
+  async setModel(modelId: string, provider?: string, allowedModels: string[] = []) {
+    return this.modelManager.setModel(modelId, allowedModels, provider)
   }
 
   async setOllamaModel(ollamaModelName: string) {

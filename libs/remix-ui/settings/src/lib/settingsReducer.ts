@@ -361,7 +361,7 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
         action.payload.name === 'deepagent-mistral-api-key' ||
         action.payload.name === 'deepagent-openai-api-key' ||
         action.payload.name === 'deepagent-moonshot-api-key' ||
-        action.payload.name === 'deepagent-openrouter-api-key') {
+        action.payload.name === 'deepagent-openrouter-api-key' ||
         action.payload.name === 'deepagent-bedrock-bearer-token') {
       try {
         onDeepAgentApiKeysChanged();

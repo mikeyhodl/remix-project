@@ -66,10 +66,11 @@ export class ApiKeySettingsHelper {
       const hasPermission = await this.canUseOwnApiKeys()
 
       // Read settings via plugin calls (parallel for performance). We read the
-      // Bedrock API key regardless of `hasPermission`, because Bedrock has no
-      // Remix proxy: if the user entered a key it must be used, there's no
-      // proxy alternative to gate it against. The permission flag only governs
-      // the proxy-backed providers below.
+      // Bedrock API key regardless of `hasPermission`: a present key means the
+      // user wants direct access, which must be honoured. When absent, Bedrock
+      // falls back to the Remix proxy (handled in the ModelFactory). The
+      // permission flag only governs own-key access on the proxy-backed
+      // providers below.
       const [
         useOwnKeysValue,
         anthropicApiKey,
@@ -84,7 +85,7 @@ export class ApiKeySettingsHelper {
         this.getSetting('deepagent-mistral-api-key'),
         this.getSetting('deepagent-openai-api-key'),
         this.getSetting('deepagent-moonshot-api-key'),
-        this.getSetting('deepagent-openrouter-api-key')
+        this.getSetting('deepagent-openrouter-api-key'),
         this.getSetting('deepagent-bedrock-bearer-token')
       ])
 
@@ -124,7 +125,7 @@ export class ApiKeySettingsHelper {
         mistralApiKey: String(mistralApiKey || ''),
         openaiApiKey: String(openaiApiKey || ''),
         moonshotApiKey: String(moonshotApiKey || ''),
-        openrouterApiKey: String(openrouterApiKey || '')
+        openrouterApiKey: String(openrouterApiKey || ''),
         bedrockBearerToken: String(bedrockBearerToken || '')
       }
     } catch (error) {
@@ -138,8 +139,8 @@ export class ApiKeySettingsHelper {
    */
   async isUsingOwnApiKeyForProvider(provider: string): Promise<boolean> {
     try {
-      // Bedrock has no proxy — it's always "own key" when a Bedrock API key is
-      // present, independent of the proxy-vs-own-key toggle.
+      // A present Bedrock API key means direct ("own key") access, independent
+      // of the proxy-vs-own-key toggle; without one we route through the proxy.
       if (provider === 'bedrock') {
         return !!(await this.getSetting('deepagent-bedrock-bearer-token'))
       }

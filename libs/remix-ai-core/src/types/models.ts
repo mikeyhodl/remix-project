@@ -50,71 +50,71 @@ export const OLLAMA_MODEL: AIModel = {
 }
 
 /**
- * AWS Bedrock model catalogue. Bedrock has no Remix proxy — these run only
- * when the user supplies their own AWS credentials (access key id / secret /
- * optional session token / region) via the Bring-Your-Own-Keys settings.
- * The ModelFactory routes `provider: 'bedrock'` through `@langchain/aws`
- * (ChatBedrockConverse).
+ * AWS Bedrock model catalogue. These run either through the Remix proxy (the
+ * default when the user is signed in and has not supplied a key) or directly
+ * when the user provides their own Bedrock bearer token via the
+ * Bring-Your-Own-Keys settings. The ModelFactory routes `provider: 'bedrock'`
+ * through `@langchain/aws` (ChatBedrockConverse) in both cases.
  */
 export const BEDROCK_MODELS: AIModel[] = [
-  {
-    id: 'amazon.nova-micro-v1:0',
-    provider: 'bedrock',
-    displayName: 'Amazon Nova Micro (Bedrock)',
-    description: 'Amazon Nova Micro — cheapest Bedrock model, fast text-only, tool use',
-    category: 'general',
-    capabilities: ['chat', 'code', 'tools'],
-    isDefault: false,
-    requiresAuth: false,
-    requiredFeature: null,
-    available: true,
-    requireAPIKey: true,
-    sortOrder: 900
-  },
-  {
-    id: 'amazon.nova-lite-v1:0',
-    provider: 'bedrock',
-    displayName: 'Amazon Nova Lite (Bedrock)',
-    description: 'Amazon Nova Lite — very low cost, multimodal, tool use',
-    category: 'general',
-    capabilities: ['chat', 'code', 'tools'],
-    isDefault: false,
-    requiresAuth: false,
-    requiredFeature: null,
-    available: true,
-    requireAPIKey: true,
-    sortOrder: 901
-  },
-  {
-    id: 'amazon.nova-pro-v1:0',
-    provider: 'bedrock',
-    displayName: 'Amazon Nova Pro (Bedrock)',
-    description: 'Amazon Nova Pro — higher capability multimodal model, tool use',
-    category: 'general',
-    capabilities: ['chat', 'code', 'tools'],
-    isDefault: false,
-    requiresAuth: false,
-    requiredFeature: null,
-    available: true,
-    requireAPIKey: true,
-    sortOrder: 902
-  },
-  {
-    // Cross-region inference profile. ModelFactory re-maps the `us.` geo
-    // prefix to the caller's region (eu./apac.) at request time.
-    id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-    provider: 'bedrock',
-    displayName: 'Claude Haiku 4.5 (Bedrock)',
-    description: 'Anthropic Claude Haiku 4.5 via AWS Bedrock — latest low-cost Claude, tool use',
-    category: 'coding',
-    capabilities: ['chat', 'code', 'tools'],
-    isDefault: false,
-    requiresAuth: false,
-    requiredFeature: null,
-    available: true,
-    requireAPIKey: true,
-    sortOrder: 903
-  }
+  // {
+  //   id: 'amazon.nova-micro-v1:0',
+  //   provider: 'bedrock',
+  //   displayName: 'Amazon Nova Micro (Bedrock)',
+  //   description: 'Amazon Nova Micro — cheapest Bedrock model, fast text-only, tool use',
+  //   category: 'general',
+  //   capabilities: ['chat', 'code', 'tools'],
+  //   isDefault: false,
+  //   requiresAuth: false,
+  //   requiredFeature: null,
+  //   available: true,
+  //   requireAPIKey: false,
+  //   sortOrder: 900
+  // },
+  // {
+  //   id: 'amazon.nova-lite-v1:0',
+  //   provider: 'bedrock',
+  //   displayName: 'Amazon Nova Lite (Bedrock)',
+  //   description: 'Amazon Nova Lite — very low cost, multimodal, tool use',
+  //   category: 'general',
+  //   capabilities: ['chat', 'code', 'tools'],
+  //   isDefault: false,
+  //   requiresAuth: false,
+  //   requiredFeature: null,
+  //   available: true,
+  //   requireAPIKey: false,
+  //   sortOrder: 901
+  // },
+  // {
+  //   id: 'amazon.nova-pro-v1:0',
+  //   provider: 'bedrock',
+  //   displayName: 'Amazon Nova Pro (Bedrock)',
+  //   description: 'Amazon Nova Pro — higher capability multimodal model, tool use',
+  //   category: 'general',
+  //   capabilities: ['chat', 'code', 'tools'],
+  //   isDefault: false,
+  //   requiresAuth: false,
+  //   requiredFeature: null,
+  //   available: true,
+  //   requireAPIKey: false,
+  //   sortOrder: 902
+  // },
+  // {
+  //   // Cross-region inference profile. ModelFactory re-maps the `us.` geo
+  //   // prefix to the caller's region (eu./apac.) at request time.
+  //   id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+  //   provider: 'bedrock',
+  //   displayName: 'Claude Haiku 4.5 (Bedrock)',
+  //   description: 'Anthropic Claude Haiku 4.5 via AWS Bedrock — latest low-cost Claude, tool use',
+  //   category: 'coding',
+  //   capabilities: ['chat', 'code', 'tools'],
+  //   isDefault: false,
+  //   requiresAuth: false,
+  //   requiredFeature: null,
+  //   available: true,
+  //   requireAPIKey: false,
+  //   sortOrder: 903
+  // }
 ]
 
 /**
@@ -149,22 +149,26 @@ export const ANONYMOUS_FALLBACK_MODELS: AIModel[] = [
   ANONYMOUS_PLACEHOLDER_MODEL
 ]
 
-/**
- * NO bootstrap default model. The chat-default is whichever row the
- * backend marks `is_default: true` in `permissions.ai_models[]`. Read
- * it via `assistantState.getDefaultModel()` (or `selectDefaultModel(snap)`).
- *
- * If you find yourself wanting a literal model id here, you have a bug:
- *   - For "user just opened the app" \u2192 selectedModel should be `null`
- *     until /permissions resolves. Render a "Loading\u2026" state.
- *   - For "task X needs model Y" \u2192 backend advertises that via
- *     `permissions.task_models[X]`. Read with `assistantState.getModelForTask('X')`.
- *   - For "Ollama / anonymous fallback" \u2192 ANONYMOUS_FALLBACK_MODELS.
- *
- * Anything else MUST throw rather than silently substitute.
- */
-
 export function getModelById(id: string, list: ReadonlyArray<AIModel> = ANONYMOUS_FALLBACK_MODELS): AIModel | undefined {
+  return list.find(m => m.id === id)
+}
+
+export function modelKey(model: Pick<AIModel, 'provider' | 'id'>): string {
+  return `${model.provider}::${model.id}`
+}
+
+export function parseModelKey(key: string): { provider?: string; id: string } {
+  const idx = key.indexOf('::')
+  if (idx === -1) return { id: key }
+  return { provider: key.slice(0, idx), id: key.slice(idx + 2) }
+}
+
+export function findModel(
+  list: ReadonlyArray<AIModel>,
+  id: string,
+  provider?: string
+): AIModel | undefined {
+  if (provider) return list.find(m => m.id === id && m.provider === provider)
   return list.find(m => m.id === id)
 }
 

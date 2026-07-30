@@ -2,7 +2,7 @@ import React, { Dispatch, useMemo } from 'react'
 import GroupListMenu from './contextOptMenu'
 import { PromptArea } from './prompt'
 import { AiAssistantType, groupListType } from '../types/componentTypes'
-import { ChatMessage, AIModel } from '@remix/remix-ai-core'
+import { ChatMessage, AIModel, modelKey } from '@remix/remix-ai-core'
 
 interface AiChatPromptAreaProps {
     selectedModelId: unknown
@@ -77,12 +77,16 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
     }
 
     const modelOptions = props.availableModels.map(model => {
+      // Key each row on `provider::id`, not the bare id: two providers can
+      // advertise the same model id and must stay distinct in the picker and
+      // route to different backends.
+      const key = modelKey(model)
       return {
         label: model.displayName,
         bodyText: model.description,
         icon: 'fa-solid fa-check' as const,
-        stateValue: model.id,
-        dataId: `ai-model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`,
+        stateValue: key,
+        dataId: `ai-model-${key.replace(/[^a-zA-Z0-9]/g, '-')}`,
         isLocked: !model.available
       }
     })
@@ -116,7 +120,7 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
           <GroupListMenu
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
-            choice={props.autoModeEnabled ? 'auto' : props.selectedModelId}
+            choice={props.autoModeEnabled ? 'auto' : (props.selectedModel ? modelKey(props.selectedModel) : props.selectedModelId)}
             groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
             upgradePillState={props.upgradePillState}

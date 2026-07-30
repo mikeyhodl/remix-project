@@ -43,7 +43,7 @@ export default function GroupListMenu(props: GroupListMenuProps) {
   // upgrade or buy-credits pill, so we hide them when both pills are hidden.
   const visibleItems = props.groupList.filter(item => {
     if (!item.isLocked) return true
-    if (item.stateValue === '__signin__') return true
+    if (item.stateValue === '__signin__' || (typeof item.stateValue === 'string' && item.stateValue.endsWith('::__signin__'))) return true
     return hasVisibleLockedPill
   })
 
