@@ -15,7 +15,7 @@ interface AiChatPromptAreaProps {
     themeTracker: any
     showHistorySidebar: boolean
     isMaximized: boolean
-    modelOpt: { top: number, left: number, maxHeight?: number }
+    modelOpt: { top?: number, bottom?: number, left: number, maxHeight?: number }
     menuRef: React.RefObject<HTMLDivElement>
     assistantChoice: any
     setAssistantChoice: React.Dispatch<React.SetStateAction<any>>
@@ -85,11 +85,11 @@ export default function AiChatPromptArea(props: AiChatPromptAreaProps) {
     >
       {props.showModelSelector && (
         <div
-          className="pt-2 mb-2 z-3 bg-light border border-text position-fixed"
-          style={{ borderRadius: '8px', top: props.modelOpt.top, left: props.modelOpt.left + 16, zIndex: 2000, minWidth: '300px', maxWidth: '400px', maxHeight: props.modelOpt.maxHeight || undefined, overflowY: 'auto' }}
+          className="pt-2 mb-2 z-3 remix-ai-model-selector border position-fixed"
+          style={{ borderRadius: '8px', top: props.modelOpt.top, bottom: props.modelOpt.bottom, left: props.modelOpt.left + 16, zIndex: 2000, minWidth: '300px', maxWidth: '400px', maxHeight: props.modelOpt.maxHeight || undefined, overflowY: 'auto' }}
           ref={props.menuRef}
         >
-          <div className="text-uppercase ms-2 mb-2 small">Select a model</div>
+          <div className="text-uppercase ms-2 mb-2 small rai-selector-heading">Select a model</div>
           <ModelSelectorMenu
             availableModels={props.availableModels}
             autoModeAvailable={props.autoModeAvailable}

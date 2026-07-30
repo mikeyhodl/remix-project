@@ -136,12 +136,11 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
       .sort((a, b) => a.minSortOrder - b.minSortOrder)
   }, [props.availableModels])
 
-  // The provider that owns the currently-selected model — expanded on open.
-  const selectedProvider = useMemo(() => {
+  const selectedModel = useMemo(() => {
     if (!props.currentChoice || props.currentChoice === 'auto') return undefined
-    const match = props.availableModels.find(m => !isSignInModel(m) && modelKey(m) === props.currentChoice)
-    return match?.provider
+    return props.availableModels.find(m => !isSignInModel(m) && modelKey(m) === props.currentChoice)
   }, [props.availableModels, props.currentChoice])
+  const selectedProvider = selectedModel?.provider
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = selectedProvider ?? groups[0]?.provider
@@ -184,7 +183,7 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
 
   return (
     <div data-id="ai-model-selector-menu">
-      <div className="px-2 pb-2">
+      <div className="px-2 pb-2 pt-1 rai-search-bar position-sticky" style={{ top: 0, zIndex: 5 }}>
         <div className="position-relative">
           <i
             className="fa-solid fa-magnifying-glass position-absolute text-muted"
@@ -219,26 +218,32 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
         const filtered = group.models.filter(matchesQuery)
         if (normalizedQuery && filtered.length === 0) return null
         const isOpen = normalizedQuery ? true : expanded.has(group.provider)
+        const ownsSelection = group.provider === selectedProvider
+        // When a provider owns the active model but is collapsed, surface that
+        // model's name in the subtitle so the current choice is visible without
+        // expanding.
+        const subtitle = ownsSelection && !isOpen && selectedModel ? selectedModel.displayName : meta.subtitle
         return (
-          <div key={group.provider} className="border-top" data-id={`ai-provider-group-${group.provider}`}>
+          <div key={group.provider} className="rai-provider-group" data-id={`ai-provider-group-${group.provider}`}>
             <button
               type="button"
               className="btn btn-light border-0 w-100 d-flex align-items-center justify-content-between py-2"
               data-id={`ai-provider-header-${group.provider}`}
+              data-owns-selection={ownsSelection ? 'true' : 'false'}
               aria-expanded={isOpen}
               onClick={() => toggle(group.provider)}
               disabled={!!normalizedQuery}
             >
               <span className="d-flex align-items-center text-start">
                 <span
-                  className="me-2 text-muted d-inline-flex align-items-center justify-content-center"
+                  className={`me-2 d-inline-flex align-items-center justify-content-center ${ownsSelection ? 'text-primary' : 'text-muted'}`}
                   style={{ width: '1.1rem', fontSize: '0.95rem' }}
                 >
                   {providerIcon(group.provider)}
                 </span>
                 <span className="d-flex flex-column">
-                  <span className="fw-bold small">{meta.label}</span>
-                  {meta.subtitle && <span className="text-muted" style={{ fontSize: '0.7rem' }}>{meta.subtitle}</span>}
+                  <span className={`fw-bold small ${ownsSelection ? 'text-primary' : ''}`}>{meta.label}</span>
+                  {subtitle && <span className={ownsSelection && !isOpen ? 'small fst-italic' : 'text-muted'} style={{ fontSize: '0.7rem' }}>{subtitle}</span>}
                 </span>
               </span>
               <span className="d-flex align-items-center">
@@ -247,7 +252,9 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
               </span>
             </button>
             {isOpen && (
-              <GroupListMenu {...groupListProps} groupList={filtered.map(toRow)} />
+              <div className="rai-model-list">
+                <GroupListMenu {...groupListProps} groupList={filtered.map(toRow)} />
+              </div>
             )}
           </div>
         )
