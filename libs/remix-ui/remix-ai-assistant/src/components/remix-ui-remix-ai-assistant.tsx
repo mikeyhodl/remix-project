@@ -250,7 +250,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
   }, [dismissChatNotice, props.plugin])
 
-  useOnClickOutside([modelBtnRef], () => setShowModelSelector(false))
+  useOnClickOutside([modelBtnRef, menuRef], () => setShowModelSelector(false))
   useOnClickOutside([modelSelectorBtnRef], () => setShowOllamaModelSelector(false))
 
   const chatCmdParser = new ChatCommandParser(props.plugin)

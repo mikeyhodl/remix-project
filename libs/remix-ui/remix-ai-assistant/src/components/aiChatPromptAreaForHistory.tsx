@@ -1,5 +1,6 @@
-import React, { Dispatch, useMemo } from 'react'
+import React, { Dispatch } from 'react'
 import GroupListMenu from './contextOptMenu'
+import ModelSelectorMenu from './modelSelectorMenu'
 import { PromptArea } from './prompt'
 import { ChatMessage, AIModel, modelKey } from '@remix/remix-ai-core'
 import { groupListType } from '../types/componentTypes'
@@ -66,32 +67,6 @@ interface AiChatPromptAreaForHistoryProps {
 }
 
 export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHistoryProps) {
-  const modelList = useMemo(() => {
-    const autoModeOption = {
-      label: 'Auto Mode',
-      bodyText: 'Automatically select the best model based on your prompt',
-      icon: 'fa-solid fa-magic-wand-sparkles' as const,
-      stateValue: 'auto',
-      dataId: 'ai-model-auto',
-      isLocked: false
-    }
-
-    const modelOptions = props.availableModels.map(model => {
-      // Key each row on `provider::id` — model ids are not unique across
-      const key = modelKey(model)
-      return {
-        label: model.displayName,
-        bodyText: model.description,
-        icon: 'fa-solid fa-check' as const,
-        stateValue: key,
-        dataId: `ai-model-${key.replace(/[^a-zA-Z0-9]/g, '-')}`,
-        isLocked: !model.available
-      }
-    })
-
-    return props.autoModeAvailable ? [autoModeOption, ...modelOptions] : modelOptions
-  }, [props.availableModels, props.autoModeAvailable])
-
   const handleLockedItemClick = (item: groupListType) => {
     props.onLockedModelClick?.(item.stateValue, item.label)
   }
@@ -112,12 +87,14 @@ export default function AiChatPromptAreaForHistory(props: AiChatPromptAreaForHis
           style={{ borderRadius: '8px', top: props.modelOpt.top, left: props.modelOpt.left + 16, zIndex: 2000, minWidth: '300px', maxWidth: '400px', maxHeight: props.modelOpt.maxHeight || undefined, overflowY: 'auto' }}
           ref={props.menuRef}
         >
-          <div className="text-uppercase ms-2 mb-2 small">AI Assistant Provider</div>
-          <GroupListMenu
+          <div className="text-uppercase ms-2 mb-2 small">Select a model</div>
+          <ModelSelectorMenu
+            availableModels={props.availableModels}
+            autoModeAvailable={props.autoModeAvailable}
+            autoModeEnabled={props.autoModeEnabled}
+            currentChoice={props.autoModeEnabled ? 'auto' : (props.selectedModel ? modelKey(props.selectedModel) : props.selectedModelId as string)}
             setChoice={props.handleModelSelection}
             setShowOptions={props.setShowModelSelector}
-            choice={props.autoModeEnabled ? 'auto' : (props.selectedModel ? modelKey(props.selectedModel) : props.selectedModelId)}
-            groupList={modelList}
             onLockedItemClick={handleLockedItemClick}
             upgradePillState={props.upgradePillState}
             buyCreditsPillState={props.buyCreditsPillState}
