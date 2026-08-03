@@ -748,6 +748,10 @@ export class RemixAIPlugin extends Plugin {
         remixAILogger.warn('[answer][route-flow] remote route selected but remoteInferencer is missing')
       }
       if (route === 'deepagent') {
+        // If a previous cancelRequest is still rebuilding the inferencer,
+        // wait for it to finish so this dispatch lands on the new
+        // instance with a clean LangGraph pipe rather than racing the
+        // about-to-be-discarded one.
         await this.deepAgentManager.awaitReady()
         remixAILogger.log('[answer][route-flow] dispatch=deepagent.answer')
         return await this.deepAgentInferencer.answer(newPrompt, params, this.workspaceAgent.ctxFiles || '')

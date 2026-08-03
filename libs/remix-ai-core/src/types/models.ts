@@ -50,74 +50,6 @@ export const OLLAMA_MODEL: AIModel = {
 }
 
 /**
- * AWS Bedrock model catalogue. These run either through the Remix proxy (the
- * default when the user is signed in and has not supplied a key) or directly
- * when the user provides their own Bedrock bearer token via the
- * Bring-Your-Own-Keys settings. The ModelFactory routes `provider: 'bedrock'`
- * through `@langchain/aws` (ChatBedrockConverse) in both cases.
- */
-export const BEDROCK_MODELS: AIModel[] = [
-  // {
-  //   id: 'amazon.nova-micro-v1:0',
-  //   provider: 'bedrock',
-  //   displayName: 'Amazon Nova Micro (Bedrock)',
-  //   description: 'Amazon Nova Micro — cheapest Bedrock model, fast text-only, tool use',
-  //   category: 'general',
-  //   capabilities: ['chat', 'code', 'tools'],
-  //   isDefault: false,
-  //   requiresAuth: false,
-  //   requiredFeature: null,
-  //   available: true,
-  //   requireAPIKey: false,
-  //   sortOrder: 900
-  // },
-  // {
-  //   id: 'amazon.nova-lite-v1:0',
-  //   provider: 'bedrock',
-  //   displayName: 'Amazon Nova Lite (Bedrock)',
-  //   description: 'Amazon Nova Lite — very low cost, multimodal, tool use',
-  //   category: 'general',
-  //   capabilities: ['chat', 'code', 'tools'],
-  //   isDefault: false,
-  //   requiresAuth: false,
-  //   requiredFeature: null,
-  //   available: true,
-  //   requireAPIKey: false,
-  //   sortOrder: 901
-  // },
-  // {
-  //   id: 'amazon.nova-pro-v1:0',
-  //   provider: 'bedrock',
-  //   displayName: 'Amazon Nova Pro (Bedrock)',
-  //   description: 'Amazon Nova Pro — higher capability multimodal model, tool use',
-  //   category: 'general',
-  //   capabilities: ['chat', 'code', 'tools'],
-  //   isDefault: false,
-  //   requiresAuth: false,
-  //   requiredFeature: null,
-  //   available: true,
-  //   requireAPIKey: false,
-  //   sortOrder: 902
-  // },
-  // {
-  //   // Cross-region inference profile. ModelFactory re-maps the `us.` geo
-  //   // prefix to the caller's region (eu./apac.) at request time.
-  //   id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-  //   provider: 'bedrock',
-  //   displayName: 'Claude Haiku 4.5 (Bedrock)',
-  //   description: 'Anthropic Claude Haiku 4.5 via AWS Bedrock — latest low-cost Claude, tool use',
-  //   category: 'coding',
-  //   capabilities: ['chat', 'code', 'tools'],
-  //   isDefault: false,
-  //   requiresAuth: false,
-  //   requiredFeature: null,
-  //   available: true,
-  //   requireAPIKey: false,
-  //   sortOrder: 903
-  // }
-]
-
-/**
  * Anonymous fallback. The picker shows a single placeholder row that
  * tells the user to sign in (clicking opens planManager(auth-required))
  * plus the always-available Ollama entry.
@@ -149,6 +81,20 @@ export const ANONYMOUS_FALLBACK_MODELS: AIModel[] = [
   ANONYMOUS_PLACEHOLDER_MODEL
 ]
 
+/**
+ * NO bootstrap default model. The chat-default is whichever row the
+ * backend marks `is_default: true` in `permissions.ai_models[]`. Read
+ * it via `assistantState.getDefaultModel()` (or `selectDefaultModel(snap)`).
+ *
+ * If you find yourself wanting a literal model id here, you have a bug:
+ *   - For "user just opened the app" → selectedModel should be `null`
+ *     until /permissions resolves. Render a "Loading…" state.
+ *   - For "task X needs model Y" → backend advertises that via
+ *     `permissions.task_models[X]`. Read with `assistantState.getModelForTask('X')`.
+ *   - For "Ollama / anonymous fallback" → ANONYMOUS_FALLBACK_MODELS.
+ *
+ * Anything else MUST throw rather than silently substitute.
+ */
 export function getModelById(id: string, list: ReadonlyArray<AIModel> = ANONYMOUS_FALLBACK_MODELS): AIModel | undefined {
   return list.find(m => m.id === id)
 }
@@ -205,13 +151,12 @@ export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null
     .sort((a, b) => a.sortOrder - b.sortOrder)
 
   // Append the local Ollama option only when the user has the `ai:ollama`
+  // feature. Every other provider (anthropic / openai / mistral / moonshot /
+  // openrouter / bedrock) is advertised directly by the backend in `ai_models`.
   const features = permissions?.features as Record<string, { is_enabled?: boolean }> | undefined
 
   if (features && features[Features.AI_OLLAMA]?.is_enabled === true) {
     parsed.push(OLLAMA_MODEL)
-  }
-  if (features && features[Features.AI_PROVIDER_BEDROCK]?.is_enabled === true) {
-    parsed.push(...BEDROCK_MODELS)
   }
   return parsed
 }

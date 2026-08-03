@@ -31,6 +31,8 @@ import { RemixDeepAgentMiddleware } from './deepAgentMiddleWare'
 
 import './AsyncLocalStorageInit'
 import { createModelInstance } from './ModelFactory'
+import { generateStructured } from '../../helpers/structuredOutput'
+import { SecurityCheckSchema } from '../../types/schemas'
 import { getLangfuseCallbackHandler } from '../../helpers/langfuse'
 import { buildSubagentConfigs } from './SubagentConfig'
 import { StreamEventHandler } from './StreamEventHandler'
@@ -523,6 +525,25 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
           'DeepAgent not initialized',
           DeepAgentErrorType.INITIALIZATION_FAILED
         )
+      }
+
+      // A security check is a single read-only analysis — no tools needed — so
+      // constrain the model to the SecurityCheck shape (Answer/Reason/Suggestion)
+      // that `SecurityAgent.processFile` consumes. Callers `JSON.parse` the
+      // string result, so we stringify the validated object. Falls back to the
+      // free-form agent run if the model can't do structured output.
+      if (this.model) {
+        try {
+          const structuredMessages: BaseMessage[] = [
+            new SystemMessage(REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + SECURITY_ANALYSIS_PROMPT),
+            new HumanMessage(prompt)
+          ]
+          const result = await generateStructured(this.model, SecurityCheckSchema, structuredMessages, { name: 'security_check' })
+          this.event.emit('onInferenceDone')
+          return JSON.stringify(result)
+        } catch (structuredError) {
+          remixAILogger.warn('[DeepAgentInferencer] structured vulnerability_check failed, falling back to agent run', structuredError)
+        }
       }
 
       const messages = [

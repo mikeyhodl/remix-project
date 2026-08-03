@@ -181,8 +181,15 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
     isLocked: false
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      props.setShowOptions(false)
+    }
+  }
+
   return (
-    <div data-id="ai-model-selector-menu">
+    <div data-id="ai-model-selector-menu" onKeyDown={handleKeyDown}>
       <div className="px-2 pb-2 pt-1 rai-search-bar position-sticky" style={{ top: 0, zIndex: 5 }}>
         <div className="position-relative">
           <i
