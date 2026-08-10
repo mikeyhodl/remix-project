@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, aiErrorFromException, remixAILogger, modelKey, parseModelKey, findModel } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, remixAILogger, modelKey, parseModelKey, findModel } from '@remix/remix-ai-core'
 import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -916,13 +916,15 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       remixAILogger.error('[RemixAI Assistant] API error:', data)
       setIsStreaming(false)
 
+      // Do NOT write the error into the chat bubble — it is surfaced by the
+      // notice strip above the prompt. Just clear the in-flight tool/todo
+      // status on the streaming bubble.
       if (streamingAssistantIdRef.current) {
         setMessages(prev =>
           prev.map(m =>
             m.id === streamingAssistantIdRef.current
               ? {
                 ...m,
-                content: m.content + `\n${data.message}`,
                 isExecutingTools: false,
                 executingToolName: undefined,
                 executingToolArgs: undefined,
@@ -2026,79 +2028,23 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           return
         }
 
-        // Pull the structured AIError envelope (HTTP body, SSE error frame,
-        // or stamped by withAssistantGate / DeepAgent.handleError). The
-        // assistant-state plugin has already routed it to the cooldown
-        // banner / plan-manager / chat-notice strip as appropriate.
-        let envelope = error?.aiError ?? error?.response?.data?.error ?? error?.data?.error
-        // Last-ditch: re-parse the error here. Different SDKs throw
-        // different shapes (Anthropic gives clean .message; Mistral SDK
-        // throws "API error occurred: Status 429 ... Body: {json}";
-        // langchain wraps as "<status> {json}"). aiErrorFromException
-        // knows about all of them — running it locally guarantees we
-        // never dump raw JSON in the chat bubble even if upstream
-        // stamping was lost (frozen error object, missed code path…).
-        if (!envelope?.code) {
-          try {
-            const parsed = aiErrorFromException(error)
-            if (parsed && parsed.code && parsed.code !== 'INTERNAL_ERROR') {
-              envelope = parsed
-            } else if (parsed && parsed.code === 'INTERNAL_ERROR' && parsed.message && parsed.message !== (error?.message ?? '')) {
-              // Scanner extracted a JSON body's `message` field but no
-              // recognised code — still a cleaner message than the raw
-              // SDK string, so use it.
-              envelope = parsed
-            }
-          } catch { /* ignore */ }
-        }
-        const envelopeCode: string | undefined = envelope?.code
-        const envelopeMsg: string | undefined = envelope?.message
-
-        // The streaming bubble may contain pollution: model SSE error
-        // frames, raw HTTP bodies that langchain emits as `on_chat_model_stream`
-        // events, or partial output that was invalidated by the error.
-        // If we have a structured envelope, replace the bubble's content
-        // with a single-line trace so the user knows WHICH prompt failed
-        // without seeing the raw JSON. If there's no envelope, we keep
-        // whatever partial content was streamed (it's the only signal).
+        // The turn failed. The error is surfaced by the chat-notice strip
+        // above the prompt (routed via assistantState.reportError upstream),
+        // so we do NOT write the error text into a chat bubble. Clean up the
+        // in-flight assistant bubble: keep any partial streamed content, but
+        // drop the bubble entirely if it never produced output.
         const streamingId = streamingAssistantIdRef.current
-        if (streamingId && envelopeCode) {
-          setMessages(prev => prev.map(m =>
-            m.id === streamingId
-              ? { ...m, content: `${envelopeCode}: ${envelopeMsg ?? 'AI service error'}`, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined }
-              : m
-          ))
-          streamingAssistantIdRef.current = null
-          return
-        }
-
-        // No envelope — likely a network failure, abort, or unknown shape.
-        // The notice strip won't render (assistantState classifies it as
-        // INTERNAL_ERROR but the strip suppresses generic messages without
-        // a real backend code). Surface a single chat bubble so the user
-        // never sees a silent failure.
-        const fallbackText = `Error: ${error?.message ?? 'Something went wrong'}`
         if (streamingId) {
-          setMessages(prev => prev.map(m =>
-            m.id === streamingId
-              ? (m.content && m.content.trim().length > 0
-                ? { ...m, content: m.content + `\n\n${fallbackText}`, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined }
-                : { ...m, content: fallbackText, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined })
-              : m
-          ))
+          setMessages(prev => prev
+            .map(m =>
+              m.id === streamingId
+                ? { ...m, isExecutingTools: false, executingToolName: undefined, executingToolArgs: undefined, executingToolUIString: undefined }
+                : m
+            )
+            .filter(m => !(m.id === streamingId && (!m.content || m.content.trim().length === 0)))
+          )
           streamingAssistantIdRef.current = null
-          return
         }
-        setMessages(prev => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: fallbackText,
-            timestamp: Date.now(),
-            sentiment: 'none'
-          }
-        ])
       }
     },
     [isStreaming, props.plugin, selectedModel, assistantChoice, dismissChatNotice]
@@ -3053,6 +2999,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             </div>
           </div>
         )}
+
       </div>
     )
   )

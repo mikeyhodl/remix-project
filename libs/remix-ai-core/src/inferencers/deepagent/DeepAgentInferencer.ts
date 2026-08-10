@@ -994,16 +994,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     const userMessage = getErrorMessage(errorType, error, retryAfter)
 
     remixAILogger.log(`[DeepAgentInferencer] Error classified as: ${errorType}, retryable: ${retryable}, retryAfter: ${retryAfter}`)
-
-    this.event.emit('onApiError', {
-      type: errorType,
-      message: userMessage,
-      retryable,
-      retryAfter,
-      originalError: error?.message,
-      timestamp: Date.now(),
-      threadId: this.sessionThreadId
-    })
+    console.error(`[DeepAgentInferencer] Original error:`, error)
 
     // Emit API key specific error for UI handling
     if (errorType === DeepAgentErrorType.AUTHENTICATION_FAILED ||
@@ -1013,53 +1004,28 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       this.emitApiKeyError(errorType, error)
     }
 
+    // Recoverable errors: surface a friendly inline message and keep the
+    // turn's partial output — there's nothing actionable to report.
     if (errorType === DeepAgentErrorType.RATE_LIMIT_EXCEEDED ||
         errorType === DeepAgentErrorType.QUOTA_EXCEEDED) {
+      this.event.emit('onApiError', {
+        type: errorType,
+        message: userMessage,
+        retryable,
+        retryAfter,
+        originalError: error?.message,
+        timestamp: Date.now(),
+        threadId: this.sessionThreadId
+      })
       return `${userMessage}`
     }
 
-    // Try fallback to RemoteInferencer for other errors
-    if (this.fallbackInferencer) {
-      remixAILogger.log(`[DeepAgentInferencer] Falling back to RemoteInferencer for ${method}`)
-      this.event.emit('deepAgentFallback', { method, error: error.message, errorType })
-
-      try {
-        switch (method) {
-        case 'code_generation':
-          return await this.fallbackInferencer.code_generation(prompt, params)
-        case 'code_explaining':
-          return await this.fallbackInferencer.code_explaining(prompt, '', params)
-        case 'answer':
-          return await this.fallbackInferencer.answer(prompt, params)
-        case 'vulnerability_check':
-          return await this.fallbackInferencer.vulnerability_check(prompt, params)
-        default:
-          return await this.fallbackInferencer.generate(prompt, params)
-        }
-      } catch (fallbackError: any) {
-        remixAILogger.error('[DeepAgentInferencer] Fallback also failed:', fallbackError)
-        // If the fallback failed with a backend envelope, propagate it so the
-        // gate can react instead of dumping the raw body into the chat.
-        const fbEnvelope = aiErrorFromException(fallbackError)
-        if (fbEnvelope && fbEnvelope.code !== 'INTERNAL_ERROR' && fbEnvelope.status > 0) {
-          try {
-            fallbackError.aiError = fbEnvelope
-            if (!fallbackError.response) {
-              fallbackError.response = { status: fbEnvelope.status, data: { error: fbEnvelope } }
-            }
-            if (typeof fallbackError.message === 'string' && /^\d{3}\s+\{|API error occurred|Status\s+\d{3}[\s\S]*Body\s*:/i.test(fallbackError.message.trim())) {
-              fallbackError.message = fbEnvelope.message
-            }
-          } catch { /* ignore */ }
-          throw fallbackError
-        }
-        const fallbackClassification = classifyApiError(fallbackError)
-        const fallbackMessage = getErrorMessage(fallbackClassification.type, fallbackError, fallbackClassification.retryAfter)
-        return `${fallbackMessage}`
-      }
-    }
-
-    return `${userMessage}`
+    // Solcoder fallback disabled. Where we used to silently retry the
+    // request against RemoteInferencer, re-throw so withAssistantGate calls
+    // reportError() and the existing chat-notice strip above the prompt
+    // renders the failure (same path backend-envelope errors already take).
+    remixAILogger.log(`[DeepAgentInferencer] ${method} failed, solcoder fallback disabled — surfacing to notice strip`)
+    throw error
   }
 
   cancelRequest(): void {

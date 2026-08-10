@@ -3,7 +3,7 @@ import { Plugin } from '@remixproject/engine';
 import { trackMatomoEvent, Features, ChatPromptMetadata } from '@remix-api'
 import { remixAILogger, RemoteInferencer, IRemoteModel, IParams, GenerationParams, AssistantParams, CodeExplainAgent, SecurityAgent, CompletionParams, OllamaInferencer } from '@remix/remix-ai-core';
 import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDefaultServersConfig, mcpBasicServersConfig, mcpWebSearchServersConfig } from '@remix/remix-ai-core';
-import { MCPInferencer, DeepAgentInferencer, onApiKeysChange, isUsingOwnKeyForProvider } from '@remix/remix-ai-core';
+import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
 import { AIModel } from '@remix/remix-ai-core';
@@ -493,9 +493,9 @@ export class RemixAIPlugin extends Plugin {
           remixAILogger.log('[RemixAI Plugin] Using user-provided API keys for DeepAgent')
         }
 
-        const fallbackInferencer = (this.selectedModel.provider === 'ollama' || isUsingOwnKeyForProvider(this.selectedModel.provider, userApiKeys))
-          ? null
-          : this.remoteInferencer
+        // Solcoder fallback disabled: DeepAgent errors surface to the user
+        // instead of silently retrying against the remote (solcoder) path.
+        const fallbackInferencer = null
 
         // Clean up old instance if it exists
         if (this.deepAgentInferencer && typeof this.deepAgentInferencer.cleanup === 'function') {
