@@ -3,6 +3,7 @@ export type ModelProvider = 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 
 export interface ModelSelection {
   provider: ModelProvider
   modelId: string
+  routeProvider?: ModelProvider
 }
 
 /**

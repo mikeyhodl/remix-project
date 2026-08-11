@@ -352,7 +352,8 @@ export async function createModelInstance(
   maxTokens: number = DAPP_MAX_TOKENS,
   userApiKeys?: IUserApiKeyConfig
 ): Promise<BaseChatModel> {
-  const { provider, modelId } = modelSelection
+  const { modelId } = modelSelection
+  const provider = modelSelection.routeProvider ?? modelSelection.provider
 
   switch (provider) {
   case 'ollama': {

@@ -917,11 +917,12 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       if (this.config.enableSubagents && this.model) {
         let fallbackModel = this.model
         if (notSuitableForCodeGeneration.includes(this.modelSelection.modelId)) {
-          fallbackModel = await createModelInstance({
-            provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
-          }, DAPP_MAX_TOKENS, this.userApiKeys)
-          remixAILogger.log(`[DeepAgentInferencer] Using fallback model claude-sonnet-4-6 for subagents due to unsuitability of selected model ${this.modelSelection.modelId} for code generation`)
+          // Route the subagent fallback the same way as the active selection.
+          const fallbackSelection: ModelSelection = this.modelSelection.routeProvider === 'bedrock'
+            ? { provider: 'anthropic', modelId: 'us.anthropic.claude-sonnet-4-20250514-v1:0', routeProvider: 'bedrock' }
+            : { provider: 'anthropic', modelId: 'claude-sonnet-4-6' }
+          fallbackModel = await createModelInstance(fallbackSelection, DAPP_MAX_TOKENS, this.userApiKeys)
+          remixAILogger.log(`[DeepAgentInferencer] Using fallback model ${fallbackSelection.modelId} (route=${fallbackSelection.routeProvider ?? fallbackSelection.provider}) for subagents due to unsuitability of selected model ${this.modelSelection.modelId} for code generation`)
         }
         agentConfig.subagents = await buildSubagentConfigs(
           this.tools,

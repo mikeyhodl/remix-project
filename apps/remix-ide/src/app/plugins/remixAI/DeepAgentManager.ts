@@ -108,7 +108,7 @@ export class DeepAgentManager {
         },
         fallbackInferencer,
         plugin.mcpInferencer,
-        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'openrouter' | 'ollama' | 'bedrock', modelId: resolvedModelId }
+        { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'openrouter' | 'ollama' | 'bedrock', modelId: resolvedModelId, routeProvider: plugin.selectedModel.routeProvider }
       )
 
       await plugin.deepAgentInferencer.initialize()
@@ -330,7 +330,7 @@ export class DeepAgentManager {
           },
           fallbackInferencer,
           plugin.mcpInferencer,
-          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'openrouter' | 'ollama' | 'bedrock', modelId: resolvedModelId }
+          { provider: plugin.selectedModel.provider as 'anthropic' | 'mistralai' | 'openai' | 'moonshot' | 'openrouter' | 'ollama' | 'bedrock', modelId: resolvedModelId, routeProvider: plugin.selectedModel.routeProvider }
         )
         await plugin.deepAgentInferencer.initialize()
         plugin.deepAgentEnabled = true
