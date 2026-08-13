@@ -11,10 +11,6 @@ export interface ModelSelection {
  */
 export interface IUserApiKeyConfig {
   useOwnKeys: boolean
-  anthropicApiKey?: string
-  mistralApiKey?: string
-  openaiApiKey?: string
-  moonshotApiKey?: string
   openrouterApiKey?: string
   bedrockBearerToken?: string
 }
@@ -27,14 +23,6 @@ export function isUsingOwnKeyForProvider(
   switch (provider) {
   case 'bedrock':
     return !!keys.bedrockBearerToken
-  case 'anthropic':
-    return !!(keys.useOwnKeys && keys.anthropicApiKey)
-  case 'mistralai':
-    return !!(keys.useOwnKeys && keys.mistralApiKey)
-  case 'openai':
-    return !!(keys.useOwnKeys && keys.openaiApiKey)
-  case 'moonshot':
-    return !!(keys.useOwnKeys && keys.moonshotApiKey)
   case 'openrouter':
     return !!(keys.useOwnKeys && keys.openrouterApiKey)
   default:

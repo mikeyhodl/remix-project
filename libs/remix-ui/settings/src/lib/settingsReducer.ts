@@ -23,10 +23,6 @@ const mcpServerManagement = config.get('settings/mcp-server-management') || fals
 // Ollama configuration is temporarily disabled - will be enabled later
 // const ollamaEndpoint = config.get('settings/ollama-endpoint') || 'http://localhost:11434'
 const deepagentApiKeysConfig = config.get('settings/deepagent-api-keys-config') || false
-const deepagentAnthropicApiKey = config.get('settings/deepagent-anthropic-api-key') || ''
-const deepagentMistralApiKey = config.get('settings/deepagent-mistral-api-key') || ''
-const deepagentOpenaiApiKey = config.get('settings/deepagent-openai-api-key') || ''
-const deepagentMoonshotApiKey = config.get('settings/deepagent-moonshot-api-key') || ''
 const deepagentOpenrouterApiKey = config.get('settings/deepagent-openrouter-api-key') || ''
 const deepagentBedrockBearerToken = config.get('settings/deepagent-bedrock-bearer-token') || ''
 const enableCodeAnalysisPopover = config.get('settings/editor/code-analysis-popover')
@@ -80,7 +76,7 @@ if (!thegraphConfig && thegraphAccessToken) {
 // }
 // Auto-enable deepagent API keys config if any API key is set
 let deepagentApiKeysConfigAuto = deepagentApiKeysConfig
-if (!deepagentApiKeysConfigAuto && (deepagentAnthropicApiKey || deepagentMistralApiKey || deepagentOpenaiApiKey || deepagentMoonshotApiKey || deepagentBedrockBearerToken)) {
+if (!deepagentApiKeysConfigAuto && deepagentBedrockBearerToken) {
   config.set('settings/deepagent-api-keys-config', true)
   deepagentApiKeysConfigAuto = true
 }
@@ -286,22 +282,6 @@ export const initialState: SettingsState = {
     value: deepagentApiKeysConfigAuto,
     isLoading: false
   },
-  'deepagent-anthropic-api-key': {
-    value: deepagentAnthropicApiKey,
-    isLoading: false
-  },
-  'deepagent-mistral-api-key': {
-    value: deepagentMistralApiKey,
-    isLoading: false
-  },
-  'deepagent-openai-api-key': {
-    value: deepagentOpenaiApiKey,
-    isLoading: false
-  },
-  'deepagent-moonshot-api-key': {
-    value: deepagentMoonshotApiKey,
-    isLoading: false
-  },
   'deepagent-bedrock-bearer-token': {
     value: deepagentBedrockBearerToken,
     isLoading: false
@@ -357,10 +337,6 @@ export const settingReducer = (state: SettingsState, action: SettingsActions): S
 
     // Reinitialize DeepAgent when API key settings change
     if (action.payload.name === 'deepagent-api-keys-config' ||
-        action.payload.name === 'deepagent-anthropic-api-key' ||
-        action.payload.name === 'deepagent-mistral-api-key' ||
-        action.payload.name === 'deepagent-openai-api-key' ||
-        action.payload.name === 'deepagent-moonshot-api-key' ||
         action.payload.name === 'deepagent-openrouter-api-key' ||
         action.payload.name === 'deepagent-bedrock-bearer-token') {
       try {

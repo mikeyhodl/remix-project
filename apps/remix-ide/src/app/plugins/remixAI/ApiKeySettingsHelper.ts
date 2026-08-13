@@ -62,7 +62,7 @@ export class ApiKeySettingsHelper {
   async getUserApiKeysConfig(): Promise<IUserApiKeyConfig | undefined> {
     try {
       // Whether the user may swap the Remix proxy for their own keys on the
-      // proxy-backed providers (anthropic / mistral / openai / moonshot).
+      // proxy-backed providers (openrouter).
       const hasPermission = await this.canUseOwnApiKeys()
 
       // Read settings via plugin calls (parallel for performance). We read the
@@ -73,18 +73,10 @@ export class ApiKeySettingsHelper {
       // providers below.
       const [
         useOwnKeysValue,
-        anthropicApiKey,
-        mistralApiKey,
-        openaiApiKey,
-        moonshotApiKey,
         openrouterApiKey,
         bedrockBearerToken
       ] = await Promise.all([
         this.getSetting('deepagent-api-keys-config'),
-        this.getSetting('deepagent-anthropic-api-key'),
-        this.getSetting('deepagent-mistral-api-key'),
-        this.getSetting('deepagent-openai-api-key'),
-        this.getSetting('deepagent-moonshot-api-key'),
         this.getSetting('deepagent-openrouter-api-key'),
         this.getSetting('deepagent-bedrock-bearer-token')
       ])
@@ -95,36 +87,25 @@ export class ApiKeySettingsHelper {
 
       // Proxy-provider own keys are gated behind the permission; the Bedrock
       // key is not (see above).
-      const anthropic = hasPermission ? String(anthropicApiKey || '') : ''
-      const mistral = hasPermission ? String(mistralApiKey || '') : ''
-      const openai = hasPermission ? String(openaiApiKey || '') : ''
-      const moonshot = hasPermission ? String(moonshotApiKey || '') : ''
-      const hasAnyProxyKey = !!(anthropic || mistral || openai || moonshot)
+      const openrouter = hasPermission ? String(openrouterApiKey || '') : ''
+      const hasAnyProxyKey = !!openrouter
 
       // Debug logging
       remixAILogger.log('[ApiKeySettingsHelper] Reading API keys from settings:', {
         hasPermission,
         useOwnKeys,
-        hasAnthropicKey: !!anthropicApiKey,
-        hasMistralKey: !!mistralApiKey,
-        hasOpenaiKey: !!openaiApiKey,
-        hasMoonshotKey: !!moonshotApiKey,
         hasOpenrouterKey: !!openrouterApiKey,
         hasBedrockKey: !!hasBedrockKey
       })
 
       // Auto-enable if any API key is set
-      const hasAnyKey = anthropicApiKey || mistralApiKey || openaiApiKey || moonshotApiKey || openrouterApiKey
+      const hasAnyKey = openrouterApiKey
       if (!hasBedrockKey && !hasAnyProxyKey && !(useOwnKeys && hasPermission)) {
         return undefined
       }
 
       return {
         useOwnKeys: useOwnKeys || !!hasAnyKey,
-        anthropicApiKey: String(anthropicApiKey || ''),
-        mistralApiKey: String(mistralApiKey || ''),
-        openaiApiKey: String(openaiApiKey || ''),
-        moonshotApiKey: String(moonshotApiKey || ''),
         openrouterApiKey: String(openrouterApiKey || ''),
         bedrockBearerToken: String(bedrockBearerToken || '')
       }
@@ -152,18 +133,6 @@ export class ApiKeySettingsHelper {
 
       let apiKey: string | boolean = ''
       switch (provider) {
-      case 'anthropic':
-        apiKey = await this.getSetting('deepagent-anthropic-api-key')
-        break
-      case 'openai':
-        apiKey = await this.getSetting('deepagent-openai-api-key')
-        break
-      case 'mistralai':
-        apiKey = await this.getSetting('deepagent-mistral-api-key')
-        break
-      case 'moonshot':
-        apiKey = await this.getSetting('deepagent-moonshot-api-key')
-        break
       case 'openrouter':
         apiKey = await this.getSetting('deepagent-openrouter-api-key')
         break

@@ -387,63 +387,37 @@ export async function createModelInstance(
   }
 
   case 'mistralai': {
-    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.mistralApiKey)
-    remixAILogger.log(`[ModelFactory] Creating MistralAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating MistralAI model: ${modelId} (proxy)`)
     return wrapModelForDebug(new ChatMistralAI({
-      apiKey: useDirectApi ? (userApiKeys!.mistralApiKey as string) : 'proxy-handled',
+      apiKey: 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
       maxRetries: 0,
-      ...(useDirectApi
-        ? {}
-        : {
-          serverURL: `${endpointUrls.langchain}/mistral`,
-          httpClient: createAuthedMistralHttpClient()
-        })
+      serverURL: `${endpointUrls.langchain}/mistral`,
+      httpClient: createAuthedMistralHttpClient()
     }), `mistralai/${modelId}`)
   }
 
   case 'openai': {
-    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.openaiApiKey)
-    remixAILogger.log(`[ModelFactory] Creating OpenAI model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating OpenAI model: ${modelId} (proxy)`)
     return wrapModelForDebug(new ChatOpenAI({
-      apiKey: useDirectApi ? (userApiKeys!.openaiApiKey as string) : 'proxy-handled',
+      apiKey: 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
       maxRetries: 0,
-      ...(useDirectApi
-        ? {}
-        : {
-          configuration: {
-            baseURL: `${endpointUrls.langchain}/openai`,
-            fetch: authedFetch
-          }
-        })
+      configuration: {
+        baseURL: `${endpointUrls.langchain}/openai`,
+        fetch: authedFetch
+      }
     }), `openai/${modelId}`)
   }
 
   case 'moonshot': {
-    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.moonshotApiKey)
-    remixAILogger.log(`[ModelFactory] Creating Moonshot model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
-    if (useDirectApi) {
-      return wrapModelForDebug(new ChatOpenAI({
-        apiKey: userApiKeys!.moonshotApiKey as string,
-        model: modelId,
-        maxTokens: maxTokens,
-        streaming: true,
-        maxRetries: 0,
-        configuration: {
-          baseURL: 'https://api.moonshot.ai/v1'
-        },
-        modelKwargs: {
-          thinking: { type: 'disabled' }
-        }
-      }), `moonshot/${modelId}`)
-    }
+    remixAILogger.log(`[ModelFactory] Creating Moonshot model: ${modelId} (proxy)`)
     return wrapModelForDebug(new ChatOpenAI({
       apiKey: 'proxy-handled',
       model: modelId,
@@ -519,23 +493,18 @@ export async function createModelInstance(
 
   case 'anthropic':
   default: {
-    const useDirectApi = !!(userApiKeys?.useOwnKeys && userApiKeys?.anthropicApiKey)
-    remixAILogger.log(`[ModelFactory] Creating Anthropic model: ${modelId}${useDirectApi ? ' (direct API)' : ' (proxy)'}`)
+    remixAILogger.log(`[ModelFactory] Creating Anthropic model: ${modelId} (proxy)`)
     return wrapModelForDebug(new ChatAnthropic({
-      apiKey: useDirectApi ? (userApiKeys!.anthropicApiKey as string) : 'proxy-handled',
+      apiKey: 'proxy-handled',
       model: modelId,
       temperature: 0.7,
       maxTokens: maxTokens,
       streaming: true,
       maxRetries: 0,
-      ...(useDirectApi
-        ? {}
-        : {
-          clientOptions: {
-            baseURL: endpointUrls.langchain,
-            fetch: authedFetch
-          }
-        })
+      clientOptions: {
+        baseURL: endpointUrls.langchain,
+        fetch: authedFetch
+      }
     }), `anthropic/${modelId}`)
   }
   }
