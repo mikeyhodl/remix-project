@@ -185,18 +185,12 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
   }, [props.availableModels, props.currentChoice])
   const selectedProvider = selectedModel?.provider
 
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    const initial = selectedProvider ?? groups[0]?.provider
-    return new Set(initial ? [initial] : [])
-  })
+  // Accordion: at most one provider is open at a time, so expanding one
+  // collapses whichever was open before.
+  const [expanded, setExpanded] = useState<string | null>(() => selectedProvider ?? groups[0]?.provider ?? null)
 
   const toggle = (provider: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(provider)) next.delete(provider)
-      else next.add(provider)
-      return next
-    })
+    setExpanded(prev => (prev === provider ? null : provider))
   }
 
   const normalizedQuery = query.trim().toLowerCase()
@@ -274,7 +268,7 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
           const meta = providerMeta(group.provider)
           const filtered = group.models.filter(matchesQuery)
           if (normalizedQuery && filtered.length === 0) return null
-          const isOpen = normalizedQuery ? true : expanded.has(group.provider)
+          const isOpen = normalizedQuery ? true : expanded === group.provider
           const ownsSelection = group.provider === selectedProvider
           // When a provider owns the active model but is collapsed, surface that
           // model's name in the subtitle so the current choice is visible without
