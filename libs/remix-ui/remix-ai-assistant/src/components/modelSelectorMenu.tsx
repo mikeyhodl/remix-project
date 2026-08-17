@@ -1,4 +1,4 @@
-import React, { Dispatch, useMemo, useState } from 'react'
+import React, { Dispatch, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SiOpenai, SiAnthropic, SiOllama, SiAmazonwebservices } from 'react-icons/si'
 import GroupListMenu, { LockedPillState } from './contextOptMenu'
 import { groupListType } from '../types/componentTypes'
@@ -86,6 +86,49 @@ const toRow = (model: AIModel): groupListType => {
     dataId: `ai-model-${key.replace(/[^a-zA-Z0-9]/g, '-')}`,
     isLocked: !model.available
   }
+}
+
+/** A provider never shows more than this many model rows before scrolling. */
+const MAX_VISIBLE_MODELS = 6
+
+/**
+ * Model rows for one provider, clamped to `MAX_VISIBLE_MODELS` rows with their
+ * own scrollbar. Row heights vary (descriptions wrap), so the cap is measured
+ * off the rendered rows rather than assumed from a fixed row height.
+ */
+const ProviderModelList: React.FC<{ rows: groupListType[]; groupListProps: any }> = ({ rows, groupListProps }) => {
+  const listRef = useRef<HTMLDivElement>(null)
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined)
+  const rowsKey = rows.map(r => r.stateValue).join('|')
+
+  useLayoutEffect(() => {
+    const container = listRef.current
+    if (!container) return
+    const measure = () => {
+      const buttons = Array.from(container.querySelectorAll<HTMLElement>('.btn-group-vertical > button'))
+      if (buttons.length <= MAX_VISIBLE_MODELS) {
+        setMaxHeight(undefined)
+        return
+      }
+      const first = buttons[0]
+      const last = buttons[MAX_VISIBLE_MODELS - 1]
+      setMaxHeight(last.offsetTop + last.offsetHeight - first.offsetTop)
+    }
+    measure()
+    // Observe the inner list (not the clipped wrapper) so applying maxHeight
+    // doesn't feed back into the observer.
+    const inner = container.firstElementChild
+    if (!inner || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(inner)
+    return () => observer.disconnect()
+  }, [rowsKey])
+
+  return (
+    <div ref={listRef} className="rai-model-list" style={{ maxHeight, overflowY: maxHeight ? 'auto' : undefined }}>
+      <GroupListMenu {...groupListProps} groupList={rows} />
+    </div>
+  )
 }
 
 interface ProviderGroup {
@@ -189,8 +232,13 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
   }
 
   return (
-    <div data-id="ai-model-selector-menu" onKeyDown={handleKeyDown}>
-      <div className="px-2 pb-2 pt-1 rai-search-bar position-sticky" style={{ top: 0, zIndex: 5 }}>
+    <div
+      data-id="ai-model-selector-menu"
+      onKeyDown={handleKeyDown}
+      className="d-flex flex-column"
+      style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}
+    >
+      <div className="px-2 pb-2 pt-1 rai-search-bar flex-shrink-0">
         <div className="position-relative">
           <i
             className="fa-solid fa-magnifying-glass position-absolute text-muted"
@@ -208,64 +256,65 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
         </div>
       </div>
 
-      {/* Ungrouped rows (Auto Mode + sign-in placeholder) */}
-      {(props.autoModeAvailable || signInModels.length > 0) && !normalizedQuery && (
-        <GroupListMenu
-          {...groupListProps}
-          groupList={[
-            ...(props.autoModeAvailable ? [autoModeRow] : []),
-            ...signInModels.map(toRow)
-          ]}
-        />
-      )}
+      {/* Only this region scrolls — the search bar above it stays put. */}
+      <div className="rai-model-scroll" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+        {/* Ungrouped rows (Auto Mode + sign-in placeholder) */}
+        {(props.autoModeAvailable || signInModels.length > 0) && !normalizedQuery && (
+          <GroupListMenu
+            {...groupListProps}
+            groupList={[
+              ...(props.autoModeAvailable ? [autoModeRow] : []),
+              ...signInModels.map(toRow)
+            ]}
+          />
+        )}
 
-      {/* Provider accordion */}
-      {groups.map((group) => {
-        const meta = providerMeta(group.provider)
-        const filtered = group.models.filter(matchesQuery)
-        if (normalizedQuery && filtered.length === 0) return null
-        const isOpen = normalizedQuery ? true : expanded.has(group.provider)
-        const ownsSelection = group.provider === selectedProvider
-        // When a provider owns the active model but is collapsed, surface that
-        // model's name in the subtitle so the current choice is visible without
-        // expanding.
-        const subtitle = ownsSelection && !isOpen && selectedModel ? selectedModel.displayName : meta.subtitle
-        return (
-          <div key={group.provider} className="rai-provider-group" data-id={`ai-provider-group-${group.provider}`}>
-            <button
-              type="button"
-              className="btn btn-light border-0 w-100 d-flex align-items-center justify-content-between py-2"
-              data-id={`ai-provider-header-${group.provider}`}
-              data-owns-selection={ownsSelection ? 'true' : 'false'}
-              aria-expanded={isOpen}
-              onClick={() => toggle(group.provider)}
-              disabled={!!normalizedQuery}
-            >
-              <span className="d-flex align-items-center text-start">
-                <span
-                  className={`me-2 d-inline-flex align-items-center justify-content-center ${ownsSelection ? 'text-primary' : 'text-muted'}`}
-                  style={{ width: '1.1rem', fontSize: '0.95rem' }}
-                >
-                  {providerIcon(group.provider)}
+        {/* Provider accordion */}
+        {groups.map((group) => {
+          const meta = providerMeta(group.provider)
+          const filtered = group.models.filter(matchesQuery)
+          if (normalizedQuery && filtered.length === 0) return null
+          const isOpen = normalizedQuery ? true : expanded.has(group.provider)
+          const ownsSelection = group.provider === selectedProvider
+          // When a provider owns the active model but is collapsed, surface that
+          // model's name in the subtitle so the current choice is visible without
+          // expanding.
+          const subtitle = ownsSelection && !isOpen && selectedModel ? selectedModel.displayName : meta.subtitle
+          return (
+            <div key={group.provider} className="rai-provider-group" data-id={`ai-provider-group-${group.provider}`}>
+              <button
+                type="button"
+                className="btn btn-light border-0 w-100 d-flex align-items-center justify-content-between py-2"
+                data-id={`ai-provider-header-${group.provider}`}
+                data-owns-selection={ownsSelection ? 'true' : 'false'}
+                aria-expanded={isOpen}
+                onClick={() => toggle(group.provider)}
+                disabled={!!normalizedQuery}
+              >
+                <span className="d-flex align-items-center text-start">
+                  <span
+                    className={`me-2 d-inline-flex align-items-center justify-content-center ${ownsSelection ? 'text-primary' : 'text-muted'}`}
+                    style={{ width: '1.1rem', fontSize: '0.95rem' }}
+                  >
+                    {providerIcon(group.provider)}
+                  </span>
+                  <span className="d-flex flex-column">
+                    <span className={`fw-bold small ${ownsSelection ? 'text-primary' : ''}`}>{meta.label}</span>
+                    {subtitle && <span className={ownsSelection && !isOpen ? 'small fst-italic' : 'text-muted'} style={{ fontSize: '0.7rem' }}>{subtitle}</span>}
+                  </span>
                 </span>
-                <span className="d-flex flex-column">
-                  <span className={`fw-bold small ${ownsSelection ? 'text-primary' : ''}`}>{meta.label}</span>
-                  {subtitle && <span className={ownsSelection && !isOpen ? 'small fst-italic' : 'text-muted'} style={{ fontSize: '0.7rem' }}>{subtitle}</span>}
+                <span className="d-flex align-items-center">
+                  <span className="badge bg-secondary me-2" style={{ fontSize: '0.6rem' }}>{filtered.length}</span>
+                  <i className={`fa-solid ${isOpen ? 'fa-chevron-down' : 'fa-chevron-right'} text-muted`} style={{ fontSize: '0.7rem' }}></i>
                 </span>
-              </span>
-              <span className="d-flex align-items-center">
-                <span className="badge bg-secondary me-2" style={{ fontSize: '0.6rem' }}>{filtered.length}</span>
-                <i className={`fa-solid ${isOpen ? 'fa-chevron-down' : 'fa-chevron-right'} text-muted`} style={{ fontSize: '0.7rem' }}></i>
-              </span>
-            </button>
-            {isOpen && (
-              <div className="rai-model-list">
-                <GroupListMenu {...groupListProps} groupList={filtered.map(toRow)} />
-              </div>
-            )}
-          </div>
-        )
-      })}
+              </button>
+              {isOpen && (
+                <ProviderModelList rows={filtered.map(toRow)} groupListProps={groupListProps} />
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

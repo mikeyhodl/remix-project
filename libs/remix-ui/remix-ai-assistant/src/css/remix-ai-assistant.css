@@ -1788,6 +1788,27 @@ code {
   margin-left: 1.4rem;
   border-left: 1px solid rgba(255, 255, 255, 0.12);
   background-color: rgba(0, 0, 0, 0.18);
+  /* Capped at 6 rows by ProviderModelList; the nested scrollbar stays slim so
+     it reads as the model list's own, distinct from the popover's. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.remix-ai-model-selector .rai-model-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.remix-ai-model-selector .rai-model-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.remix-ai-model-selector .rai-model-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
+.remix-ai-model-selector .rai-model-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.35);
 }
 
 /* Selected model row */
