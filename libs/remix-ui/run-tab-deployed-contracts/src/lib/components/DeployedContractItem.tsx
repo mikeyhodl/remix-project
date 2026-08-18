@@ -552,16 +552,27 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
     if (onKebabMenuToggle) {
       onKebabMenuToggle(false)
     }
-    let bytecode = contract.contractData?.bytecode || contract.contractData?.object
+    try {
+      let bytecode = contract.contractData?.bytecode || contract.contractData?.object
 
-    // If bytecode is an object, extract the actual bytecode string
-    if (bytecode && typeof bytecode === 'object') {
-      bytecode = bytecode.object || bytecode.evm?.deployedBytecode?.object || bytecode.evm?.bytecode?.object
-    }
+      // If bytecode is an object, extract the actual bytecode string
+      if (bytecode && typeof bytecode === 'object') {
+        bytecode = bytecode.object || bytecode.evm?.deployedBytecode?.object || bytecode.evm?.bytecode?.object
+      }
 
-    if (bytecode && typeof bytecode === 'string') {
-      navigator.clipboard.writeText(bytecode)
-      await plugin.call('notification', 'toast', 'Bytecode copied to clipboard')
+      // If bytecode is not available in contract data, fetch from blockchain
+      if (!bytecode || typeof bytecode !== 'string') {
+        bytecode = await plugin.call('blockchain', 'getCode', contract.address)
+      }
+
+      if (bytecode && typeof bytecode === 'string' && bytecode !== '0x' && bytecode !== '0x0') {
+        navigator.clipboard.writeText(bytecode)
+        await plugin.call('notification', 'toast', 'Bytecode copied to clipboard')
+      } else {
+        await plugin.call('notification', 'toast', 'No bytecode available for this contract')
+      }
+    } catch (error) {
+      await plugin.call('notification', 'toast', 'Error copying bytecode')
     }
   }
 
