@@ -555,14 +555,9 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
     try {
       let bytecode = contract.contractData?.bytecode || contract.contractData?.object
 
-      // If bytecode is an object, extract the actual bytecode string
+      // If bytecode is an object, extract the creation bytecode string
       if (bytecode && typeof bytecode === 'object') {
-        bytecode = bytecode.object || bytecode.evm?.deployedBytecode?.object || bytecode.evm?.bytecode?.object
-      }
-
-      // If bytecode is not available in contract data, fetch from blockchain
-      if (!bytecode || typeof bytecode !== 'string') {
-        bytecode = await plugin.call('blockchain', 'getCode', contract.address)
+        bytecode = bytecode.object || bytecode.evm?.bytecode?.object
       }
 
       if (bytecode && typeof bytecode === 'string' && bytecode !== '0x' && bytecode !== '0x0') {
