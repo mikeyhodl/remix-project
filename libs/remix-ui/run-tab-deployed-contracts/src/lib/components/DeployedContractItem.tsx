@@ -552,8 +552,14 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
     if (onKebabMenuToggle) {
       onKebabMenuToggle(false)
     }
-    const bytecode = contract.contractData?.bytecode || contract.contractData?.object
-    if (bytecode) {
+    let bytecode = contract.contractData?.bytecode || contract.contractData?.object
+
+    // If bytecode is an object, extract the actual bytecode string
+    if (bytecode && typeof bytecode === 'object') {
+      bytecode = bytecode.object || bytecode.evm?.deployedBytecode?.object || bytecode.evm?.bytecode?.object
+    }
+
+    if (bytecode && typeof bytecode === 'string') {
       navigator.clipboard.writeText(bytecode)
       await plugin.call('notification', 'toast', 'Bytecode copied to clipboard')
     }
