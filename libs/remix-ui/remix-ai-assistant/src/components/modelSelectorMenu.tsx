@@ -1,4 +1,4 @@
-import React, { Dispatch, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { Dispatch, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SiOpenai, SiAnthropic, SiOllama, SiAmazonwebservices } from 'react-icons/si'
 import GroupListMenu, { LockedPillState } from './contextOptMenu'
 import { groupListType } from '../types/componentTypes'
@@ -199,6 +199,17 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
     model.displayName.toLowerCase().includes(normalizedQuery) ||
     (model.description || '').toLowerCase().includes(normalizedQuery)
 
+  // Follow the query: as soon as the open provider has no hits, jump to the
+  // first one that does, so results are always on screen. The user stays in
+  // control — headers remain clickable while searching.
+  useEffect(() => {
+    if (!normalizedQuery) return
+    const openStillMatches = groups.some(g => g.provider === expanded && g.models.some(matchesQuery))
+    if (openStillMatches) return
+    const firstMatch = groups.find(g => g.models.some(matchesQuery))
+    setExpanded(firstMatch ? firstMatch.provider : null)
+  }, [normalizedQuery, groups])
+
   const groupListProps = {
     choice: props.currentChoice,
     setChoice: props.setChoice,
@@ -250,8 +261,11 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
         </div>
       </div>
 
-      {/* Only this region scrolls — the search bar above it stays put. */}
-      <div className="rai-model-scroll" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+      {/* Only one provider is open at a time and its list caps at
+          MAX_VISIBLE_MODELS rows, so this region needs no scrollbar of its own.
+          Overflow stays reachable (wheel/trackpad) but paints no chrome — see
+          .rai-model-scroll in remix-ai-assistant.css. */}
+      <div className="rai-model-scroll" style={{ flex: '1 1 auto', minHeight: 0 }}>
         {/* Ungrouped rows (Auto Mode + sign-in placeholder) */}
         {(props.autoModeAvailable || signInModels.length > 0) && !normalizedQuery && (
           <GroupListMenu
@@ -263,12 +277,18 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
           />
         )}
 
+        {normalizedQuery && !groups.some(g => g.models.some(matchesQuery)) && (
+          <div className="px-3 py-3 small text-muted text-center" data-id="ai-model-search-empty">
+            No model matches “{query.trim()}”
+          </div>
+        )}
+
         {/* Provider accordion */}
         {groups.map((group) => {
           const meta = providerMeta(group.provider)
           const filtered = group.models.filter(matchesQuery)
           if (normalizedQuery && filtered.length === 0) return null
-          const isOpen = normalizedQuery ? true : expanded === group.provider
+          const isOpen = expanded === group.provider
           const ownsSelection = group.provider === selectedProvider
           // When a provider owns the active model but is collapsed, surface that
           // model's name in the subtitle so the current choice is visible without
@@ -283,7 +303,6 @@ export default function ModelSelectorMenu(props: ModelSelectorMenuProps) {
                 data-owns-selection={ownsSelection ? 'true' : 'false'}
                 aria-expanded={isOpen}
                 onClick={() => toggle(group.provider)}
-                disabled={!!normalizedQuery}
               >
                 <span className="d-flex align-items-center text-start">
                   <span
