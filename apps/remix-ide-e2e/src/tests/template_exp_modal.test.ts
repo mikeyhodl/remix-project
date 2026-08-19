@@ -395,7 +395,7 @@ module.exports = {
       .pause(1000)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/AddedTestContract.sol"]')
   },
-  'Add contract file to workspace using import from IPFS #group1': '' + function (browser: NightwatchBrowser) {
+  'Add contract file to workspace using import from IPFS #group1': function (browser: NightwatchBrowser) {
     browser
       .waitForElementVisible('*[data-id="fileExplorerCreateButton"]')
       .click('*[data-id="fileExplorerCreateButton"]')
