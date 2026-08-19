@@ -548,26 +548,22 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
     }
   }
 
-  const handleCopyBytecode = async (contract: DeployedContract) => {
+  const handleCopyDeployedBytecode = async (contract: DeployedContract) => {
     if (onKebabMenuToggle) {
       onKebabMenuToggle(false)
     }
     try {
-      let bytecode = contract.contractData?.bytecode || contract.contractData?.object
+      // Fetch deployed bytecode from the blockchain
+      const deployedBytecode = await plugin.call('blockchain', 'getCode', contract.address)
 
-      // If bytecode is an object, extract the creation bytecode string
-      if (bytecode && typeof bytecode === 'object') {
-        bytecode = bytecode.object || bytecode.evm?.bytecode?.object
-      }
-
-      if (bytecode && typeof bytecode === 'string' && bytecode !== '0x' && bytecode !== '0x0') {
-        navigator.clipboard.writeText(bytecode)
-        await plugin.call('notification', 'toast', 'Bytecode copied to clipboard')
+      if (deployedBytecode && deployedBytecode !== '0x' && deployedBytecode !== '0x0') {
+        navigator.clipboard.writeText(deployedBytecode)
+        await plugin.call('notification', 'toast', 'Deployed bytecode copied to clipboard')
       } else {
-        await plugin.call('notification', 'toast', 'No bytecode available for this contract')
+        await plugin.call('notification', 'toast', 'No deployed bytecode available for this contract')
       }
     } catch (error) {
-      await plugin.call('notification', 'toast', 'Error copying bytecode')
+      await plugin.call('notification', 'toast', 'Error copying deployed bytecode')
     }
   }
 
@@ -774,7 +770,7 @@ IMPORTANT: In this turn, only ask STEP 1 and then STOP. After my next reply, con
             onNameContract={networkName !== 'Remix VM' ? handleNameContract : undefined}
             onCopyABI={handleCopyABI}
             onSaveABI={handleSaveABI}
-            onCopyBytecode={handleCopyBytecode}
+            onCopyBytecode={handleCopyDeployedBytecode}
             onOpenInExplorer={handleOpenInExplorer}
             onClear={handleClear}
           />
