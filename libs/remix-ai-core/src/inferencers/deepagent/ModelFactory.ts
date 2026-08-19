@@ -444,6 +444,10 @@ export async function createModelInstance(
         temperature: 0.7,
         maxTokens: maxTokens,
         maxRetries: 0,
+        modelKwargs: {
+          usage: { include: true },
+          include_reasoning: true
+        }
       }), `openrouter/${modelId}`)
     }
     // No key → route through the Remix proxy (OpenAI-compatible endpoint).
