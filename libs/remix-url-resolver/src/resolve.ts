@@ -2,7 +2,7 @@
 import axios, { AxiosResponse } from 'axios'
 import semver from 'semver'
 import { BzzNode as Bzz } from '@erebos/bzz-node'
-import { endpointUrls } from '@remix-endpoints-helper' // import { endpointUrls } from '.';
+import { endpointUrls } from '../../endpoints-helper/src/index' // import { endpointUrls } from '.';
 
 export interface Imported {
   content: string;
