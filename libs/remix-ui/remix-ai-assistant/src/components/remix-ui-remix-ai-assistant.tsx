@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, M
 //@ts-ignore
 import '../css/remix-ai-assistant.css'
 
-import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, remixAILogger, modelKey, parseModelKey, findModel } from '@remix/remix-ai-core'
+import { ChatCommandParser, GenerationParams, ChatHistory, HandleStreamResponse, AIModel, ANONYMOUS_FALLBACK_MODELS, remixAILogger, modelKey, parseModelKey, findModel, applyBedrockByokPolicy, BEDROCK_API_KEY_SETTING, onApiKeysChange } from '@remix/remix-ai-core'
 import { ToolApprovalRequest, ApiKeyErrorEvent } from '@remix/remix-ai-core'
 import { HandleOpenAIResponse, HandleMistralAIResponse, HandleAnthropicResponse, HandleOllamaResponse } from '@remix/remix-ai-core'
 //@ts-ignore
@@ -463,6 +463,29 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('remixAI', 'onApiKeyError')
     }
   }, [props.plugin, availableModels])
+
+  // AWS Bedrock is BYOK-only: the Remix proxy no longer fronts it, so its
+  const hasBedrockApiKey = useCallback(async (): Promise<boolean> => {
+    try {
+      const value = await props.plugin.call('settings' as any, 'get', `settings/${BEDROCK_API_KEY_SETTING}`)
+      return !!(value && String(value).trim())
+    } catch {
+      return false
+    }
+  }, [props.plugin])
+
+  const reloadAvailableModels = useCallback(async () => {
+    try {
+      const models = await props.plugin.call('assistantState' as any, 'getAvailableModels')
+      if (Array.isArray(models) && models.length > 0) {
+        setAvailableModels(applyBedrockByokPolicy(models, await hasBedrockApiKey()))
+      }
+    } catch (e) {
+      remixAILogger.warn('[remix-ai-assistant] reloadAvailableModels failed', e)
+    }
+  }, [props.plugin, hasBedrockApiKey])
+
+  useEffect(() => onApiKeysChange(() => { void reloadAvailableModels() }), [reloadAvailableModels])
 
   // Subscribe to AI route-status updates so the UI can show a readiness
   // badge and gate the input while DeepAgent/MCP/model are settling.
@@ -987,7 +1010,11 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         const models = await props.plugin.call('assistantState' as any, 'getAvailableModels')
         remixAILogger.log('[remix-ai-assistant] getAvailableModels →',
           Array.isArray(models) ? models.map((m: any) => `${m.id}(${m.available ? 'on' : 'off'})`).join(', ') : models)
-        if (Array.isArray(models) && models.length > 0) setAvailableModels(models)
+        if (Array.isArray(models) && models.length > 0) {
+          // Bedrock is BYOK-only — hide its rows until the user's own bearer
+          // token is stored (kept in sync by the onApiKeysChange effect above).
+          setAvailableModels(applyBedrockByokPolicy(models, await hasBedrockApiKey()))
+        }
       } catch (e) { remixAILogger.warn('[remix-ai-assistant] getAvailableModels failed', e) }
     }
     const refreshFeatures = async () => {

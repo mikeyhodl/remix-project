@@ -162,6 +162,27 @@ export function parseAIModelsFromPermissions(permissions: any): AIModel[] | null
   return parsed
 }
 
+/** Settings key holding the user's own AWS Bedrock bearer token. */
+export const BEDROCK_API_KEY_SETTING = 'deepagent-bedrock-bearer-token'
+
+/** True when the model reaches AWS Bedrock, whichever brand it is shown under. */
+export function isBedrockModel(model: Pick<AIModel, 'provider' | 'routeProvider'>): boolean {
+  return model.routeProvider === 'bedrock' || model.provider === 'bedrock'
+}
+
+/**
+ * AWS Bedrock is BYOK-only — the Remix proxy no longer fronts it.
+ */
+export function applyBedrockByokPolicy(models: AIModel[], hasBedrockKey: boolean): AIModel[] {
+  if (!Array.isArray(models)) return models
+  if (!hasBedrockKey) return models.filter((model) => !isBedrockModel(model))
+  return models.map((model) =>
+    isBedrockModel(model)
+      ? { ...model, available: true, requiredFeature: null, requireAPIKey: true, reason: undefined }
+      : model
+  )
+}
+
 /**
  * OpenRouter is the default router: a model is "routed" when it reaches the
  * vendor through another provider's transport. `curateOpenRouterBrandedModels`
