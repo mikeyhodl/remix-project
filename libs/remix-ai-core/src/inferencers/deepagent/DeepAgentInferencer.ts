@@ -347,7 +347,8 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       provider: this.modelSelection.provider,
       errorType: apiKeyErrorType,
       message: getErrorMessage(errorType, error),
-      canFallbackToProxy: true,
+      // Bedrock has no proxy route (BYOK-only), so never offer the switch.
+      canFallbackToProxy: (this.modelSelection.routeProvider ?? this.modelSelection.provider) !== 'bedrock',
       originalError: error?.message,
       timestamp: Date.now()
     }

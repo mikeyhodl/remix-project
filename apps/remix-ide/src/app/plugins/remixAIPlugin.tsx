@@ -6,7 +6,7 @@ import { CodeCompletionAgent, ContractAgent, workspaceAgent, IContextType, mcpDe
 import { MCPInferencer, DeepAgentInferencer, onApiKeysChange } from '@remix/remix-ai-core';
 import { IMCPServer, IMCPConnectionStatus } from '@remix/remix-ai-core';
 import { RemixMCPServer, createRemixMCPServer } from '@remix/remix-ai-core';
-import { AIModel } from '@remix/remix-ai-core';
+import { AIModel, isBedrockModel, BEDROCK_API_KEY_SETTING } from '@remix/remix-ai-core';
 import { aiErrorFromException, parseAIErrorEnvelope } from '@remix/remix-ai-core';
 import axios from 'axios';
 import { endpointUrls } from "@remix-endpoints-helper"
@@ -338,6 +338,17 @@ export class RemixAIPlugin extends Plugin {
         if (!def || !def.id || def.available === false) {
           remixAILogger.log('[RemixAI Plugin] /permissions has no usable default model yet — waiting for stateChanged', { id: def?.id, available: def?.available })
           return
+        }
+        // Bedrock is BYOK-only: without the user's own bearer token there is no
+        if (isBedrockModel(def)) {
+          let bedrockKey: any = ''
+          try {
+            bedrockKey = await this.call('settings' as any, 'get', `settings/${BEDROCK_API_KEY_SETTING}`)
+          } catch { /* settings unavailable — treat as no key */ }
+          if (!(bedrockKey && String(bedrockKey).trim())) {
+            remixAILogger.log('[RemixAI Plugin] Skipping Bedrock default model — BYOK-only and no key stored', { id: def.id })
+            return
+          }
         }
         // Re-apply when:
         //   - we don't have a selection yet, OR
