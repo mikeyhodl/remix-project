@@ -183,17 +183,43 @@ export function applyBedrockByokPolicy(models: AIModel[], hasBedrockKey: boolean
   )
 }
 
+/** Settings key holding the user's own OpenRouter API key. */
+export const OPENROUTER_API_KEY_SETTING = 'deepagent-openrouter-api-key'
+
+export const BYOK_API_KEY_SETTINGS: Partial<Record<AIModel['provider'], string>> = {
+  bedrock: BEDROCK_API_KEY_SETTING,
+  openrouter: OPENROUTER_API_KEY_SETTING
+}
+
+/** The provider that actually carries the request (route wins over brand). */
+export function modelTransportProvider(model: Pick<AIModel, 'provider' | 'routeProvider'>): AIModel['provider'] {
+  return model.routeProvider ?? model.provider
+}
+
+/**
+ * Applies the BYOK key policy over the whole catalogue: deleting a key must
+ * invalidate the provider it belonged to.
+ */
+export function applyByokKeyPolicy(
+  models: AIModel[],
+  keyPresence: Partial<Record<AIModel['provider'], boolean>>
+): AIModel[] {
+  if (!Array.isArray(models)) return models
+  return applyBedrockByokPolicy(models, !!keyPresence.bedrock).map((model) => {
+    const provider = modelTransportProvider(model)
+    // Bedrock rows were already normalized above.
+    if (provider === 'bedrock') return model
+    if (!BYOK_API_KEY_SETTINGS[provider]) return model
+    if (!model.requireAPIKey || keyPresence[provider]) return model
+    return { ...model, available: false, reason: 'api_key_required' }
+  })
+}
+
 /**
  * OpenRouter is the default router: a model is "routed" when it reaches the
  * vendor through another provider's transport. `curateOpenRouterBrandedModels`
  * is the only curation that sets one.
  *
- * Bedrock used to be curated the same way — its rows were rebranded onto
- * Anthropic / Mistral / OpenAI, hoisted to the front of the catalogue and given
- * `routeProvider: 'bedrock'`, which made Bedrock the de-facto default route.
- * That curation is gone. Bedrock rows the backend still advertises stay under
- * their own "AWS Bedrock" group in backend order, selectable but never the
- * default.
  */
 export function isOpenRouterRouted(model: AIModel): boolean {
   return model.routeProvider === 'openrouter' || model.provider === 'openrouter'
