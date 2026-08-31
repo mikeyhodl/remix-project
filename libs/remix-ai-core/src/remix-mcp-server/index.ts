@@ -33,6 +33,8 @@ export { createDAppGeneratorTools } from './handlers/DAppGeneratorHandler';
 export { createGenerativeUITools } from './handlers/GenerativeUIHandler';
 export type { UINode, RenderUIPayload, TextNode, StackNode, CardNode, ButtonNode, InputNode, SelectNode, RadioGroupNode, CheckboxNode, FormNode, BadgeNode, DividerNode } from './handlers/GenerativeUIHandler';
 export { createContractClassificationTools } from './handlers/ContractClassifierHandler';
+export { ContractSkeletonExtractor, ContractClassifier, ContractClassificationSchema } from './handlers/helpers/ContractClassifier';
+export type { ContractClassification, ContractSkeleton } from './handlers/helpers/ContractClassifier';
 export * from './prompts/quickDappTheGraphPrompts';
 
 // Resource Providers
