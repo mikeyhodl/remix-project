@@ -1106,7 +1106,8 @@ export class Blockchain extends Plugin {
             - Automatic feedback can be disabled under Settings → RemixAI Assistant → AI Feedback
 
             Keep the whole response tight — a wall of text defeats the purpose.`
-            this.call('remixaiassistant', 'chatPipe', prompt, true, { source: 'udapp', presetId: 'deploy-contract', displayText: 'RemixAI Assistant: Contract Deployment Feedback' })
+            trackMatomoEvent(this, { category: 'udapp', action: 'aiFeedback', name: 'deploymentFeedback', isClick: false })
+            this.call('remixaiassistant', 'chatPipe', prompt, false, { source: 'udapp', presetId: 'deploy-contract', displayText: 'RemixAI Assistant: Contract Deployment Feedback' })
           }
         }
       } catch (e) {
