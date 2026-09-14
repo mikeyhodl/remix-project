@@ -359,7 +359,8 @@ export const SettingsSectionUI: React.FC<SettingsSectionUIProps> = ({ plugin, se
                       {option.toggleUIDescription && toggleValue && <span className="text-secondary mt-1">{option.toggleUIDescription}</span>}
                       {option.toggleUIOptions && toggleValue && option.toggleUIOptions.map((toggleOption, toggleOptionIndex) => {
                         const isLastOption = toggleOptionIndex === (option.toggleUIOptions as any).length - 1
-                        const inputValue = state[toggleOption.name] && typeof state[toggleOption.name].value === 'string' ? state[toggleOption.name].value as string : ''
+                        const rawValue = state[toggleOption.name]?.value
+                        const inputValue = rawValue != null && (typeof rawValue === 'string' || typeof rawValue === 'number') ? String(rawValue) : ''
 
                         return state[toggleOption.name] && (
                           <div key={toggleOptionIndex}>
