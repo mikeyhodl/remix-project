@@ -14,7 +14,9 @@ import {
   REMIX_DEEPAGENT_SYSTEM_PROMPT,
   SOLIDITY_CODE_GENERATION_PROMPT,
   SECURITY_ANALYSIS_PROMPT,
-  CODE_EXPLANATION_PROMPT
+  CODE_EXPLANATION_PROMPT,
+  WORKSPACE_PROJECT_GENERATION_PROMPT,
+  WORKSPACE_EDIT_GENERATION_PROMPT
 } from '../deepagent/prompts/system/lightPrompts'
 import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
 import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig, ApiKeyErrorEvent } from '../../types/deepagent'
@@ -32,7 +34,7 @@ import './AsyncLocalStorageInit'
 import { createModelInstance } from './ModelFactory'
 import { syncModelCatalog } from './helpers/modelCatalog'
 import { generateStructured } from '../../helpers/structuredOutput'
-import { SecurityCheckSchema } from '../../types/schemas'
+import { SecurityCheckSchema, GeneratedProjectSchema, WorkspaceEditSchema } from '../../types/schemas'
 import { getLangfuseCallbackHandler, flushLangfuse } from '../../helpers/langfuse'
 import { setCurrentSessionId } from './helpers/runContext'
 import { setResolvedModelListener } from './helpers/resolvedModel'
@@ -55,6 +57,14 @@ import { clearQuickDappDocsContext } from '../../helpers/quickDappDocsContext'
  * (`notSuitableForCodeGeneration`) went stale on every catalogue change and
  * treated each newly added weak model as suitable until someone noticed.
  */
+
+/**
+ * Workspace generation is pinned to one strong coding model rather than
+ * following the chat model the user happens to have selected: the payload has
+ * to satisfy `GeneratedProjectSchema` in one shot, and weaker models drift out
+ * of the shape. The transport still comes from the current selection.
+ */
+const WORKSPACE_GENERATION_MODEL_ID = 'anthropic/claude-sonnet-5'
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
@@ -500,11 +510,61 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   async generate(prompt: string, params: IParams): Promise<string> {
-    return this.code_generation(prompt, params)
+    return this.structuredGeneration(prompt, GeneratedProjectSchema, 'generated_project', WORKSPACE_PROJECT_GENERATION_PROMPT, WORKSPACE_GENERATION_MODEL_ID)
   }
 
   async generateWorkspace(prompt: string, params: IParams): Promise<string> {
-    return this.code_generation(prompt, params)
+    // Not pinned: an edit runs against the workspace the user is already
+    // working in, on the model they picked for it.
+    return this.structuredGeneration(prompt, WorkspaceEditSchema, 'workspace_edit', WORKSPACE_EDIT_GENERATION_PROMPT, null)
+  }
+
+  private async workspaceGenerationModel(modelId: string | null): Promise<BaseChatModel | null> {
+    if (!modelId || modelId === this.modelSelection.modelId) return this.model
+    const selection: ModelSelection = { ...this.modelSelection, modelId }
+    try {
+      return await createModelInstance(selection, DAPP_MAX_TOKENS, this.userApiKeys)
+    } catch (error: any) {
+      remixAILogger.warn(
+        `[DeepAgentInferencer] could not build ${modelId} — falling back to ${this.modelSelection.modelId}`,
+        error?.message || error
+      )
+      return this.model
+    }
+  }
+
+  private async structuredGeneration<T>(
+    prompt: string,
+    schema: any,
+    name: string,
+    instructions: string,
+    modelId: string | null
+  ): Promise<string> {
+    this.event.emit('onInference')
+    try {
+      const model = await this.workspaceGenerationModel(modelId)
+      if (!model) {
+        throw new DeepAgentError(
+          'DeepAgent not initialized',
+          DeepAgentErrorType.INITIALIZATION_FAILED
+        )
+      }
+
+      const messages: BaseMessage[] = [
+        new SystemMessage(
+          REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + SOLIDITY_CODE_GENERATION_PROMPT + '\n\n' + instructions
+        ),
+        new HumanMessage(prompt)
+      ]
+
+      const result = await generateStructured(model, schema, messages, { name })
+      this.event.emit('onInferenceDone')
+      return JSON.stringify(result)
+    } catch (error) {
+      this.event.emit('onInferenceDone')
+      remixAILogger.error(`[DeepAgentInferencer] structured "${name}" generation failed:`, error)
+      throw error
+    }
   }
 
   async error_explaining(prompt: string, params: IParams): Promise<string> {

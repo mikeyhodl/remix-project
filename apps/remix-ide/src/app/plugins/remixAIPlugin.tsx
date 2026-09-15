@@ -13,6 +13,13 @@ import { endpointUrls } from "@remix-endpoints-helper"
 import { Registry } from '@remix-project/remix-lib'
 import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, ChatRequestBuffer, ApiKeySettingsHelper } from './remixAI'
 
+/**
+ * Workspace generation is pinned to one strong coding model rather than
+ * following the chat model in use: the result has to come back matching the
+ * generated-project schema in one shot.
+ */
+const WORKSPACE_GENERATION_MODEL = 'anthropic/claude-sonnet-5'
+
 const profile = {
   name: 'remixAI',
   displayName: 'RemixAI',
@@ -860,6 +867,12 @@ export class RemixAIPlugin extends Plugin {
     return this.securityAgent.getReport(file)
   }
 
+  private workspaceGenerationInferencer() {
+    if (this.remoteInferencer instanceof OllamaInferencer) return this.remoteInferencer
+    if (this.deepAgentInferencer) return this.deepAgentInferencer
+    return this.remoteInferencer
+  }
+
   /**
    * Generates a new remix IDE workspace based on the provided user prompt, optionally using Retrieval-Augmented Generation (RAG) context.
    * - If `useRag` is `true`, the function fetches additional context from a RAG API and prepends it to the user prompt.
@@ -867,8 +880,8 @@ export class RemixAIPlugin extends Plugin {
   async generate(prompt: string, params: IParams=AssistantParams, newThreadID:string="", useRag:boolean=false, statusCallback?: (status: string) => Promise<void>): Promise<any> {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
-    params.provider = 'openrouter' // every hosted model routes through OpenRouter
-    params.model = 'mistral-medium-latest'
+    params.provider = this.selectedModel?.provider ?? 'openrouter'
+    params.model = WORKSPACE_GENERATION_MODEL
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''
@@ -892,13 +905,12 @@ export class RemixAIPlugin extends Plugin {
       userPrompt = prompt
     }
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.generatingNewWorkspace'))
-    const result = await this.remoteInferencer.generate(userPrompt, params)
+    if (this.deepAgentInferencer) await this.deepAgentManager.awaitReady()
+    const result = await this.workspaceGenerationInferencer().generate(userPrompt, params)
 
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.creatingContracts'))
     const genResult = await this.contractor.writeContracts(result, userPrompt, statusCallback)
 
-    // revert provider
-    this.setAssistantProvider(await this.getAssistantProvider())
     if (genResult.includes('No payload')) return genResult
     await this.call('menuicons', 'select', 'filePanel')
     this.emit('workspaceGenerated')
@@ -943,7 +955,8 @@ export class RemixAIPlugin extends Plugin {
     userPrompt = "Using the following workspace context: ```\n" + files + "```\n\n" + userPrompt
 
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.generatingWorkspaceUpdates'))
-    const result = await this.remoteInferencer.generateWorkspace(userPrompt, params)
+    if (this.deepAgentInferencer) await this.deepAgentManager.awaitReady()
+    const result = await this.workspaceGenerationInferencer().generateWorkspace(userPrompt, params)
 
     await statusCallback?.(await this.getLocalizedMessage('remixApp.ai.status.applyingChanges'))
     const finalResult = (result !== undefined) ? this.workspaceAgent.writeGenerationResults(result, statusCallback) : "### No Changes applied!"
