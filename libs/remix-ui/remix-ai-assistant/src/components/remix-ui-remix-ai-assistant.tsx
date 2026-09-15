@@ -25,6 +25,22 @@ import { ChatNoticeStrip, type ChatNoticeDisplay, type ChatNoticeActionDisplay }
 import { useModelAccess } from '../hooks/useModelAccess'
 import { ToolApprovalModal } from './ToolApprovalModal'
 
+// ─── Generative UI payload validation ────────────────────────────────────────
+// Mirrors the VALID_TYPES set in GenerativeUIHandler.ts. Kept here as a
+// runtime guard so a malformed LLM response is caught before it reaches the
+// renderer, which has no try-catch around its recursive node walk.
+const VALID_UI_NODE_TYPES = new Set([
+  'text', 'stack', 'card', 'button', 'input',
+  'select', 'radio_group', 'checkbox', 'form', 'badge', 'divider'
+])
+
+function isValidUIPayload(payload: any): payload is { tree: Record<string, any>; title?: string } {
+  if (!payload || typeof payload !== 'object') return false
+  const { tree } = payload
+  if (!tree || typeof tree !== 'object' || Array.isArray(tree)) return false
+  return typeof tree.type === 'string' && VALID_UI_NODE_TYPES.has(tree.type)
+}
+
 export interface RemixUiRemixAiAssistantProps {
   plugin: RemixAIAssistant
   isInitializing?: boolean
@@ -766,7 +782,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         setMessages(prev => {
           const userMsg = prev[prev.length - 2]
           if (userMsg && userMsg.role === 'user' && finalText) {
-            Promise.resolve(ChatHistory.pushHistory(userMsg.content, finalText)).then(() => props.plugin.loadConversations())
+            Promise.resolve(ChatHistory.pushHistory(userMsg.content, finalText, userMsg.displayContent)).then(() => props.plugin.loadConversations())
           }
           // Clear streaming states but preserve subagent name for persistent styling
           return prev.map(m =>
@@ -1251,6 +1267,36 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
     }
     props.plugin.on('remixAI', 'onDappUpdateCompleted', handleDappUpdateCompleted)
 
+    // Generative UI: attach UI tree to the active streaming message, or create one if none exists yet
+    const handleRenderUI = (payload: { tree: Record<string, any>; title?: string }) => {
+      if (!isValidUIPayload(payload)) {
+        remixAILogger.warn('[render_ui] received invalid UI payload — root node type missing or unrecognised, ignoring', payload)
+        return
+      }
+      const activeId = streamingAssistantIdRef.current
+      if (activeId) {
+        // Attach to the message that is currently streaming
+        setMessages(prev => prev.map(m => m.id === activeId ? { ...m, uiComponent: payload } : m))
+        return
+      }
+      // No active stream yet (render_ui called before any text) — create an assistant bubble
+      // and wire it up so subsequent stream chunks append to it rather than creating a new one
+      const uiMsgId = crypto.randomUUID()
+      streamingAssistantIdRef.current = uiMsgId
+      setMessages(prev => [
+        ...prev,
+        {
+          id: uiMsgId,
+          role: 'assistant' as const,
+          content: '',
+          timestamp: Date.now(),
+          sentiment: 'none' as const,
+          uiComponent: payload
+        }
+      ])
+    }
+    props.plugin.on('remixAI', 'renderUI', handleRenderUI)
+
     return () => {
       props.plugin.off('remixAI', 'onStreamResult')
       props.plugin.off('remixAI', 'onStreamComplete')
@@ -1267,6 +1313,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       props.plugin.off('remixAI', 'onApiError')
       props.plugin.off('remixAI', 'onToolApprovalRequired')
       props.plugin.off('remixAI', 'onDappUpdateCompleted')
+      props.plugin.off('remixAI', 'renderUI')
       try { props.plugin.off('assistantState' as any, 'stateChanged') } catch { /* noop */ }
     }
   }, [props.plugin])
@@ -1645,6 +1692,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
           id: crypto.randomUUID(),
           role: isEditorCodeAnalysis ? 'editor_code_analysis' : 'user',
           content: text,
+          ...(metadata?.displayText ? { displayContent: metadata.displayText } : {}),
           timestamp
         }
       ])
@@ -1710,7 +1758,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
       const streamedContent = (idx >= 0 ? messages[idx].content || '' : '').trim()
       const userMsg = idx > 0 ? messages[idx - 1] : null
       if (userMsg && userMsg.role === 'user' && streamedContent) {
-        Promise.resolve(ChatHistory.pushHistory(userMsg.content, streamedContent))
+        Promise.resolve(ChatHistory.pushHistory(userMsg.content, streamedContent, userMsg.displayContent))
           .then(() => props.plugin.loadConversations())
           .catch((err) => remixAILogger.warn('[RemixAI Assistant] failed to persist stopped stream:', err))
       }
@@ -1817,13 +1865,14 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
         id: crypto.randomUUID(),
         role: isEditorCodeAnalysis ? 'editor_code_analysis' : 'user',
         content: trimmed,
+        ...(metadata?.displayText ? { displayContent: metadata.displayText.trim() } : {}),
         timestamp: Date.now()
       }
       setMessages(prev => [...prev, userMsg])
 
       const { count: priorMessageCount, conversationId: activeConversationId } = firstPromptStateRef.current
       if (priorMessageCount === 0 && activeConversationId) {
-        props.plugin.onFirstPromptSent(activeConversationId, trimmed)
+        props.plugin.onFirstPromptSent(activeConversationId, metadata?.displayText?.trim() || trimmed)
       }
 
       /** append streaming chunks helper - clears tool status when content arrives */
@@ -1939,7 +1988,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             ...prev,
             { id: assistantId, role: 'assistant', content: response, timestamp: Date.now(), sentiment: 'none' }
           ])
-          Promise.resolve(ChatHistory.pushHistory(trimmed, response)).then(() => props.plugin.loadConversations())
+          Promise.resolve(ChatHistory.pushHistory(trimmed, response, metadata?.displayText?.trim())).then(() => props.plugin.loadConversations())
           setIsStreaming(false)
           streamingAssistantIdRef.current = null
           return
@@ -2060,7 +2109,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             (finalText: string, threadId) => {
               if (abortControllerRef.current?.signal.aborted) return
               setIsThinking(false)
-              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText, metadata?.displayText?.trim())).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
               props.plugin.call('remixAI', 'setAssistantThrId', threadId)
             },
@@ -2084,7 +2133,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
               setIsThinking(false)
-              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText, metadata?.displayText?.trim())).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             },
             undefined,
@@ -2101,7 +2150,7 @@ export const RemixUiRemixAiAssistant = React.forwardRef<
             },
             (finalText: string) => {
               if (abortControllerRef.current?.signal.aborted) return
-              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText)).then(() => props.plugin.loadConversations())
+              Promise.resolve(ChatHistory.pushHistory(trimmed, finalText, metadata?.displayText?.trim())).then(() => props.plugin.loadConversations())
               setIsStreaming(false)
             }
           )

@@ -658,6 +658,38 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
     return content == null ? '' : String(content)
   }
 
+  /**
+   * Schema-constrained one-shot inference — the structured sibling of
+   * basic_inference.
+   *
+   * Deliberately prompt-agnostic: callers supply both the schema and the
+   * prompts, so no feature vocabulary leaks into the inferencer.
+   *
+   * Note it does NOT emit onInference/onInferenceDone. Those paint the chat
+   * panel's thinking state and trip the "assistant busy" guards in the UI;
+   * this method exists for one-shot calls behind a button (e.g. audit-category
+   * matching from a modal), which are not chat turns.
+   */
+  async structured_inference<T>(
+    schema: z.ZodType<T>,
+    prompt: string,
+    systemPrompt?: string,
+    opts?: StructuredOutputOptions
+  ): Promise<T> {
+    if (!this.model) {
+      throw new DeepAgentError(
+        'Model not initialized',
+        DeepAgentErrorType.INITIALIZATION_FAILED
+      )
+    }
+
+    const messages: BaseMessage[] = []
+    if (systemPrompt) messages.push(new SystemMessage(systemPrompt))
+    messages.push(new HumanMessage(prompt))
+
+    return await generateStructured(this.model, schema, messages, { maxRepairs: 1, ...opts })
+  }
+
   private async runAgent(messages: any[]): Promise<string> {
     const thisRunControllers = new Set<AbortController>()
     const localAbortController = new AbortController()
@@ -1042,9 +1074,13 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
       const harnessProfile = resolveHarnessProfile(this.modelSelection)
 
       // Create agent configuration with selected tools
+      // Cast tools and model to any to handle @langchain/core version mismatch between root and deepagents
+      const mainAgentTool = this.tools.filter(tool =>
+        ['render_ui'].includes(tool.name)
+      )
       const agentConfig: CreateDeepAgentParams = {
         backend: this.filesystemBackend as any,
-        tools: [],
+        tools: mainAgentTool,
         model: this.model,
         systemPrompt: {
           base: REMIX_DEEPAGENT_SYSTEM_PROMPT,
