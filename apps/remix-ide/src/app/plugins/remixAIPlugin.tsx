@@ -15,13 +15,6 @@ import { endpointUrls } from "@remix-endpoints-helper"
 import { Registry } from '@remix-project/remix-lib'
 import { DeepAgentEventBridge, MCPServerManager, PermissionChecker, ModelManager, DeepAgentManager, ChatRequestBuffer, ApiKeySettingsHelper } from './remixAI'
 
-/**
- * Workspace generation is pinned to one strong coding model rather than
- * following the chat model in use: the result has to come back matching the
- * generated-project schema in one shot.
- */
-const WORKSPACE_GENERATION_MODEL = 'anthropic/claude-sonnet-5'
-
 const profile = {
   name: 'remixAI',
   displayName: 'RemixAI',
@@ -944,7 +937,7 @@ export class RemixAIPlugin extends Plugin {
     params.stream_result = false // enforce no stream result
     params.threadId = newThreadID
     params.provider = this.selectedModel?.provider ?? 'openrouter'
-    params.model = WORKSPACE_GENERATION_MODEL
+    params.model = this.selectedModel?.id ?? ''
     useRag = false
     trackMatomoEvent(this, { category: 'ai', action: 'remixAI', name: 'GenerateNewAIWorkspace', isClick: false })
     let userPrompt = ''

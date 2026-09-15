@@ -33,7 +33,8 @@ import { RemixDeepAgentMiddleware } from './deepAgentMiddleWare'
 import './AsyncLocalStorageInit'
 import { createModelInstance } from './ModelFactory'
 import { syncModelCatalog } from './helpers/modelCatalog'
-import { generateStructured } from '../../helpers/structuredOutput'
+import type { z } from 'zod'
+import { generateStructured, StructuredOutputOptions } from '../../helpers/structuredOutput'
 import { SecurityCheckSchema, GeneratedProjectSchema, WorkspaceEditSchema } from '../../types/schemas'
 import { getLangfuseCallbackHandler, flushLangfuse } from '../../helpers/langfuse'
 import { setCurrentSessionId } from './helpers/runContext'
@@ -57,14 +58,6 @@ import { clearQuickDappDocsContext } from '../../helpers/quickDappDocsContext'
  * (`notSuitableForCodeGeneration`) went stale on every catalogue change and
  * treated each newly added weak model as suitable until someone noticed.
  */
-
-/**
- * Workspace generation is pinned to one strong coding model rather than
- * following the chat model the user happens to have selected: the payload has
- * to satisfy `GeneratedProjectSchema` in one shot, and weaker models drift out
- * of the shape. The transport still comes from the current selection.
- */
-const WORKSPACE_GENERATION_MODEL_ID = 'anthropic/claude-sonnet-5'
 
 export class DeepAgentInferencer implements ICompletions, IGeneration {
   private plugin: Plugin
@@ -510,40 +503,22 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   async generate(prompt: string, params: IParams): Promise<string> {
-    return this.structuredGeneration(prompt, GeneratedProjectSchema, 'generated_project', WORKSPACE_PROJECT_GENERATION_PROMPT, WORKSPACE_GENERATION_MODEL_ID)
+    return this.structuredGeneration(prompt, GeneratedProjectSchema, 'generated_project', WORKSPACE_PROJECT_GENERATION_PROMPT)
   }
 
   async generateWorkspace(prompt: string, params: IParams): Promise<string> {
-    // Not pinned: an edit runs against the workspace the user is already
-    // working in, on the model they picked for it.
-    return this.structuredGeneration(prompt, WorkspaceEditSchema, 'workspace_edit', WORKSPACE_EDIT_GENERATION_PROMPT, null)
-  }
-
-  private async workspaceGenerationModel(modelId: string | null): Promise<BaseChatModel | null> {
-    if (!modelId || modelId === this.modelSelection.modelId) return this.model
-    const selection: ModelSelection = { ...this.modelSelection, modelId }
-    try {
-      return await createModelInstance(selection, DAPP_MAX_TOKENS, this.userApiKeys)
-    } catch (error: any) {
-      remixAILogger.warn(
-        `[DeepAgentInferencer] could not build ${modelId} — falling back to ${this.modelSelection.modelId}`,
-        error?.message || error
-      )
-      return this.model
-    }
+    return this.structuredGeneration(prompt, WorkspaceEditSchema, 'workspace_edit', WORKSPACE_EDIT_GENERATION_PROMPT)
   }
 
   private async structuredGeneration<T>(
     prompt: string,
     schema: any,
     name: string,
-    instructions: string,
-    modelId: string | null
+    instructions: string
   ): Promise<string> {
     this.event.emit('onInference')
     try {
-      const model = await this.workspaceGenerationModel(modelId)
-      if (!model) {
+      if (!this.model) {
         throw new DeepAgentError(
           'DeepAgent not initialized',
           DeepAgentErrorType.INITIALIZATION_FAILED
@@ -557,7 +532,7 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
         new HumanMessage(prompt)
       ]
 
-      const result = await generateStructured(model, schema, messages, { name })
+      const result = await generateStructured(this.model, schema, messages, { name })
       this.event.emit('onInferenceDone')
       return JSON.stringify(result)
     } catch (error) {
