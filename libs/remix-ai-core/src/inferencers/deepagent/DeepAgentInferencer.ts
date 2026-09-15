@@ -14,7 +14,9 @@ import {
   REMIX_DEEPAGENT_SYSTEM_PROMPT,
   SOLIDITY_CODE_GENERATION_PROMPT,
   SECURITY_ANALYSIS_PROMPT,
-  CODE_EXPLANATION_PROMPT
+  CODE_EXPLANATION_PROMPT,
+  WORKSPACE_PROJECT_GENERATION_PROMPT,
+  WORKSPACE_EDIT_GENERATION_PROMPT
 } from '../deepagent/prompts/system/lightPrompts'
 import { DeepAgentMemoryBackend } from '../../storage/deepAgentMemoryBackend'
 import { IDeepAgentConfig, DeepAgentError, DeepAgentErrorType, ModelSelection, IUserApiKeyConfig, ApiKeyErrorEvent } from '../../types/deepagent'
@@ -31,9 +33,9 @@ import { RemixDeepAgentMiddleware } from './deepAgentMiddleWare'
 import './AsyncLocalStorageInit'
 import { createModelInstance } from './ModelFactory'
 import { syncModelCatalog } from './helpers/modelCatalog'
-import { z } from 'zod'
+import type { z } from 'zod'
 import { generateStructured, StructuredOutputOptions } from '../../helpers/structuredOutput'
-import { SecurityCheckSchema } from '../../types/schemas'
+import { SecurityCheckSchema, GeneratedProjectSchema, WorkspaceEditSchema } from '../../types/schemas'
 import { getLangfuseCallbackHandler, flushLangfuse } from '../../helpers/langfuse'
 import { setCurrentSessionId } from './helpers/runContext'
 import { setResolvedModelListener } from './helpers/resolvedModel'
@@ -501,11 +503,43 @@ export class DeepAgentInferencer implements ICompletions, IGeneration {
   }
 
   async generate(prompt: string, params: IParams): Promise<string> {
-    return this.code_generation(prompt, params)
+    return this.structuredGeneration(prompt, GeneratedProjectSchema, 'generated_project', WORKSPACE_PROJECT_GENERATION_PROMPT)
   }
 
   async generateWorkspace(prompt: string, params: IParams): Promise<string> {
-    return this.code_generation(prompt, params)
+    return this.structuredGeneration(prompt, WorkspaceEditSchema, 'workspace_edit', WORKSPACE_EDIT_GENERATION_PROMPT)
+  }
+
+  private async structuredGeneration<T>(
+    prompt: string,
+    schema: any,
+    name: string,
+    instructions: string
+  ): Promise<string> {
+    this.event.emit('onInference')
+    try {
+      if (!this.model) {
+        throw new DeepAgentError(
+          'DeepAgent not initialized',
+          DeepAgentErrorType.INITIALIZATION_FAILED
+        )
+      }
+
+      const messages: BaseMessage[] = [
+        new SystemMessage(
+          REMIX_DEEPAGENT_SYSTEM_PROMPT + '\n\n' + SOLIDITY_CODE_GENERATION_PROMPT + '\n\n' + instructions
+        ),
+        new HumanMessage(prompt)
+      ]
+
+      const result = await generateStructured(this.model, schema, messages, { name })
+      this.event.emit('onInferenceDone')
+      return JSON.stringify(result)
+    } catch (error) {
+      this.event.emit('onInferenceDone')
+      remixAILogger.error(`[DeepAgentInferencer] structured "${name}" generation failed:`, error)
+      throw error
+    }
   }
 
   async error_explaining(prompt: string, params: IParams): Promise<string> {
