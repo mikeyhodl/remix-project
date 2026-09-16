@@ -52,7 +52,7 @@ module.exports = {
       .click('*[data-id="github-configSwitch"]')
       .pause(500)
       .waitForElementVisible('*[data-shared="tooltipPopup"]', 5000)
-      .assert.containsText('*[data-shared="tooltipPopup"]', 'Settings updated')
+      .assert.containsText('*[data-shared="tooltipPopup"]', 'Credentials removed')
       .waitForElementNotPresent('[data-id="settingsTabgist-access-token"]')
       .click('*[data-id="github-configSwitch"]')
       .pause(100)
