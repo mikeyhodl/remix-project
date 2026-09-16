@@ -255,7 +255,7 @@ export const SettingsSectionUI: React.FC<SettingsSectionUIProps> = ({ plugin, se
       payload: {
         value: rejected.length
           ? `${intl.formatMessage({ id: 'settings.apiKeyInvalid' })}: ${rejected.map(key => intl.formatMessage({ id: `settings.${key}` })).join(', ')}`
-          : intl.formatMessage({ id: 'settings.credentialsUpdated' })
+          : intl.formatMessage({ id: 'settings.settingsUpdated' })
       }
     })
   }
