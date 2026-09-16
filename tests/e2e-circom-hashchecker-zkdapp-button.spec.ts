@@ -98,6 +98,12 @@ test.describe.serial('Circom hashchecker: trusted setup, zk dapp button, and zkV
     await expect(circuitFrame.locator('[data-id="setup_exports_toggler"]')).toBeVisible({ timeout: 30_000 })
   })
 
+  test.afterEach(async ({}, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await page.screenshot({ path: `test-results/${testInfo.title.replace(/[^\w]/g, '_')}.png`, fullPage: true })
+    }
+  })
+
   test.afterAll(async () => {
     await page.close()
     if (poolSessionId) {
