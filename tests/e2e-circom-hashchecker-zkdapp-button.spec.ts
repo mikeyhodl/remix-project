@@ -44,7 +44,7 @@ test.describe.serial('Circom hashchecker: trusted setup, zk dapp button, and zkV
       await page.locator('[data-id="zkverify-configSwitch"]').click()
       await page.locator('[data-id="settingsTabzkverify-api-key"]').fill('zk-verify-api-key')
       await page.locator('[data-id="settingsTabSavezkverify-config"]').click()
-      await expect(page.locator('[data-shared="tooltipPopup"]')).toContainText('Credentials updated', { timeout: 10_000 })
+      await expect(page.locator('[data-shared="tooltipPopup"]')).toContainText('Settings updated', { timeout: 10_000 })
 
       poolSessionId = await page.evaluate(() => {
         try {
