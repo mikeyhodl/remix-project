@@ -244,6 +244,34 @@ function DeployPortraitView() {
     }
   }
 
+  const handleFillWithAI = async () => {
+    const abi = selectedContract?.contractData?.object?.abi
+    const devdoc = selectedContract?.contractData?.object?.devdoc
+    const userdoc = selectedContract?.contractData?.object?.userdoc
+
+    let prompt = 'Help me to fill in the input parameters of the constructor.'
+    if (abi) {
+      prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
+    }
+    if (devdoc && Object.keys(devdoc).length > 0) {
+      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+    }
+    if (userdoc && Object.keys(userdoc).length > 0) {
+      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+    }
+
+    try {
+      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+    } catch (e) { /* may already be active */ }
+    try {
+      await plugin.call('rightSidePanel', 'focusPanel')
+    } catch (e) { /* best-effort */ }
+    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+      source: 'run-tab',
+      displayText: 'Fill in with AI'
+    })
+  }
+
   const switchProxyAddress = (address: string) => {
     trackMatomoEvent?.({ category: 'udapp', action: 'proxyAddressSelected', name: shortenProxyAddress(address), isClick: true })
     setProxyAddress(address)
@@ -732,6 +760,9 @@ function DeployPortraitView() {
                       <i className="far fa-copy ms-2 text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
+                  <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleFillWithAI}>
+                    <span className="text-secondary font-sm">Fill in with AI</span>
+                  </button>
                   <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>
                     <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
                       <span className="text-secondary font-sm">Parameters</span>
