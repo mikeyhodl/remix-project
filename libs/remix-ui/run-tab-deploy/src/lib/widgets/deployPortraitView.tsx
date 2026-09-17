@@ -34,6 +34,7 @@ function DeployPortraitView() {
   const [showProxyDropdown, setShowProxyDropdown] = useState<boolean>(false)
   const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
   const [isNetworkSupported, setNetworkSupported] = useState<boolean>(false)
+  const [aiFilledInputs, setAiFilledInputs] = useState<Set<number>>(new Set())
   const contractKebabIconRef = useRef<HTMLElement>(null)
   const intl = useIntl()
 
@@ -48,6 +49,15 @@ function DeployPortraitView() {
 
     plugin.on('udappEnv', 'providersChanged', (provider: Provider) => {
       setSelectedProvider(provider)
+    })
+
+    plugin.on('remixAI', 'setConstructorInputRequest', (params: string[]) => {
+      const newValues: {[key: number]: string} = {}
+      const filled = new Set<number>()
+      params.forEach((value, index) => { newValues[index] = value; filled.add(index) })
+      setInputValues(newValues)
+      setAiFilledInputs(filled)
+      setTimeout(() => setAiFilledInputs(new Set()), 1500)
     })
   }, [])
 
@@ -249,7 +259,7 @@ function DeployPortraitView() {
     const devdoc = selectedContract?.contractData?.object?.devdoc
     const userdoc = selectedContract?.contractData?.object?.userdoc
 
-    let prompt = 'Help me to fill in the input parameters of the constructor.'
+    let prompt = 'Help me to fill in the input parameters of the constructor, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
     if (abi) {
       prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
     }
@@ -332,6 +342,7 @@ function DeployPortraitView() {
 
   return (
     <>
+      <style>{`@keyframes ai-fill-blink{0%,100%{box-shadow:none}30%,70%{box-shadow:0 0 0 2px rgba(100,196,255,0.6),inset 0 0 6px rgba(100,196,255,0.2)}}.ai-filled-input{animation:ai-fill-blink 1.5s ease-in-out}`}</style>
       <div className="card" style={{ background: 'var(--custom-onsurface-layer-1)' }}>
         <div className="p-3 d-flex align-items-center justify-content-between">
           <div className='d-flex align-items-center gap-2 w-100' data-id="deploy-widget-header" style={{ justifyContent: 'space-between' }}>
@@ -707,7 +718,7 @@ function DeployPortraitView() {
                             <div className="position-relative flex-fill input-with-copy-hover">
                               <input
                                 type="text"
-                                className="form-control form-control-sm border-0"
+                                className={`form-control form-control-sm border-0${aiFilledInputs.has(index) ? ' ai-filled-input' : ''}`}
                                 placeholder={input.type}
                                 value={currentValue}
                                 onChange={(e) => handleInputChange(index, e.target.value)}
@@ -727,7 +738,7 @@ function DeployPortraitView() {
                         {isExpanded && (
                           <div className="mt-2 position-relative input-with-copy-hover">
                             <textarea
-                              className="form-control form-control-sm border-0"
+                              className={`form-control form-control-sm border-0${aiFilledInputs.has(index) ? ' ai-filled-input' : ''}`}
                               placeholder={input.type}
                               value={currentValue}
                               onChange={(e) => handleInputChange(index, e.target.value)}
@@ -761,6 +772,7 @@ function DeployPortraitView() {
                     </button>
                   </CopyToClipboard>
                   <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleFillWithAI}>
+                    <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
                     <span className="text-secondary font-sm">Fill in with AI</span>
                   </button>
                   <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>

@@ -55,6 +55,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const [showLowLevel, setShowLowLevel] = useState<boolean>(false)
   const [selectedFunctionIndex, setSelectedFunctionIndex] = useState<number | null>(null)
   const [funcInputs, setFuncInputs] = useState<{[funcIndex: number]: {[paramIndex: number]: string}}>({})
+  const [aiFilledFuncInputs, setAiFilledFuncInputs] = useState<{funcIndex: number; paramIndices: Set<number>} | null>(null)
   const [expandPath, setExpandPath] = useState<string[]>([])
   const [functionSearchTerm, setFunctionSearchTerm] = useState<string>('')
   const [showEnsNaming, setShowEnsNaming] = useState<boolean>(false)
@@ -118,6 +119,25 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const functionABIs = useMemo(() => {
     return contractABI?.filter((item: FuncABI) => item.type === 'function') || []
   }, [contractABI])
+
+  useEffect(() => {
+    const handler = (address: string, functionName: string, params: string[]) => {
+      console.log('[DeployedContractItem] setFunctionInputRequest', { address, functionName, params })
+      if (address.toLowerCase() !== contract.address.toLowerCase()) return
+      const funcIndex = functionABIs.findIndex((f: FuncABI) => f.name === functionName)
+      if (funcIndex === -1) return
+      const paramMap: {[paramIndex: number]: string} = {}
+      const filled = new Set<number>()
+      params.forEach((value, idx) => { paramMap[idx] = value; filled.add(idx) })
+      console.log('[DeployedContractItem] setFunctionInputRequest resolved', { funcIndex, paramMap })
+      setFuncInputs(prev => ({ ...prev, [funcIndex]: paramMap }))
+      setSelectedFunctionIndex(funcIndex)
+      setAiFilledFuncInputs({ funcIndex, paramIndices: filled })
+      setTimeout(() => setAiFilledFuncInputs(null), 1500)
+    }
+    plugin.on('remixAI', 'setFunctionInputRequest', handler)
+    return () => { plugin.off('remixAI', 'setFunctionInputRequest') }
+  }, [contract.address, functionABIs])
 
   const filteredFunctionABIs = useMemo(() => {
     if (!functionSearchTerm.trim()) return functionABIs
@@ -279,7 +299,8 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
     const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
 
-    let prompt = 'Help me to fill in the input parameters.'
+    let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+    prompt += `\n\nContract address: ${contract.address}`
     if (funcABI) {
       prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
     }
@@ -786,6 +807,8 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
   }
 
   return (
+    <>
+      <style>{`@keyframes ai-fill-blink{0%,100%{box-shadow:none}30%,70%{box-shadow:0 0 0 2px rgba(100,196,255,0.6),inset 0 0 6px rgba(100,196,255,0.2)}}.ai-filled-input{animation:ai-fill-blink 1.5s ease-in-out}`}</style>
     <div
       className=""
       ref={(el) => {
@@ -960,7 +983,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                           data-id={`input-${index}-${actualIndex}-0`}
                                           type="text"
                                           placeholder={`${funcABI.inputs[0].name || 'param0'} (${funcABI.inputs[0].type})`}
-                                          className="form-control form-control-sm"
+                                          className={`form-control form-control-sm${aiFilledFuncInputs?.funcIndex === actualIndex && aiFilledFuncInputs.paramIndices.has(0) ? ' ai-filled-input' : ''}`}
                                           value={funcInputs[actualIndex]?.[0] || ''}
                                           onChange={(e) => handleFunctionInputChange(actualIndex, 0, e.target.value)}
                                           style={inputStyle}
@@ -982,7 +1005,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                           data-id={`input-${index}-${actualIndex}-${inputIdx}`}
                                           type="text"
                                           placeholder={`${input.name || `param${inputIdx}`} (${input.type})`}
-                                          className="form-control form-control-sm mb-1"
+                                          className={`form-control form-control-sm mb-1${aiFilledFuncInputs?.funcIndex === actualIndex && aiFilledFuncInputs?.paramIndices.has(inputIdx) ? ' ai-filled-input' : ''}`}
                                           value={funcInputs[actualIndex]?.[inputIdx] || ''}
                                           onChange={(e) => handleFunctionInputChange(actualIndex, inputIdx, e.target.value)}
                                           style={inputStyle}
@@ -1004,6 +1027,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                         </button>
                                       </CopyToClipboard>
                                       <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleFillWithAI(actualIndex)}>
+                                        <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
                                         <span className="text-secondary">Fill in with AI</span>
                                       </button>
                                       {!isViewPure && funcABI.inputs.length > 1 && (
@@ -1316,5 +1340,6 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
         onConfirm={(options) => void handleQuickDappSetupConfirm(options)}
       />
     </div>
+    </>
   )
 }
