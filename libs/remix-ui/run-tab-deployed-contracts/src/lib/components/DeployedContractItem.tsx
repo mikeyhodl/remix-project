@@ -274,6 +274,34 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     }
   }
 
+  const handleFillWithAI = async (funcIndex: number) => {
+    const funcABI = functionABIs[funcIndex]
+    const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
+    const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
+
+    let prompt = 'Help me to fill in the input parameters.'
+    if (funcABI) {
+      prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
+    }
+    if (devdoc && Object.keys(devdoc).length > 0) {
+      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+    }
+    if (userdoc && Object.keys(userdoc).length > 0) {
+      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+    }
+
+    try {
+      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+    } catch (e) { /* may already be active */ }
+    try {
+      await plugin.call('rightSidePanel', 'focusPanel')
+    } catch (e) { /* best-effort */ }
+    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+      source: 'run-tab',
+      displayText: 'Fill in with AI'
+    })
+  }
+
   const handleExecuteTransaction = async (funcIndex: number) => {
     const funcABI = functionABIs[funcIndex]
     const funcParams = funcInputs[funcIndex] || {}
@@ -975,6 +1003,9 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                           <i className="far fa-copy ms-1 text-secondary"></i>
                                         </button>
                                       </CopyToClipboard>
+                                      <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleFillWithAI(actualIndex)}>
+                                        <span className="text-secondary">Fill in with AI</span>
+                                      </button>
                                       {!isViewPure && funcABI.inputs.length > 1 && (
                                         <>
                                           <div style={{ flex: 1 }} />
