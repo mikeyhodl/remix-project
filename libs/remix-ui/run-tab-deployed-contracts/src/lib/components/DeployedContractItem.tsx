@@ -299,7 +299,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
     const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
 
-    let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+    let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
     prompt += `\n\nContract address: ${contract.address}`
     if (funcABI) {
       prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
