@@ -257,33 +257,33 @@ function DeployPortraitView() {
     }
   }
 
-  // const handleFillWithAI = async () => {
-  //   const abi = selectedContract?.contractData?.object?.abi
-  //   const devdoc = selectedContract?.contractData?.object?.devdoc
-  //   const userdoc = selectedContract?.contractData?.object?.userdoc
+  const handleFillWithAI = async () => {
+    const abi = selectedContract?.contractData?.object?.abi
+    const devdoc = selectedContract?.contractData?.object?.devdoc
+    const userdoc = selectedContract?.contractData?.object?.userdoc
 
-  //   let prompt = 'Help me to fill in the input parameters of the constructor, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
-  //   if (abi) {
-  //     prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
-  //   }
-  //   if (devdoc && Object.keys(devdoc).length > 0) {
-  //     prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
-  //   }
-  //   if (userdoc && Object.keys(userdoc).length > 0) {
-  //     prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
-  //   }
+    let prompt = 'Help me to fill in the input parameters of the constructor, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+    if (abi) {
+      prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
+    }
+    if (devdoc && Object.keys(devdoc).length > 0) {
+      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+    }
+    if (userdoc && Object.keys(userdoc).length > 0) {
+      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+    }
 
-  //   try {
-  //     await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
-  //   } catch (e) { /* may already be active */ }
-  //   try {
-  //     await plugin.call('rightSidePanel', 'focusPanel')
-  //   } catch (e) { /* best-effort */ }
-  //   await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
-  //     source: 'run-tab',
-  //     displayText: 'Fill in with AI'
-  //   })
-  // }
+    try {
+      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+    } catch (e) { /* may already be active */ }
+    try {
+      await plugin.call('rightSidePanel', 'focusPanel')
+    } catch (e) { /* best-effort */ }
+    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+      source: 'run-tab',
+      displayText: 'Fill in with AI'
+    })
+  }
 
   const handleAutoFillWithAI = async () => {
     const inputs = constructorInterface?.inputs
@@ -818,28 +818,35 @@ function DeployPortraitView() {
                   })
                 }
                 {/* Call Data and Parameters */}
-                <div className="d-flex align-items-center justify-content-between gap-2">
+                <div className="d-flex align-items-center gap-1">
                   <CopyToClipboard tip="Copy Call Data" icon="fa-clipboard" direction="bottom" getContent={getEncodedCall} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyCallData', name: 'clicked', isClick: true })}>
-                    <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
+                    <button className="btn btn-sm border-0 d-flex align-items-center gap-1 flex-fill" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap', padding: '4px 8px' }}>
                       <span className="text-secondary font-sm">Call data</span>
-                      <i className="far fa-copy ms-2 text-secondary font-sm"></i>
+                      <i className="far fa-copy text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
-                  {/* <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleFillWithAI}>
-                    <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
-                    <span className="text-secondary font-sm">Fill in with AI</span>
-                  </button> */}
-                  <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
-                    {isAutoFilling
-                      ? <i className="fas fa-spinner fa-spin me-1 text-secondary" style={{ fontSize: '0.7rem' }}></i>
-                      : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
-                    }
-                    <span className="text-secondary font-sm">Auto fill with AI</span>
-                  </button>
+                  <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <CustomTooltip placement="top" tooltipText="Open AI chat to get guided help filling in parameters">
+                      <button className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleFillWithAI}>
+                        <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
+                        <span className="text-secondary font-sm">Fill with AI</span>
+                      </button>
+                    </CustomTooltip>
+                    <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
+                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
+                      <button className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
+                        {isAutoFilling
+                          ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
+                          : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.7rem' }}></i>
+                        }
+                        <span className="text-secondary font-sm">Auto</span>
+                      </button>
+                    </CustomTooltip>
+                  </div>
                   <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>
-                    <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
-                      <span className="text-secondary font-sm">Parameters</span>
-                      <i className="far fa-copy ms-2 text-secondary font-sm"></i>
+                    <button className="btn btn-sm border-0 d-flex align-items-center gap-1 flex-fill" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap', padding: '4px 8px' }}>
+                      <span className="text-secondary font-sm">Params</span>
+                      <i className="far fa-copy text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
                 </div>

@@ -297,34 +297,34 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     }
   }
 
-  // const handleFillWithAI = async (funcIndex: number) => {
-  //   const funcABI = functionABIs[funcIndex]
-  //   const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
-  //   const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
+  const handleFillWithAI = async (funcIndex: number) => {
+    const funcABI = functionABIs[funcIndex]
+    const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
+    const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
 
-  //   let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
-  //   prompt += `\n\nContract address: ${contract.address}`
-  //   if (funcABI) {
-  //     prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
-  //   }
-  //   if (devdoc && Object.keys(devdoc).length > 0) {
-  //     prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
-  //   }
-  //   if (userdoc && Object.keys(userdoc).length > 0) {
-  //     prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
-  //   }
+    let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+    prompt += `\n\nContract address: ${contract.address}`
+    if (funcABI) {
+      prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
+    }
+    if (devdoc && Object.keys(devdoc).length > 0) {
+      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+    }
+    if (userdoc && Object.keys(userdoc).length > 0) {
+      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+    }
 
-  //   try {
-  //     await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
-  //   } catch (e) { /* may already be active */ }
-  //   try {
-  //     await plugin.call('rightSidePanel', 'focusPanel')
-  //   } catch (e) { /* best-effort */ }
-  //   await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
-  //     source: 'run-tab',
-  //     displayText: 'Fill in with AI'
-  //   })
-  // }
+    try {
+      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+    } catch (e) { /* may already be active */ }
+    try {
+      await plugin.call('rightSidePanel', 'focusPanel')
+    } catch (e) { /* best-effort */ }
+    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+      source: 'run-tab',
+      displayText: 'Fill in with AI'
+    })
+  }
 
   const handleAutoFillWithAI = async (funcIndex: number) => {
     const funcABI = functionABIs[funcIndex]
@@ -1065,28 +1065,35 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                     {/* Bottom row: copy buttons (left) + Transact for multi-input (right) */}
                                     <div className="d-flex align-items-center gap-1 mt-1 mb-1">
                                       <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyCalldata' })} icon="fa-clipboard" direction="auto" getContent={() => getEncodedCall(actualIndex)}>
-                                        <button className="btn btn-sm border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
+                                        <button className="btn btn-sm border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }}>
                                           <span className="text-secondary">Calldata</span>
-                                          <i className="far fa-copy ms-1 text-secondary"></i>
+                                          <i className="far fa-copy text-secondary"></i>
                                         </button>
                                       </CopyToClipboard>
                                       <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyParameters' })} icon="fa-clipboard" direction="auto" getContent={() => getEncodedParams(actualIndex)}>
-                                        <button className="btn btn-sm border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
+                                        <button className="btn btn-sm border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }}>
                                           <span className="text-secondary">Params</span>
-                                          <i className="far fa-copy ms-1 text-secondary"></i>
+                                          <i className="far fa-copy text-secondary"></i>
                                         </button>
                                       </CopyToClipboard>
-                                      {/* <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleFillWithAI(actualIndex)}>
-                                        <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
-                                        <span className="text-secondary">Fill in with AI</span>
-                                      </button> */}
-                                      <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
-                                        {autoFillingFuncIndex === actualIndex
-                                          ? <i className="fas fa-spinner fa-spin me-1 text-secondary" style={{ fontSize: '0.6rem' }}></i>
-                                          : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
-                                        }
-                                        <span className="text-secondary">Auto fill with AI</span>
-                                      </button>
+                                      <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <CustomTooltip placement="top" tooltipText="Open AI chat to get guided help filling in parameters">
+                                          <button className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleFillWithAI(actualIndex)}>
+                                            <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
+                                            <span className="text-secondary">Fill with AI</span>
+                                          </button>
+                                        </CustomTooltip>
+                                        <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
+                                        <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
+                                          <button className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
+                                            {autoFillingFuncIndex === actualIndex
+                                              ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.6rem' }}></i>
+                                              : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.6rem' }}></i>
+                                            }
+                                            <span className="text-secondary">Auto</span>
+                                          </button>
+                                        </CustomTooltip>
+                                      </div>
                                       {!isViewPure && funcABI.inputs.length > 1 && (
                                         <>
                                           <div style={{ flex: 1 }} />
