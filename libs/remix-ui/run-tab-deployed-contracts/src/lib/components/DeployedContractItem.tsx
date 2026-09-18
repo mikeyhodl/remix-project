@@ -56,6 +56,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const [selectedFunctionIndex, setSelectedFunctionIndex] = useState<number | null>(null)
   const [funcInputs, setFuncInputs] = useState<{[funcIndex: number]: {[paramIndex: number]: string}}>({})
   const [aiFilledFuncInputs, setAiFilledFuncInputs] = useState<{funcIndex: number; paramIndices: Set<number>} | null>(null)
+  const [autoFillingFuncIndex, setAutoFillingFuncIndex] = useState<number | null>(null)
   const [expandPath, setExpandPath] = useState<string[]>([])
   const [functionSearchTerm, setFunctionSearchTerm] = useState<string>('')
   const [showEnsNaming, setShowEnsNaming] = useState<boolean>(false)
@@ -132,8 +133,10 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
       console.log('[DeployedContractItem] setFunctionInputRequest resolved', { funcIndex, paramMap })
       setFuncInputs(prev => ({ ...prev, [funcIndex]: paramMap }))
       setSelectedFunctionIndex(funcIndex)
-      setAiFilledFuncInputs({ funcIndex, paramIndices: filled })
-      setTimeout(() => setAiFilledFuncInputs(null), 1500)
+      requestAnimationFrame(() => {
+        setAiFilledFuncInputs({ funcIndex, paramIndices: filled })
+        setTimeout(() => setAiFilledFuncInputs(null), 1500)
+      })
     }
     plugin.on('remixAI', 'setFunctionInputRequest', handler)
     return () => { plugin.off('remixAI', 'setFunctionInputRequest') }
@@ -294,33 +297,80 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
     }
   }
 
-  const handleFillWithAI = async (funcIndex: number) => {
+  // const handleFillWithAI = async (funcIndex: number) => {
+  //   const funcABI = functionABIs[funcIndex]
+  //   const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
+  //   const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
+
+  //   let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+  //   prompt += `\n\nContract address: ${contract.address}`
+  //   if (funcABI) {
+  //     prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
+  //   }
+  //   if (devdoc && Object.keys(devdoc).length > 0) {
+  //     prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+  //   }
+  //   if (userdoc && Object.keys(userdoc).length > 0) {
+  //     prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+  //   }
+
+  //   try {
+  //     await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+  //   } catch (e) { /* may already be active */ }
+  //   try {
+  //     await plugin.call('rightSidePanel', 'focusPanel')
+  //   } catch (e) { /* best-effort */ }
+  //   await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+  //     source: 'run-tab',
+  //     displayText: 'Fill in with AI'
+  //   })
+  // }
+
+  const handleAutoFillWithAI = async (funcIndex: number) => {
     const funcABI = functionABIs[funcIndex]
+    if (!funcABI || !funcABI.inputs || funcABI.inputs.length === 0) return
+
     const devdoc = contract.contractData?.devdoc || contract.contractData?.object?.devdoc
     const userdoc = contract.contractData?.userdoc || contract.contractData?.object?.userdoc
 
-    let prompt = 'Help me to fill in the input parameters, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
-    prompt += `\n\nContract address: ${contract.address}`
-    if (funcABI) {
-      prompt += `\n\nFunction ABI:\n${JSON.stringify(funcABI, null, 2)}`
-    }
+    const n = funcABI.inputs.length
+    const paramLines = funcABI.inputs.map((input: any, i: number) =>
+      `  ${i + 1}. ${input.name || `param${i}`}: ${input.type}`
+    ).join('\n')
+    let prompt = `Generate one random but realistic example value per parameter and return them as a JSON array with exactly ${n} element(s).\n\nRules:\n- The outer array must have exactly ${n} element(s) — one per parameter, in order\n- For Solidity array types (e.g. bytes32[], uint256[], address[]) the element must itself be a JSON array (e.g. for bytes32[] use ["0xaaa...","0xbbb..."])\n- For tuple/struct types use a JSON object\n- For simple scalar types (address, uint256, bool, string, bytes32 …) use a plain value\n\nFunction: ${funcABI.name}\nParameters (${n} total):\n${paramLines}\n\nReturn ONLY the raw JSON array. No explanation, no markdown.`
     if (devdoc && Object.keys(devdoc).length > 0) {
-      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+      prompt += `\n\nNatSpec devdoc:\n${JSON.stringify(devdoc, null, 2)}`
     }
     if (userdoc && Object.keys(userdoc).length > 0) {
-      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+      prompt += `\n\nNatSpec userdoc:\n${JSON.stringify(userdoc, null, 2)}`
     }
 
+    setAutoFillingFuncIndex(funcIndex)
     try {
-      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
-    } catch (e) { /* may already be active */ }
-    try {
-      await plugin.call('rightSidePanel', 'focusPanel')
-    } catch (e) { /* best-effort */ }
-    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
-      source: 'run-tab',
-      displayText: 'Fill in with AI'
-    })
+      const result = await plugin.call('remixAI' as any, 'basic_prompt', prompt)
+      const cleaned = (result as string).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const values: any[] = JSON.parse(cleaned)
+      if (!Array.isArray(values) || values.length !== n) {
+        console.error(`Auto fill with AI: expected ${n} value(s), got`, values)
+        return
+      }
+      const paramMap: {[paramIndex: number]: string} = {}
+      const filled = new Set<number>()
+      values.forEach((value, idx) => {
+        paramMap[idx] = typeof value === 'string' ? value : JSON.stringify(value)
+        filled.add(idx)
+      })
+      setFuncInputs(prev => ({ ...prev, [funcIndex]: paramMap }))
+      setSelectedFunctionIndex(funcIndex)
+      requestAnimationFrame(() => {
+        setAiFilledFuncInputs({ funcIndex, paramIndices: filled })
+        setTimeout(() => setAiFilledFuncInputs(null), 1500)
+      })
+    } catch (e) {
+      console.error('Auto fill with AI failed:', e)
+    } finally {
+      setAutoFillingFuncIndex(null)
+    }
   }
 
   const handleExecuteTransaction = async (funcIndex: number) => {
@@ -1026,9 +1076,16 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                           <i className="far fa-copy ms-1 text-secondary"></i>
                                         </button>
                                       </CopyToClipboard>
-                                      <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleFillWithAI(actualIndex)}>
+                                      {/* <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleFillWithAI(actualIndex)}>
                                         <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
                                         <span className="text-secondary">Fill in with AI</span>
+                                      </button> */}
+                                      <button className="btn btn-sm btn-ai border-0" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
+                                        {autoFillingFuncIndex === actualIndex
+                                          ? <i className="fas fa-spinner fa-spin me-1 text-secondary" style={{ fontSize: '0.6rem' }}></i>
+                                          : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
+                                        }
+                                        <span className="text-secondary">Auto fill with AI</span>
                                       </button>
                                       {!isViewPure && funcABI.inputs.length > 1 && (
                                         <>

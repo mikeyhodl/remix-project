@@ -35,6 +35,7 @@ function DeployPortraitView() {
   const [isVerifyChecked, setVerifyChecked] = useState<boolean>(false)
   const [isNetworkSupported, setNetworkSupported] = useState<boolean>(false)
   const [aiFilledInputs, setAiFilledInputs] = useState<Set<number>>(new Set())
+  const [isAutoFilling, setIsAutoFilling] = useState(false)
   const contractKebabIconRef = useRef<HTMLElement>(null)
   const intl = useIntl()
 
@@ -56,8 +57,10 @@ function DeployPortraitView() {
       const filled = new Set<number>()
       params.forEach((value, index) => { newValues[index] = value; filled.add(index) })
       setInputValues(newValues)
-      setAiFilledInputs(filled)
-      setTimeout(() => setAiFilledInputs(new Set()), 1500)
+      requestAnimationFrame(() => {
+        setAiFilledInputs(filled)
+        setTimeout(() => setAiFilledInputs(new Set()), 1500)
+      })
     })
   }, [])
 
@@ -254,32 +257,83 @@ function DeployPortraitView() {
     }
   }
 
-  const handleFillWithAI = async () => {
+  // const handleFillWithAI = async () => {
+  //   const abi = selectedContract?.contractData?.object?.abi
+  //   const devdoc = selectedContract?.contractData?.object?.devdoc
+  //   const userdoc = selectedContract?.contractData?.object?.userdoc
+
+  //   let prompt = 'Help me to fill in the input parameters of the constructor, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+  //   if (abi) {
+  //     prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
+  //   }
+  //   if (devdoc && Object.keys(devdoc).length > 0) {
+  //     prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+  //   }
+  //   if (userdoc && Object.keys(userdoc).length > 0) {
+  //     prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+  //   }
+
+  //   try {
+  //     await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
+  //   } catch (e) { /* may already be active */ }
+  //   try {
+  //     await plugin.call('rightSidePanel', 'focusPanel')
+  //   } catch (e) { /* best-effort */ }
+  //   await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
+  //     source: 'run-tab',
+  //     displayText: 'Fill in with AI'
+  //   })
+  // }
+
+  const handleAutoFillWithAI = async () => {
+    const inputs = constructorInterface?.inputs
+    if (!inputs || inputs.length === 0) return
+
     const abi = selectedContract?.contractData?.object?.abi
     const devdoc = selectedContract?.contractData?.object?.devdoc
     const userdoc = selectedContract?.contractData?.object?.userdoc
 
-    let prompt = 'Help me to fill in the input parameters of the constructor, especially for complex types like bytes, struct, string, arrays, etc... DO NOT call the Contract_Runner agent to deploy, call or transact with the contract. Do not necessarily use the render_ui tool. If the user want to, use the tool set_input_params from Contract_Runner to set back the parameters to the Remix UI. If the user want to deploy, call or transact with the contract, tell them to verify the actual values are correct and use the Remix UI actions.'
+    const n = inputs.length
+    const paramLines = inputs.map((input: any, i: number) =>
+      `  ${i + 1}. ${input.name || `param${i}`}: ${input.type}`
+    ).join('\n')
+    let prompt = `Generate one random but realistic example value per parameter and return them as a JSON array with exactly ${n} element(s).\n\nRules:\n- The outer array must have exactly ${n} element(s) — one per parameter, in order\n- For Solidity array types (e.g. bytes32[], uint256[], address[]) the element must itself be a JSON array (e.g. for bytes32[] use ["0xaaa...","0xbbb..."])\n- For tuple/struct types use a JSON object\n- For simple scalar types (address, uint256, bool, string, bytes32 …) use a plain value\n\nParameters (${n} total):\n${paramLines}\n\nReturn ONLY the raw JSON array. No explanation, no markdown.`
     if (abi) {
-      prompt += `\n\nABI:\n${JSON.stringify(abi, null, 2)}`
+      prompt += `\n\nFull ABI:\n${JSON.stringify(abi, null, 2)}`
     }
     if (devdoc && Object.keys(devdoc).length > 0) {
-      prompt += `\n\nDeveloper documentation (NatSpec devdoc):\n${JSON.stringify(devdoc, null, 2)}`
+      prompt += `\n\nNatSpec devdoc:\n${JSON.stringify(devdoc, null, 2)}`
     }
     if (userdoc && Object.keys(userdoc).length > 0) {
-      prompt += `\n\nUser documentation (NatSpec userdoc):\n${JSON.stringify(userdoc, null, 2)}`
+      prompt += `\n\nNatSpec userdoc:\n${JSON.stringify(userdoc, null, 2)}`
     }
 
+    setIsAutoFilling(true)
     try {
-      await plugin.call('manager', 'activatePlugin', 'remix-ai-assistant')
-    } catch (e) { /* may already be active */ }
-    try {
-      await plugin.call('rightSidePanel', 'focusPanel')
-    } catch (e) { /* best-effort */ }
-    await plugin.call('remixaiassistant' as any, 'chatPipe', prompt, false, {
-      source: 'run-tab',
-      displayText: 'Fill in with AI'
-    })
+      const result = await plugin.call('remixAI' as any, 'basic_prompt', prompt)
+      const cleaned = (result as string).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const values: any[] = JSON.parse(cleaned)
+      if (!Array.isArray(values) || values.length !== n) {
+        console.error(`Auto fill with AI: expected ${n} value(s), got`, values)
+        return
+      }
+      const newValues: {[key: number]: string} = {}
+      const filled = new Set<number>()
+      values.forEach((value, index) => {
+        newValues[index] = typeof value === 'string' ? value : JSON.stringify(value)
+        filled.add(index)
+      })
+
+      setInputValues(newValues)
+      requestAnimationFrame(() => {
+        setAiFilledInputs(filled)
+        setTimeout(() => setAiFilledInputs(new Set()), 1500)
+      })
+    } catch (e) {
+      console.error('Auto fill with AI failed:', e)
+    } finally {
+      setIsAutoFilling(false)
+    }
   }
 
   const switchProxyAddress = (address: string) => {
@@ -771,9 +825,16 @@ function DeployPortraitView() {
                       <i className="far fa-copy ms-2 text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
-                  <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleFillWithAI}>
+                  {/* <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleFillWithAI}>
                     <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
                     <span className="text-secondary font-sm">Fill in with AI</span>
+                  </button> */}
+                  <button className="btn btn-sm btn-ai border-0" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
+                    {isAutoFilling
+                      ? <i className="fas fa-spinner fa-spin me-1 text-secondary" style={{ fontSize: '0.7rem' }}></i>
+                      : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
+                    }
+                    <span className="text-secondary font-sm">Auto fill with AI</span>
                   </button>
                   <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>
                     <button className="btn btn-sm flex-fill border-0" style={{ minWidth: '120px', backgroundColor: 'var(--custom-onsurface-layer-3)' }}>
