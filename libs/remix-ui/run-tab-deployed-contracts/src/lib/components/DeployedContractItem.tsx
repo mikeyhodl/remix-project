@@ -1086,7 +1086,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                         </CustomTooltip>
                                         <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
                                         */}
-                                        <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
+                                        <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
                                           <button data-id={`deployed-auto-fill-with-ai-fn-${actualIndex}`} className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
                                             {autoFillingFuncIndex === actualIndex
                                               ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.6rem' }}></i>

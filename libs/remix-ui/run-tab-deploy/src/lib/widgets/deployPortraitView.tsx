@@ -841,7 +841,7 @@ function DeployPortraitView() {
                     </CustomTooltip>                    
                     <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
                     */}
-                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
+                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
                       <button data-id="deploy-auto-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
                         {isAutoFilling
                           ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
