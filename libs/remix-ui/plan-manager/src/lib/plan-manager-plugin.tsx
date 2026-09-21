@@ -36,6 +36,8 @@ import {
   type CheckoutIntent,
   type CheckoutBreakdown,
   type CartItem,
+  isStarterCreditPack,
+  STARTER_PACK_CREDITS,
   type PlanState,
   type CreditStatus,
   type CreditState,
@@ -72,7 +74,7 @@ const profile = {
   displayName: 'Plan & Credits',
   description: 'Manage your subscription, top up credits and review AI usage',
   methods: ['open', 'close', 'toggle', 'setCheckoutResult', 'reportCreditsExhausted', 'refresh', 'purchaseCredits', 'subscribeToPlan', 'changePlan', 'cancelSubscription', 'reactivateSubscription', 'resolveConfirm', 'cancelCheckout', 'resumeCheckout', 'dismissResumeNudge', 'getPendingCheckouts', 'discardCheckout'],
-  events: ['opened', 'closed', 'checkoutResultChanged', 'pendingCheckoutsChanged'],
+  events: ['opened', 'closed', 'checkoutResultChanged', 'pendingCheckoutsChanged', 'purchaseConfirmed'],
   icon: PLAN_ICON,
   location: 'sidePanel',
   version: packageJson.version,
@@ -94,6 +96,9 @@ export class PlanManagerPlugin extends ViewPlugin {
   private freePlanAutoOpenFired = false
   // Guard so we only auto-load the resume list once per auth session.
   private resumeCheckoutsLoaded = false
+  // Starter-pack purchase confirmed; the low-cost-models modal waits until the
+  // user leaves the checkout success screen.
+  private pendingCheapModelsAnnouncement = false
   // Paddle wiring is owned by the plugin so the panel can drive checkout
   // end-to-end without a host shell. The Paddle singleton lives in
   // ./paddle-singleton (formerly @remix-ui/billing).
@@ -373,6 +378,7 @@ export class PlanManagerPlugin extends ViewPlugin {
       this.store.send({ type: 'CART_CLEAR' })
     }
     this.store.send({ type: 'CLOSE_OVERLAY' })
+    this.flushCheapModelsAnnouncement()
   }
 
   cancelCheckout(reason: string = 'user_cancelled'): void {
@@ -436,6 +442,7 @@ export class PlanManagerPlugin extends ViewPlugin {
   setCheckoutResult(result: CheckoutResult | null): void {
     if (!result) {
       this.store.send({ type: 'CHECKOUT_RESULT_DISMISS' })
+      this.flushCheapModelsAnnouncement()
       return
     }
     // We weren't told the intent up-front, so capture it now from the result.
@@ -2386,6 +2393,73 @@ export class PlanManagerPlugin extends ViewPlugin {
   }
 
   /**
+   * What the confirmed checkout actually contained, as `CartItem`s. Multi-item
+   * checkouts carry their own cart; a single top-up only records the product
+   * id, so that is resolved against the package catalogue. Listeners (e.g. the
+   * AI assistant, which switches to low-cost models after a small top-up) need
+   * the credits/price, not just the label.
+   */
+  private resolvePurchasedItems(): CartItem[] {
+    const snap = this.store.getSnapshot()
+    if (snap.cartItems.length > 0) return [...snap.cartItems]
+    const productId = snap.pendingCheckout?.productId
+    if (!productId) return []
+    const pkg = snap.catalogPackages.find(p => p.id === productId)
+    if (pkg) {
+      return [{
+        slug: pkg.id,
+        name: pkg.name,
+        productType: 'credit_package',
+        // `priceUsd` is already in cents throughout the catalogue.
+        priceCents: pkg.priceUsd ?? 0,
+        credits: pkg.credits
+      }]
+    }
+    const plan = snap.catalogPlans.find(p => p.id === productId)
+    if (plan) {
+      return [{
+        slug: plan.id,
+        name: plan.name,
+        productType: 'subscription_plan',
+        priceCents: plan.priceUsd ?? 0
+      }]
+    }
+    return []
+  }
+
+  /**
+   * Tell the user the AI assistant just dropped to the low-cost tier. Armed
+   * when the purchase confirms but held until the user leaves the success
+   * screen (Continue, or closing the panel) — firing it on confirmation would
+   * stack a modal on top of "Payment confirmed" and bury both messages.
+   *
+   * Flushing also closes the checkout panel, so the modal lands on the IDE
+   * rather than behind the overlay.
+   *
+   * It lives here rather than in the assistant panel because the switch is
+   * something we did on the user's behalf, so it has to be visible even when
+   * that panel is closed. The assistant does the actual switching and keeps
+   * its own in-panel notice.
+   */
+  private flushCheapModelsAnnouncement(): void {
+    if (!this.pendingCheapModelsAnnouncement) return
+    this.pendingCheapModelsAnnouncement = false
+    // Leave checkout before raising the modal. The panel is a full-screen
+    // overlay, so a modal opened behind it reads as nothing happening at all.
+    // CLOSE_OVERLAY directly rather than close(): the cart/pending-checkout
+    // cleanup there is for abandoned checkouts, and close() calls back into
+    // this method.
+    this.store.send({ type: 'CLOSE_OVERLAY' })
+    this.call('notification' as any, 'modal', {
+      id: 'ai-cheap-models-switched',
+      title: 'Low-cost AI models enabled',
+      message: `Your ${STARTER_PACK_CREDITS.toLocaleString()}-credit top-up unlocks the low-cost AI models. The assistant has switched to one and now lists only those, so your credits go further. Turn the "Low-cost models only" toggle off next to the model name to see every model again.`,
+      modalType: 'alert',
+      okLabel: 'Got it'
+    }).catch(err => planManagerLogger.warn('[PlanManager] cheap-models modal failed', err))
+  }
+
+  /**
    * After a confirmed purchase / plan change / cancel, refresh everything the
    * user can see: local plan-manager data, the global access policy, the
    * permissions cache, and the credits counter. These drive the top-bar
@@ -2405,6 +2479,9 @@ export class PlanManagerPlugin extends ViewPlugin {
     // permission refresh first ensures the new plan's quota is visible by then.
     await this.call('auth', 'refreshPermissions').catch(err => planManagerLogger.warn(LOG, 'refreshPermissions failed', err))
     await this.call('auth', 'refreshCredits').catch(err => planManagerLogger.warn(LOG, 'refreshCredits failed', err))
+    // Read what was bought BEFORE PURCHASE_CONFIRMED — it clears the cart and
+    // the in-flight intent, which is where the purchased items live.
+    const items = this.resolvePurchasedItems()
     // Promote 'processing' → 'success' in the panel. DATA_LOADED alone won't
     // do it because the data state is usually 'ready' (not 'refreshing') by
     // the time we get here; PURCHASE_CONFIRMED is handled at machine root.
@@ -2412,7 +2489,8 @@ export class PlanManagerPlugin extends ViewPlugin {
     const cr = this.store.getSnapshot().checkoutResult
     // Single source of truth for a fully-confirmed, account-refreshed purchase.
     this.trackCheckout('confirmed', cr?.intent, cr?.itemLabel)
-    this.emit('purchaseConfirmed', { intent: cr?.intent, label: cr?.itemLabel })
+    this.emit('purchaseConfirmed', { intent: cr?.intent, label: cr?.itemLabel, items })
+    if (items.some(isStarterCreditPack)) this.pendingCheapModelsAnnouncement = true
     planManagerLogger.log(LOG, 'done')
   }
 
