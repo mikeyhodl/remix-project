@@ -775,22 +775,20 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
                       : 'Show only low-cost models in the selector — the cheapest tier across all providers, to make your credits last longer.'
                 }
               >
-                <span className="d-inline-flex align-self-end align-items-center">
-                  <button
-                    type="button"
-                    onClick={() => onToggleCheapModels?.()}
-                    disabled={!hasCheapModels}
-                    className={`btn btn-text btn-sm font-weight-light border-0 rounded d-flex flex-row flex-nowrap align-items-center justify-content-center ${cheapModelsOnly ? 'text-success' : 'text-secondary'}`}
-                    data-id="ai-cheap-models-toggle"
-                    data-active={cheapModelsOnly ? 'true' : 'false'}
-                    data-available={hasCheapModels ? 'true' : 'false'}
-                    aria-pressed={cheapModelsOnly}
-                    aria-label="Show only low-cost models"
-                  >
-                    <i className={`fa-solid ${cheapModelsOnly ? 'fa-toggle-on' : 'fa-toggle-off'} me-1`} style={{ fontSize: '1.15rem', lineHeight: 1 }}></i>
-                    <i className="fa-solid fa-tag" style={{ fontSize: '0.9rem', lineHeight: 1 }}></i>
-                  </button>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => onToggleCheapModels?.()}
+                  disabled={!hasCheapModels}
+                  className={`btn btn-text btn-sm small font-weight-light border-0 rounded align-self-center d-flex flex-row flex-nowrap align-items-center justify-content-center ${cheapModelsOnly ? 'text-success' : 'text-secondary'}`}
+                  data-id="ai-cheap-models-toggle"
+                  data-active={cheapModelsOnly ? 'true' : 'false'}
+                  data-available={hasCheapModels ? 'true' : 'false'}
+                  aria-pressed={cheapModelsOnly}
+                  aria-label="Show only low-cost models"
+                >
+                  <i className={`fa-solid ${cheapModelsOnly ? 'fa-toggle-on' : 'fa-toggle-off'} me-1`} style={{ fontSize: '1.15rem', lineHeight: 1, verticalAlign: 'middle' }}></i>
+                  <span style={{ fontSize: '0.75rem', lineHeight: 1, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>low-cost AI</span>
+                </button>
               </CustomTooltip>
               {selectedModel?.provider === 'ollama' && ollamaModels.length > 0 && (
                 <button
