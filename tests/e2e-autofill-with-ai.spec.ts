@@ -28,9 +28,15 @@ contract ParamTest {
 async function signIn(page: any, poolApiKey: string) {
   const url = `http://localhost:8080/?#e2e_feature_groups=e2e-free-with-quotas&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
   await page.goto(url)
+  try {
+    await page.getByTitle('Dismiss').waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByTitle('Dismiss').click();
+  } catch { /* not present */ }
   await page.locator('[data-id="login-button"]').click()
   await page.locator('[data-id="loginModalE2EPoolButton"]').click()
   await expect(page.locator('[data-id="user-menu-compact"]').first()).toBeVisible({ timeout: 30000 })
+  await expect(page.locator('[data-id="planManagerStubOpenButton"]')).toBeVisible({ timeout: 10000 })
+  await page.locator('[data-id="verticalIconsKindfilePanel"]').click()
 }
 
 async function loadAndCompileContract(page: any, source: string) {
