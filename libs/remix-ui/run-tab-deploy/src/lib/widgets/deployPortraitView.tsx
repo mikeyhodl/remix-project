@@ -825,30 +825,32 @@ function DeployPortraitView() {
                       <i className="far fa-copy text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
-                  <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <CustomTooltip placement="top" tooltipText="Open AI chat to get guided help filling in parameters">
-                      <button data-id="deploy-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleFillWithAI}>
-                        <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
-                        <span className="text-secondary font-sm">Fill with AI</span>
-                      </button>
-                    </CustomTooltip>
-                    <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
-                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
-                      <button data-id="deploy-auto-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
-                        {isAutoFilling
-                          ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
-                          : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.7rem' }}></i>
-                        }
-                        <span className="text-secondary font-sm">Auto</span>
-                      </button>
-                    </CustomTooltip>
-                  </div>
                   <CopyToClipboard tip="Copy Parameters" icon="fa-clipboard" direction="bottom" getContent={getEncodedParams} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyParameters', name: 'clicked', isClick: true })}>
                     <button className="btn btn-sm border-0 d-flex align-items-center gap-1 flex-fill" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap', padding: '4px 8px' }}>
                       <span className="text-secondary font-sm">Params</span>
                       <i className="far fa-copy text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
+                  <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
+                    {/*
+                      <CustomTooltip placement="top" tooltipText="Open AI chat to get guided help filling in parameters">
+                      <button data-id="deploy-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleFillWithAI}>
+                        <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-deploy-icon" />
+                        <span className="text-secondary font-sm">Fill with AI</span>
+                      </button>
+                    </CustomTooltip>                    
+                    <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
+                    */}
+                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
+                      <button data-id="deploy-auto-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
+                        {isAutoFilling
+                          ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
+                          : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.7rem' }}></i>
+                        }
+                        <span className="text-secondary font-sm">Auto Fill with AI</span>
+                      </button>
+                    </CustomTooltip>
+                  </div>                  
                 </div>
               </div>
             )}

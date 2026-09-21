@@ -1077,6 +1077,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                         </button>
                                       </CopyToClipboard>
                                       <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        {/*
                                         <CustomTooltip placement="top" tooltipText="Open AI chat to get guided help filling in parameters">
                                           <button data-id={`deployed-fill-with-ai-fn-${actualIndex}`} className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleFillWithAI(actualIndex)}>
                                             <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="fill-in-with-ai-icon" />
@@ -1084,13 +1085,14 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                           </button>
                                         </CustomTooltip>
                                         <div style={{ width: '1px', backgroundColor: 'var(--custom-onsurface-layer-1)', alignSelf: 'stretch' }} />
+                                        */}
                                         <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly">
                                           <button data-id={`deployed-auto-fill-with-ai-fn-${actualIndex}`} className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
                                             {autoFillingFuncIndex === actualIndex
                                               ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.6rem' }}></i>
                                               : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.6rem' }}></i>
                                             }
-                                            <span className="text-secondary">Auto</span>
+                                            <span className="text-secondary">Auto Fill with AI</span>
                                           </button>
                                         </CustomTooltip>
                                       </div>
