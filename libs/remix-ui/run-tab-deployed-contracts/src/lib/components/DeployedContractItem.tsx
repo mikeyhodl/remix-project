@@ -1063,7 +1063,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                       ))
                                     )}
                                     {/* Bottom row: copy buttons (left) + Transact for multi-input (right) */}
-                                    <div className="d-flex align-items-center gap-1 mt-1 mb-1">
+                                    <div className="d-flex align-items-center gap-1 mt-1 mb-1 flex-wrap">
                                       <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyCalldata' })} icon="fa-clipboard" direction="auto" getContent={() => getEncodedCall(actualIndex)}>
                                         <button className="btn btn-sm border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }}>
                                           <span className="text-secondary">Calldata</span>
@@ -1097,17 +1097,14 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                         </CustomTooltip>
                                       </div>
                                       {!isViewPure && funcABI.inputs.length > 1 && (
-                                        <>
-                                          <div style={{ flex: 1 }} />
-                                          <button
-                                            data-id={`btnExecute-${index}-${actualIndex}`}
-                                            className="btn btn-sm btn-primary"
-                                            style={{ fontSize: '11px', fontWeight: 600, padding: '3px 12px' }}
-                                            onClick={executeHandler}
-                                          >
-                                            {intl.formatMessage({ id: 'udapp.transactButton' })}
-                                          </button>
-                                        </>
+                                        <button
+                                          data-id={`btnExecute-${index}-${actualIndex}`}
+                                          className="btn btn-sm btn-primary ms-auto"
+                                          style={{ fontSize: '11px', fontWeight: 600, padding: '3px 12px' }}
+                                          onClick={executeHandler}
+                                        >
+                                          {intl.formatMessage({ id: 'udapp.transactButton' })}
+                                        </button>
                                       )}
                                     </div>
                                   </div>

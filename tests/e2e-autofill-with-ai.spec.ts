@@ -26,7 +26,7 @@ contract ParamTest {
 `
 
 async function signIn(page: any, poolApiKey: string) {
-  const url = `http://localhost:8080/?#e2e_feature_groups=e2e-free-with-quotas&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
+  const url = `http://127.0.0.1:8080/?#e2e_feature_groups=e2e-unlimited-quota&e2e_pool_key=${encodeURIComponent(poolApiKey)}&lang=en&optimize&runs=200&evmVersion&version=soljson-v0.8.34+commit.80d5c536.js`
   await page.goto(url)
   try {
     await page.getByTitle('Dismiss').waitFor({ state: 'visible', timeout: 5000 });

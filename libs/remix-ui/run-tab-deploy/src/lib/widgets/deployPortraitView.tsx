@@ -818,7 +818,7 @@ function DeployPortraitView() {
                   })
                 }
                 {/* Call Data and Parameters */}
-                <div className="d-flex align-items-center gap-1">
+                <div className="d-flex align-items-center gap-1 flex-wrap">
                   <CopyToClipboard tip="Copy Call Data" icon="fa-clipboard" direction="bottom" getContent={getEncodedCall} callback={() => trackMatomoEvent?.({ category: 'udapp', action: 'copyCallData', name: 'clicked', isClick: true })}>
                     <button className="btn btn-sm border-0 d-flex align-items-center gap-1 flex-fill" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap', padding: '4px 8px' }}>
                       <span className="text-secondary font-sm">Call data</span>
