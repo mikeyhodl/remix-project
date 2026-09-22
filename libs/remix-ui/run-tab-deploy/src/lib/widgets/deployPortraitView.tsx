@@ -810,7 +810,7 @@ function DeployPortraitView() {
                           ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
                           : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.7rem' }}></i>
                         }
-                        <span className="text-secondary font-sm">Auto Fill with AI</span>
+                        <span className="text-secondary font-sm">Auto-Fill with AI Samples</span>
                       </button>
                     </CustomTooltip>
                   </div>
