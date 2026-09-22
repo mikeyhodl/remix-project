@@ -813,7 +813,7 @@ function DeployPortraitView() {
                         <span className="text-secondary font-sm">Auto Fill with AI</span>
                       </button>
                     </CustomTooltip>
-                  </div>                  
+                  </div>
                 </div>
               </div>
             )}
