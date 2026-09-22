@@ -1136,7 +1136,6 @@ export class SetInputParamsHandler extends BaseToolHandler {
 
   async execute(args: { params: string[]; contractAddress?: string; functionName?: string }, plugin: Plugin): Promise<IMCPToolResult> {
     try {
-      console.log('[SetInputParamsHandler] Filling input parameters in the Deploy & Run UI:', args);
       if (args.contractAddress && args.functionName) {
         plugin.emit('setFunctionInputRequest', args.contractAddress, args.functionName, args.params)
       } else {
@@ -1177,7 +1176,7 @@ export function createDeploymentTools(): RemixToolDefinition[] {
     define(new GetCurrentEnvironmentHandler(), ['environment:read']),
     define(new RunScriptHandler(), ['transaction:send']),
     define(new SimulateTransactionHandler(), ['transaction:simulate']),
-    define(new AddInstanceHandler(), ['deploy:write']),
-    define(new SetInputParamsHandler(), ['deploy:write'])
+    define(new AddInstanceHandler(), ['deploy:write'])
+    // define(new SetInputParamsHandler(), ['deploy:write'])
   ];
 }
