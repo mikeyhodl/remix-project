@@ -36,7 +36,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   const { widgetState, dispatch, plugin, themeQuality } = useContext(DeployedContractsAppContext)
   const { trackMatomoEvent } = useContext(TrackingContext)
   const intl = useIntl()
-  const { features } = useAuth()
+  const { features, isAuthenticated } = useAuth()
   const hasRegisterEnsAccess = features?.[Features.REGISTER_ENS]?.is_enabled === true
   const isDesktop = isElectron()
   const [networkName, setNetworkName] = useState<string>('')
@@ -298,6 +298,10 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
   }
 
   const handleAutoFillWithAI = async (funcIndex: number) => {
+    if (!isAuthenticated) {
+      plugin.call('planManager' as any, 'open' as any, { reason: 'sign-in' })
+      return
+    }
     const funcABI = functionABIs[funcIndex]
     if (!funcABI || !funcABI.inputs || funcABI.inputs.length === 0) return
 
@@ -1047,17 +1051,15 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow. Co
                                             <i className="far fa-copy text-secondary"></i>
                                           </button>
                                         </CopyToClipboard>
-                                        <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
-                                          <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
-                                            <button data-id={`deployed-auto-fill-with-ai-fn-${actualIndex}`} className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'var(--custom-onsurface-layer-3)', whiteSpace: 'nowrap' }} onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
-                                              {autoFillingFuncIndex === actualIndex
-                                                ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.6rem' }}></i>
-                                                : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.6rem' }}></i>
-                                              }
-                                              <span className="text-secondary">Auto-Fill with AI Samples</span>
-                                            </button>
-                                          </CustomTooltip>
-                                        </div>
+                                        <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
+                                          <button data-id={`deployed-auto-fill-with-ai-fn-${actualIndex}`} className="btn btn-ai text-nowrap" onClick={() => handleAutoFillWithAI(actualIndex)} disabled={autoFillingFuncIndex === actualIndex}>
+                                            {autoFillingFuncIndex === actualIndex
+                                              ? <i className="fas fa-spinner fa-spin me-1"></i>
+                                              : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="me-1" />
+                                            }
+                                            Auto-Fill with AI Samples
+                                          </button>
+                                        </CustomTooltip>
                                         {!isViewPure && funcABI.inputs.length > 1 && (
                                           <button
                                             data-id={`btnExecute-${index}-${actualIndex}`}

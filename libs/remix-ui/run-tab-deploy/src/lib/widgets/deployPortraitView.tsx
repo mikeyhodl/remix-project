@@ -12,6 +12,7 @@ import { ToggleSwitch } from '@remix-ui/toggle'
 import { ContractKebabMenu } from './contractKebabMenu'
 import { VerificationSettingsUI } from '../components/verificationSettingsUI'
 import { TrackingContext } from '@remix-ide/tracking'
+import { useAuth } from '@remix-ui/app'
 
 const txFormat = remixLib.execution.txFormat
 const txHelper = remixLib.execution.txHelper
@@ -20,6 +21,7 @@ const queryParams = new remixLib.QueryParams()
 function DeployPortraitView() {
   const { plugin, widgetState, dispatch, themeQuality } = useContext(DeployAppContext)
   const { trackMatomoEvent } = useContext(TrackingContext)
+  const { isAuthenticated } = useAuth()
   // TODO: Move all state to reducer
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [expandedInputs, setExpandedInputs] = useState<Set<number>>(new Set())
@@ -258,6 +260,10 @@ function DeployPortraitView() {
   }
 
   const handleAutoFillWithAI = async () => {
+    if (!isAuthenticated) {
+      plugin.call('planManager' as any, 'open' as any, { reason: 'sign-in' })
+      return
+    }
     const inputs = constructorInterface?.inputs
     if (!inputs || inputs.length === 0) return
 
@@ -803,17 +809,15 @@ function DeployPortraitView() {
                       <i className="far fa-copy text-secondary font-sm"></i>
                     </button>
                   </CopyToClipboard>
-                  <div className="btn-group flex-shrink-0" role="group" style={{ border: '1px solid var(--custom-onsurface-layer-1)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
-                      <button data-id="deploy-auto-fill-with-ai" className="btn btn-sm btn-ai border-0 d-flex align-items-center gap-1" style={{ backgroundColor: 'var(--custom-onsurface-layer-3)', padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
-                        {isAutoFilling
-                          ? <i className="fas fa-spinner fa-spin text-secondary" style={{ fontSize: '0.7rem' }}></i>
-                          : <i className="fas fa-bolt text-secondary" style={{ fontSize: '0.7rem' }}></i>
-                        }
-                        <span className="text-secondary font-sm">Auto-Fill with AI Samples</span>
-                      </button>
-                    </CustomTooltip>
-                  </div>
+                  <CustomTooltip placement="top" tooltipText="Auto-generate random example values instantly. Only for testing contracts.">
+                    <button data-id="deploy-auto-fill-with-ai" className="btn btn-ai text-nowrap" onClick={handleAutoFillWithAI} disabled={isAutoFilling}>
+                      {isAutoFilling
+                        ? <i className="fas fa-spinner fa-spin me-1"></i>
+                        : <img src="assets/img/remixAI_small.svg" alt="Remix AI" className="me-1" />
+                      }
+                      Auto-Fill with AI Samples
+                    </button>
+                  </CustomTooltip>
                 </div>
               </div>
             )}
