@@ -264,6 +264,7 @@ function DeployPortraitView() {
       plugin.call('planManager' as any, 'open' as any, { reason: 'sign-in' })
       return
     }
+    trackMatomoEvent?.({ category: 'udapp', action: 'autoFillWithAI', name: 'deploy', isClick: true })
     const inputs = constructorInterface?.inputs
     if (!inputs || inputs.length === 0) return
 
