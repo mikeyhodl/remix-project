@@ -302,6 +302,7 @@ export function DeployedContractItem({ contract, index, registerRef, isKebabMenu
       plugin.call('planManager' as any, 'open' as any, { reason: 'sign-in' })
       return
     }
+    trackMatomoEvent?.({ category: 'udapp', action: 'autoFillWithAI', name: 'deployedContract', isClick: true })
     const funcABI = functionABIs[funcIndex]
     if (!funcABI || !funcABI.inputs || funcABI.inputs.length === 0) return
 
