@@ -100,6 +100,9 @@ export class NudgePlugin extends Plugin {
   // Last billing locale turned into engine facts — the plan manager replays a
   // cached locale on activation and again once a live preview lands.
   private _billingLocaleSignature = ''
+  // A country-specific pricing offer is live, so the generic free-plan upsell
+  // stands down (same audience, weaker copy).
+  private _regionalOfferActive = false
   private _activeBanner: NudgeRule | null = null
 
   // Type-safe tracker defaulting to NudgeEvent
@@ -292,6 +295,7 @@ export class NudgePlugin extends Plugin {
     this.on('planManager' as any, 'purchaseConfirmed', (info?: { intent?: string; label?: string }) => {
       this.engine_.unfire('user:on_free_plan')
       this.engine_.disableRule('free-plan-upgrade')
+      this.engine_.disableRule('regional-pricing-offer')
 
       // Only celebrate / suppress for an actual plan upgrade (not top-ups,
       // cancellations or reactivations).
@@ -608,7 +612,8 @@ export class NudgePlugin extends Plugin {
           widgetBg: 'rgba(139, 92, 246, 0.1)',
         },
         showOnce: 'session',
-        priority: 13
+        priority: 13,
+        enabled: !this._regionalOfferActive
       })
       this.engine_.fire('user:on_free_plan')
       this.log('[NudgePlugin] _checkFreePlanNudge: done')
@@ -645,7 +650,13 @@ export class NudgePlugin extends Plugin {
         : `We now have rates tailored to ${country} — see what your plan costs here.`
       this.engine_.addRule({
         id: 'regional-pricing-offer',
-        condition: `user:country_${countryCode.toLowerCase()}`,
+        // Only upsell people it can help: anonymous visitors, or signed-in
+        // users confirmed to be on the free plan. Paid and beta users never
+        // get either fact, so they never see it.
+        condition: all(
+          `user:country_${countryCode.toLowerCase()}`,
+          any('user:not_logged_in', 'user:on_free_plan')
+        ),
         action: {
           type: 'banner',
           position: 'right',
@@ -660,6 +671,8 @@ export class NudgePlugin extends Plugin {
         showOnce: 'session',
         priority: 14
       })
+      this._regionalOfferActive = true
+      this.engine_.disableRule('free-plan-upgrade')
     }
 
     // Fire last so the rule above is registered before the engine evaluates.
