@@ -286,79 +286,13 @@ export const templates = (intl: any, plugin: any): TemplateGroup[] => {
       ]
     },
     {
-      name: "Generic ZKP",
-      items: [
-        {
-          value: "sindriScripts",
-          tagList: ["ZKP"],
-          displayName: intl.formatMessage({ id: 'filePanel.addscriptsindri' }),
-          description: 'Use the Sindri API to compile and generate proofs'
-        },
-      ],
-    },
-    {
       name: "Uniswap V4",
       items: [
         { value: "uniswapV4Template",
           displayName: intl.formatMessage({ id: 'filePanel.uniswapV4Template' }),
           description: 'Use a Uniswap hook'
-        },
-        {
-          value: "breakthroughLabsUniswapv4Hooks",
-          displayName: intl.formatMessage({ id: 'filePanel.breakthroughLabsUniswapv4Hooks' }),
-          description: 'Use a Uniswap hook developed by Breakthrough Labs'
-        },
-        {
-          value: "uniswapV4HookBookMultiSigSwapHook",
-          displayName: intl.formatMessage({ id: 'filePanel.uniswapV4HookBookMultiSigSwapHook' }),
-          description: 'Use a MultiSigSwapHook developed by Breakthrough Labs'
         }
       ]
-    },
-    {
-      name: "Solidity CREATE2",
-      items: [
-        {
-          value: "contractCreate2Factory",
-          tagList: ["Solidity"],
-          displayName: intl.formatMessage({ id: 'filePanel.addcreate2solidityfactory' }),
-          description: 'Factory for deploying a contract using the CREATE2 opcode'
-        },
-        {
-          value: "contractDeployerScripts",
-          displayName: intl.formatMessage({ id: 'filePanel.addscriptdeployer' }),
-          description: 'Script for deploying a contract using the CREATE2 opcode'
-        }
-      ]
-    },
-    {
-      name: "Contract Verification",
-      items: [
-        {
-          value: "etherscanScripts",
-          displayName: intl.formatMessage({ id: 'filePanel.addscriptetherscan' }),
-          description: 'Script for verifying a Contract in Etherscan'
-        },
-      ],
-    },
-    {
-      name: 'GitHub Actions',
-      items: [
-        { value: "runJsTestAction",
-          displayName: intl.formatMessage({ id: 'filePanel.tssoltestghaction' }),
-          description: 'A Mocha Chai test workflow in a GitHub CI'
-        },
-        { value: "runSolidityUnittestingAction",
-          displayName: intl.formatMessage({ id: 'filePanel.solghaction' }),
-          description: 'Run a Solidity unit test workflow in a GitHub CI'
-        },
-        {
-          value: "runSlitherAction",
-          displayName: intl.formatMessage({ id: 'filePanel.slitherghaction' }),
-          description: 'Run a Slither security analysis in a GitHub CI'
-        }
-      ],
-      IsArtefact: true
     },
     {
       name: 'DeFi Protocols',
@@ -451,6 +385,62 @@ export const templates = (intl: any, plugin: any): TemplateGroup[] => {
           description: 'Lock-and-mint bridge connecting L1 and L2 (Arbitrum/Optimism canonical bridge pattern)'
         }
       ]
+    },
+    {
+      name: "Solidity CREATE2",
+      items: [
+        {
+          value: "contractCreate2Factory",
+          tagList: ["Solidity"],
+          displayName: intl.formatMessage({ id: 'filePanel.addcreate2solidityfactory' }),
+          description: 'Factory for deploying a contract using the CREATE2 opcode'
+        },
+        {
+          value: "contractDeployerScripts",
+          displayName: intl.formatMessage({ id: 'filePanel.addscriptdeployer' }),
+          description: 'Script for deploying a contract using the CREATE2 opcode'
+        }
+      ]
+    },
+    {
+      name: "Contract Verification",
+      items: [
+        {
+          value: "etherscanScripts",
+          displayName: intl.formatMessage({ id: 'filePanel.addscriptetherscan' }),
+          description: 'Script for verifying a Contract in Etherscan'
+        },
+      ],
+    },
+    {
+      name: 'GitHub Actions',
+      items: [
+        { value: "runJsTestAction",
+          displayName: intl.formatMessage({ id: 'filePanel.tssoltestghaction' }),
+          description: 'A Mocha Chai test workflow in a GitHub CI'
+        },
+        { value: "runSolidityUnittestingAction",
+          displayName: intl.formatMessage({ id: 'filePanel.solghaction' }),
+          description: 'Run a Solidity unit test workflow in a GitHub CI'
+        },
+        {
+          value: "runSlitherAction",
+          displayName: intl.formatMessage({ id: 'filePanel.slitherghaction' }),
+          description: 'Run a Slither security analysis in a GitHub CI'
+        }
+      ],
+      IsArtefact: true
+    },
+    {
+      name: "Generic ZKP",
+      items: [
+        {
+          value: "sindriScripts",
+          tagList: ["ZKP"],
+          displayName: intl.formatMessage({ id: 'filePanel.addscriptsindri' }),
+          description: 'Use the Sindri API to compile and generate proofs'
+        },
+      ],
     }
   ]
 }

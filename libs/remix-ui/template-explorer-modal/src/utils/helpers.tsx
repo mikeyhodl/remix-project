@@ -313,94 +313,11 @@ export const templatesRepository = [
     ]
   },
   {
-    name: "Generic ZKP",
-    items: [
-      {
-        value: "sindriScripts",
-        tagList: ["ZKP"],
-        displayName: 'Add Sindri ZK scripts',
-        description: 'Use the Sindri API to compile and generate proofs',
-
-      },
-    ],
-  },
-  {
     name: "Uniswap V4",
     items: [
       { value: "uniswapV4Template",
         displayName: 'Uniswap v4 Template',
         description: 'Use a Uniswap hook',
-      },
-      {
-        value: "breakthroughLabsUniswapv4Hooks",
-        displayName: 'Breakthrough-Labs Hooks',
-        description: 'Use a Uniswap hook developed by Breakthrough Labs',
-      },
-      {
-        value: "uniswapV4HookBookMultiSigSwapHook",
-        displayName: 'HookBook MultiSigSwapHook',
-        description: 'Use a MultiSigSwapHook developed by Breakthrough Labs',
-      }
-    ]
-  },
-  {
-    name: "Solidity CREATE2",
-    items: [
-      {
-        value: "contractCreate2Factory",
-        displayName: 'Add Create2 Solidity factory',
-        description: 'Factory for deploying a contract using the CREATE2 opcode',
-      },
-      {
-        value: "contractDeployerScripts",
-        displayName: 'Add contract deployer scripts',
-        description: 'Script for deploying a contract using the CREATE2 opcode',
-      }
-    ]
-  },
-  {
-    name: "Contract Verification",
-    items: [
-      {
-        value: "etherscanScripts",
-        displayName: 'Add Etherscan scripts',
-        description: 'Script for verifying a Contract in Etherscan',
-      },
-    ],
-  },
-  {
-    name: 'GitHub Actions',
-    items: [
-      { value: "runJsTestAction",
-        displayName: 'Mocha Chai Test Workflow',
-        description: 'Add files to run Mocha Chai test workflow in GitHub CI',
-      },
-      { value: "runSolidityUnittestingAction",
-        displayName: 'Solidity Test Workflow',
-        description: 'Add files to run Solidity unit test workflow in GitHub CI',
-      },
-      {
-        value: "runSlitherAction",
-        displayName: 'Slither Workflow',
-        description: 'Add files to run Slither security analysis in GitHub CI',
-      }
-    ],
-    IsArtefact: true
-  },
-  {
-    name: 'Chainlink CRE',
-    items: [
-      {
-        value: "creAIPredictionMarket",
-        displayName: 'AI Prediction Market',
-        tagList: ["Solidity", "Chainlink"],
-        description: 'CRE Bootcamp: Building AI-Powered Prediction Markets'
-      },
-      {
-        value: "creWorldCupPredictionMarket",
-        displayName: 'World Cup Prediction Market',
-        tagList: ["Solidity", "Chainlink"],
-        description: 'CRE Bootcamp: Building World Cup Prediction Markets'
       }
     ]
   },
@@ -496,6 +413,79 @@ export const templatesRepository = [
       },
     ]
   },
+  {
+    name: "Solidity CREATE2",
+    items: [
+      {
+        value: "contractCreate2Factory",
+        displayName: 'Add Create2 Solidity factory',
+        description: 'Factory for deploying a contract using the CREATE2 opcode',
+      },
+      {
+        value: "contractDeployerScripts",
+        displayName: 'Add contract deployer scripts',
+        description: 'Script for deploying a contract using the CREATE2 opcode',
+      }
+    ]
+  },
+  {
+    name: "Contract Verification",
+    items: [
+      {
+        value: "etherscanScripts",
+        displayName: 'Add Etherscan scripts',
+        description: 'Script for verifying a Contract in Etherscan',
+      },
+    ],
+  },
+  {
+    name: 'GitHub Actions',
+    items: [
+      { value: "runJsTestAction",
+        displayName: 'Mocha Chai Test Workflow',
+        description: 'Add files to run Mocha Chai test workflow in GitHub CI',
+      },
+      { value: "runSolidityUnittestingAction",
+        displayName: 'Solidity Test Workflow',
+        description: 'Add files to run Solidity unit test workflow in GitHub CI',
+      },
+      {
+        value: "runSlitherAction",
+        displayName: 'Slither Workflow',
+        description: 'Add files to run Slither security analysis in GitHub CI',
+      }
+    ],
+    IsArtefact: true
+  },
+  {
+    name: 'Chainlink CRE',
+    items: [
+      {
+        value: "creAIPredictionMarket",
+        displayName: 'AI Prediction Market',
+        tagList: ["Solidity", "Chainlink"],
+        description: 'CRE Bootcamp: Building AI-Powered Prediction Markets'
+      },
+      {
+        value: "creWorldCupPredictionMarket",
+        displayName: 'World Cup Prediction Market',
+        tagList: ["Solidity", "Chainlink"],
+        description: 'CRE Bootcamp: Building World Cup Prediction Markets'
+      }
+    ]
+  },
+  {
+    name: "Generic ZKP",
+    items: [
+      {
+        value: "sindriScripts",
+        tagList: ["ZKP"],
+        displayName: 'Add Sindri ZK scripts',
+        description: 'Use the Sindri API to compile and generate proofs',
+
+      },
+    ],
+  }
 ]
 
 export const metadata = {
