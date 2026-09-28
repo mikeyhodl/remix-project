@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { CustomTooltip } from '@remix-ui/helper'
+import { MatomoEvent, AIEvent } from '@remix-api'
 
 interface FloatingActionButtonProps {
   onEditWithAI: () => void
@@ -8,7 +9,7 @@ interface FloatingActionButtonProps {
   onSecurityAudit: () => void
   onGasAudit: () => void
   currentFileExt?: string
-  trackEvent?: (event: { category: string; action: string; name: string; isClick: boolean }) => void
+  trackEvent?: <T extends MatomoEvent>(event: T) => void
 }
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
@@ -28,10 +29,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 
     // Track FAB button toggle
     if (trackEvent) {
-      trackEvent({
-        category: 'editor',
-        action: 'fab_button_toggle',
-        name: newState ? 'expanded' : 'collapsed',
+      trackEvent<AIEvent>({
+        category: 'ai',
+        action: 'remixAI',
+        name: newState ? 'fab_expanded' : 'fab_collapsed',
         isClick: true
       })
     }
@@ -58,10 +59,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               className="fab-menu-item"
               onClick={() => {
                 if (trackEvent) {
-                  trackEvent({
+                  trackEvent<AIEvent>({
                     category: 'ai',
-                    action: 'fab_edit_with_ai',
-                    name: 'remixAI',
+                    action: 'remixAI',
+                    name: 'fab_edit_with_ai',
                     isClick: true
                   })
                 }
@@ -78,10 +79,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               className="fab-menu-item"
               onClick={() => {
                 if (trackEvent) {
-                  trackEvent({
+                  trackEvent<AIEvent>({
                     category: 'ai',
-                    action: 'fab_explain_contract',
-                    name: 'remixAI',
+                    action: 'remixAI',
+                    name: 'fab_explain_contract',
                     isClick: true
                   })
                 }
@@ -98,10 +99,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               className="fab-menu-item"
               onClick={() => {
                 if (trackEvent) {
-                  trackEvent({
+                  trackEvent<AIEvent>({
                     category: 'ai',
-                    action: 'fab_create_dapp',
-                    name: 'quickDapp',
+                    action: 'remixAI',
+                    name: 'fab_create_dapp',
                     isClick: true
                   })
                 }
@@ -118,10 +119,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               className="fab-menu-item"
               onClick={() => {
                 if (trackEvent) {
-                  trackEvent({
+                  trackEvent<AIEvent>({
                     category: 'ai',
-                    action: 'fab_security_audit',
-                    name: 'remixAI',
+                    action: 'remixAI',
+                    name: 'fab_security_audit',
                     isClick: true
                   })
                 }
@@ -138,10 +139,10 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               className="fab-menu-item"
               onClick={() => {
                 if (trackEvent) {
-                  trackEvent({
+                  trackEvent<AIEvent>({
                     category: 'ai',
-                    action: 'fab_gas_audit',
-                    name: 'remixAI',
+                    action: 'remixAI',
+                    name: 'fab_gas_audit',
                     isClick: true
                   })
                 }
