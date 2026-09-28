@@ -169,7 +169,7 @@ div.monaco-list-row > span.title {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
     z-index: 1000;
     pointer-events: all;
 }
@@ -235,25 +235,25 @@ div.monaco-list-row > span.title {
 .fab-menu {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     animation: fabMenuSlideIn 0.3s ease-out;
 }
 
 .fab-menu-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: 8px;
+    padding: 7px 11px;
     background: var(--bs-body-bg);
     border: 1px solid color-mix(in srgb, var(--custom-ai-color) 30%, transparent);
-    border-radius: 24px;
+    border-radius: 20px;
     color: var(--bs-body-color);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     box-shadow: 0 2px 8px color-mix(in srgb, var(--custom-ai-color) 20%, transparent);
     transition: all 0.2s ease;
     white-space: nowrap;
-    min-width: 160px;
+    min-width: 145px;
     position: relative;
     overflow: hidden;
 }
@@ -286,14 +286,14 @@ div.monaco-list-row > span.title {
 }
 
 .fab-menu-item i {
-    width: 18px;
+    width: 16px;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: var(--custom-ai-color);
 }
 
 .fab-menu-text {
-    font-weight: 500;
+    font-weight: 450;
 }
 
 @keyframes fabMenuSlideIn {

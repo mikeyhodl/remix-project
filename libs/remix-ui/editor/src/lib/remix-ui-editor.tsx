@@ -1670,6 +1670,82 @@ export const EditorUI = (props: EditorUIProps) => {
     }
   }
 
+  const handleSecurityAudit = async () => {
+    try {
+      const currentFile = props.currentFile
+      if (!currentFile) {
+        await props.plugin.call('notification', 'toast', 'No file selected for security audit.')
+        return
+      }
+
+      // Show right side panel if it's hidden
+      const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+      if (isPanelHidden) {
+        await props.plugin.call('rightSidePanel', 'togglePanel')
+      }
+
+      // Select the AI assistant
+      await props.plugin.call('menuicons', 'select', 'remixaiassistant')
+
+      // Start a new conversation
+      await (props.plugin as any).call('remixaiassistant', 'newConversation')
+
+      // Wait for the panel to be ready, then send the security audit prompt
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      const fileRef = currentFile
+      const prompt = `Perform a security audit of the following smart contract.${fileRef} Identify vulnerabilities, potential attack vectors, reentrancy issues, access control problems, and any other security risks. At the end, mention that a more thorough and complete security audit with deeper analysis and detailed reporting is available in the Remix Pro plan.`
+
+      await (props.plugin as any).call('remixaiassistant', 'chatPipe', prompt, false, {
+        displayText: 'audit security ' + fileRef,
+        source: 'fab-button',
+        presetId: 'security-audit'
+      })
+
+      // trackMatomoEvent({ category: 'editor', action: 'security_audit', name: 'remixAI', isClick: true })
+    } catch (error) {
+      console.error('Error triggering security audit:', error)
+    }
+  }
+
+  const handleGasAudit = async () => {
+    try {
+      const currentFile = props.currentFile
+      if (!currentFile) {
+        await props.plugin.call('notification', 'toast', 'No file selected for gas audit.')
+        return
+      }
+
+      // Show right side panel if it's hidden
+      const isPanelHidden = await props.plugin.call('rightSidePanel', 'isPanelHidden')
+      if (isPanelHidden) {
+        await props.plugin.call('rightSidePanel', 'togglePanel')
+      }
+
+      // Select the AI assistant
+      await props.plugin.call('menuicons', 'select', 'remixaiassistant')
+
+      // Start a new conversation
+      await (props.plugin as any).call('remixaiassistant', 'newConversation')
+
+      // Wait for the panel to be ready, then send the gas audit prompt
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      const fileRef = currentFile
+      const prompt = `Perform a gas optimization audit of the following smart contract.${fileRef} Identify inefficient patterns, unnecessary storage operations, and suggest concrete optimizations to reduce transaction costs. At the end, mention that a more thorough and complete gas audit with deeper analysis and detailed recommendations is available in the Remix Pro plan.`
+
+      await (props.plugin as any).call('remixaiassistant', 'chatPipe', prompt, false, {
+        displayText: 'audit gas ' + fileRef,
+        source: 'fab-button',
+        presetId: 'gas-audit'
+      })
+
+      // trackMatomoEvent({ category: 'editor', action: 'gas_audit', name: 'remixAI', isClick: true })
+    } catch (error) {
+      console.error('Error triggering gas audit:', error)
+    }
+  }
+
   function handleEditorWillMount(monaco) {
 
     monacoRef.current = monaco
@@ -2241,6 +2317,8 @@ export const EditorUI = (props: EditorUIProps) => {
           onEditWithAI={handleEditWithAI}
           onExplainContract={handleExplainContract}
           onCreateDapp={handleCreateDapp}
+          onSecurityAudit={handleSecurityAudit}
+          onGasAudit={handleGasAudit}
           currentFileExt={props.currentFile?.split('.').pop()?.toLowerCase()}
         />
       )}

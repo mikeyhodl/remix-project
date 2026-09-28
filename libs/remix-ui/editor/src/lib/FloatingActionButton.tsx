@@ -5,10 +5,12 @@ interface FloatingActionButtonProps {
   onEditWithAI: () => void
   onExplainContract: () => void
   onCreateDapp: () => void
+  onSecurityAudit: () => void
+  onGasAudit: () => void
   currentFileExt?: string
 }
 
-export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEditWithAI, onExplainContract, onCreateDapp, currentFileExt }) => {
+export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEditWithAI, onExplainContract, onCreateDapp, onSecurityAudit, onGasAudit, currentFileExt }) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const toggleExpand = () => {
@@ -65,6 +67,30 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             >
               <i className="fas fa-rocket"></i>
               <span className="fab-menu-text">Generate Frontend</span>
+            </button>
+          </CustomTooltip>
+          <CustomTooltip placement="left" tooltipText="AI-powered security audit: scans your contract for vulnerabilities and security risks">
+            <button
+              className="fab-menu-item"
+              onClick={() => {
+                onSecurityAudit()
+                setIsExpanded(false)
+              }}
+            >
+              <i className="fas fa-shield-alt"></i>
+              <span className="fab-menu-text">Security Audit</span>
+            </button>
+          </CustomTooltip>
+          <CustomTooltip placement="left" tooltipText="AI-powered gas audit: analyzes your contract for gas inefficiencies and optimization opportunities">
+            <button
+              className="fab-menu-item"
+              onClick={() => {
+                onGasAudit()
+                setIsExpanded(false)
+              }}
+            >
+              <i className="fas fa-gas-pump"></i>
+              <span className="fab-menu-text">Gas Audit</span>
             </button>
           </CustomTooltip>
         </div>
