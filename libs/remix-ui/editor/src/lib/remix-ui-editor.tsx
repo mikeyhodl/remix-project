@@ -1543,6 +1543,7 @@ export const EditorUI = (props: EditorUIProps) => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       await (props.plugin as any).call('remixaiassistant', 'chatPipe',`Help me to edit the file: ${currentFile}`, false, { source: 'fab-button', presetId: 'edit-file' })
 
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'edit_with_ai', isClick: true })
     } catch (error) {
       console.error('Error triggering AI edit:', error)
     }
@@ -1572,7 +1573,7 @@ export const EditorUI = (props: EditorUIProps) => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       const content = await props.plugin.call('fileManager', 'readFile', currentFile)
       await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', content + "\n\nExplain briefly the snipped above!", undefined, undefined, { source: 'fab-button', presetId: 'explain-contract' })
-      // trackMatomoEvent({ category: 'editor', action: 'explain_contract', name: 'remixAI', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explain_contract', isClick: true })
     } catch (error) {
       console.error('Error triggering contract explanation:', error)
     }
@@ -1663,7 +1664,7 @@ export const EditorUI = (props: EditorUIProps) => {
         displayText: `Create a DApp\n${primaryContract.name} · ${networkName}`
       })
 
-      // trackMatomoEvent({ category: 'editor', action: 'create_dapp', name: 'quickDapp', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'create_dapp', isClick: true })
     } catch (error) {
       console.error('Error triggering Dapp creation:', error)
       await props.plugin.call('notification', 'toast', 'Could not start DApp creation. Please try again.')
@@ -1702,7 +1703,7 @@ export const EditorUI = (props: EditorUIProps) => {
         presetId: 'security-audit'
       })
 
-      // trackMatomoEvent({ category: 'editor', action: 'security_audit', name: 'remixAI', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'security_audit', isClick: true })
     } catch (error) {
       console.error('Error triggering security audit:', error)
     }
@@ -1740,7 +1741,7 @@ export const EditorUI = (props: EditorUIProps) => {
         presetId: 'gas-audit'
       })
 
-      // trackMatomoEvent({ category: 'editor', action: 'gas_audit', name: 'remixAI', isClick: true })
+      trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'gas_audit', isClick: true })
     } catch (error) {
       console.error('Error triggering gas audit:', error)
     }
@@ -2320,6 +2321,7 @@ export const EditorUI = (props: EditorUIProps) => {
           onSecurityAudit={handleSecurityAudit}
           onGasAudit={handleGasAudit}
           currentFileExt={props.currentFile?.split('.').pop()?.toLowerCase()}
+          trackEvent={trackMatomoEvent}
         />
       )}
     </div>

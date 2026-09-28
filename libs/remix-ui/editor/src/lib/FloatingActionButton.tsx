@@ -8,13 +8,33 @@ interface FloatingActionButtonProps {
   onSecurityAudit: () => void
   onGasAudit: () => void
   currentFileExt?: string
+  trackEvent?: (event: { category: string; action: string; name: string; isClick: boolean }) => void
 }
 
-export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEditWithAI, onExplainContract, onCreateDapp, onSecurityAudit, onGasAudit, currentFileExt }) => {
+export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
+  onEditWithAI,
+  onExplainContract,
+  onCreateDapp,
+  onSecurityAudit,
+  onGasAudit,
+  currentFileExt,
+  trackEvent
+}) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const toggleExpand = () => {
-    setIsExpanded(!isExpanded)
+    const newState = !isExpanded
+    setIsExpanded(newState)
+
+    // Track FAB button toggle
+    if (trackEvent) {
+      trackEvent({
+        category: 'editor',
+        action: 'fab_button_toggle',
+        name: newState ? 'expanded' : 'collapsed',
+        isClick: true
+      })
+    }
   }
 
   const getExplainLabel = () => {
@@ -37,6 +57,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             <button
               className="fab-menu-item"
               onClick={() => {
+                if (trackEvent) {
+                  trackEvent({
+                    category: 'ai',
+                    action: 'fab_edit_with_ai',
+                    name: 'remixAI',
+                    isClick: true
+                  })
+                }
                 onEditWithAI()
                 setIsExpanded(false)
               }}
@@ -49,6 +77,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             <button
               className="fab-menu-item"
               onClick={() => {
+                if (trackEvent) {
+                  trackEvent({
+                    category: 'ai',
+                    action: 'fab_explain_contract',
+                    name: 'remixAI',
+                    isClick: true
+                  })
+                }
                 onExplainContract()
                 setIsExpanded(false)
               }}
@@ -61,6 +97,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             <button
               className="fab-menu-item"
               onClick={() => {
+                if (trackEvent) {
+                  trackEvent({
+                    category: 'ai',
+                    action: 'fab_create_dapp',
+                    name: 'quickDapp',
+                    isClick: true
+                  })
+                }
                 onCreateDapp()
                 setIsExpanded(false)
               }}
@@ -73,6 +117,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             <button
               className="fab-menu-item"
               onClick={() => {
+                if (trackEvent) {
+                  trackEvent({
+                    category: 'ai',
+                    action: 'fab_security_audit',
+                    name: 'remixAI',
+                    isClick: true
+                  })
+                }
                 onSecurityAudit()
                 setIsExpanded(false)
               }}
@@ -85,6 +137,14 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
             <button
               className="fab-menu-item"
               onClick={() => {
+                if (trackEvent) {
+                  trackEvent({
+                    category: 'ai',
+                    action: 'fab_gas_audit',
+                    name: 'remixAI',
+                    isClick: true
+                  })
+                }
                 onGasAudit()
                 setIsExpanded(false)
               }}
