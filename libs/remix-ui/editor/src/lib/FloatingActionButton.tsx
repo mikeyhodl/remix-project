@@ -55,7 +55,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
               <span className="fab-menu-text">{getExplainLabel()}</span>
             </button>
           </CustomTooltip>
-          <CustomTooltip placement="left" tooltipText="Create a Dapp from your contract">
+          <CustomTooltip placement="left" tooltipText="Generate a frontend from your contract">
             <button
               className="fab-menu-item"
               onClick={() => {
@@ -64,7 +64,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onEd
               }}
             >
               <i className="fas fa-rocket"></i>
-              <span className="fab-menu-text">Create a DApp</span>
+              <span className="fab-menu-text">Generate Frontend</span>
             </button>
           </CustomTooltip>
         </div>

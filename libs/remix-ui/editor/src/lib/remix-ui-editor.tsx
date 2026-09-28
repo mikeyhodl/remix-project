@@ -1535,10 +1535,13 @@ export const EditorUI = (props: EditorUIProps) => {
 
       // Select the AI assistant
       await props.plugin.call('menuicons', 'select', 'remixaiassistant')
-      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // Send the edit prompt with the file path
-      await (props.plugin as any).call('remixaiassistant', 'chatPipe', `help me to edit the following file ${currentFile}`, false, { source: 'fab-button', presetId: 'edit-file' })
+      // Start a new conversation
+      await (props.plugin as any).call('remixaiassistant', 'newConversation')
+
+      // Wait for the panel to be ready, then send the edit prompt
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      await (props.plugin as any).call('remixaiassistant', 'chatPipe',`Help me to edit the file: ${currentFile}`, false, { source: 'fab-button', presetId: 'edit-file' })
 
     } catch (error) {
       console.error('Error triggering AI edit:', error)
@@ -1561,6 +1564,11 @@ export const EditorUI = (props: EditorUIProps) => {
       }
 
       await props.plugin.call('menuicons', 'select', 'remixaiassistant')
+
+      // Start a new conversation
+      await (props.plugin as any).call('remixaiassistant', 'newConversation')
+
+      // Wait for the panel to be ready, then send the explain prompt
       await new Promise((resolve) => setTimeout(resolve, 500))
       const content = await props.plugin.call('fileManager', 'readFile', currentFile)
       await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', content + "\n\nExplain briefly the snipped above!", undefined, undefined, { source: 'fab-button', presetId: 'explain-contract' })
