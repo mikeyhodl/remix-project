@@ -8,18 +8,8 @@ export const templatesRepository = [
         displayName: 'Basic',
         description: 'The default project',
       },
-      { value: "blank",
-        displayName: 'Blank',
-        IsArtefact: true, description: 'A blank project',
-      },
-      { value: "simpleEip7702", displayName: 'Simple EIP 7702', IsArtefact: true, description: 'Pectra upgrade allowing externally owned accounts (EOAs) to run contract code.',
-      },
-      { value: "accountAbstraction", displayName: 'Account Abstraction', IsArtefact: true, description: 'A repo about ERC-4337 and EIP-7702',
-      },
       { value: 'remixAiTemplate', tagList: ['AI'], displayName: 'RemixAI Template Generation', IsArtefact: true, description: 'AI generated workspace.',
-      },
-      { value: "introToEIP7702", displayName: 'Intro to EIP-7702', IsArtefact: true, description: 'A contract for demoing EIP-7702',
-      },
+      }
     ]
   },
   {
@@ -394,6 +384,12 @@ export const templatesRepository = [
         tagList: ["Proxy", "Upgradeable", "Solidity"],
         description: 'All three proxy patterns: Transparent, UUPS, and Beacon with example implementations',
       },
+      { value: "accountAbstraction", displayName: 'Account Abstraction', IsArtefact: true, description: 'A repo about ERC-4337 and EIP-7702',
+      },
+      { value: "simpleEip7702", displayName: 'Simple EIP 7702', IsArtefact: true, description: 'Pectra upgrade allowing externally owned accounts (EOAs) to run contract code.',
+      },
+      { value: "introToEIP7702", displayName: 'Intro to EIP-7702', IsArtefact: true, description: 'A contract for demoing EIP-7702',
+      }
     ]
   },
   {
