@@ -6,7 +6,7 @@ import { deploy } from './ethers-lib'
 
     // ── L1 Side ──────────────────────────────────────────────────────────────
     // Deploy a mock ERC-20 token (the "native" token on L1)
-    const l1Token = await deploy('ERC20', [])
+    const l1Token = await deploy('WrappedToken', ['WrappedToken', 'Symbol'])
     console.log(`L1 Token deployed at: ${l1Token.address}`)
 
     const l1Bridge = await deploy('L1Bridge', [l1Token.address, relayer])
