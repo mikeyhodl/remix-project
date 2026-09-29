@@ -1584,7 +1584,7 @@ export const EditorUI = (props: EditorUIProps) => {
       // Wait for the panel to be ready, then send the explain prompt
       await new Promise((resolve) => setTimeout(resolve, 500))
       const content = await props.plugin.call('fileManager', 'readFile', currentFile)
-      await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', content + "\n\nExplain briefly the snipped above!", undefined, undefined, { source: 'fab-button', presetId: 'explain-contract' })
+      await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', `File: ${currentFile}\n\n${content}\n\nExplain briefly the snippet above!`, undefined, `Explain the code of ${currentFile}`, { source: 'fab-button', presetId: 'explain-contract' })
       trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explain_contract', isClick: true })
     } catch (error) {
       console.error('Error triggering contract explanation:', error)
