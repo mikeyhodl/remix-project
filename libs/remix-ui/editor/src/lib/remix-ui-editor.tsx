@@ -1552,7 +1552,7 @@ export const EditorUI = (props: EditorUIProps) => {
       await (props.plugin as any).call('remixaiassistant', 'newConversation')
 
       // Wait for the panel to be ready, then send the edit prompt
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       await (props.plugin as any).call('remixaiassistant', 'chatPipe',`Help me to edit the file: ${currentFile}`, false, { source: 'fab-button', presetId: 'edit-file' })
 
       trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'edit_with_ai', isClick: true })
@@ -1582,7 +1582,7 @@ export const EditorUI = (props: EditorUIProps) => {
       await (props.plugin as any).call('remixaiassistant', 'newConversation')
 
       // Wait for the panel to be ready, then send the explain prompt
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       const content = await props.plugin.call('fileManager', 'readFile', currentFile)
       await (props.plugin as any).call('remixAI', 'chatPipe', 'code_explaining', `File: ${currentFile}\n\n${content}\n\nExplain briefly the snippet above!`, undefined, `Explain the code of ${currentFile}`, { source: 'fab-button', presetId: 'explain-contract' })
       trackMatomoEvent<AIEvent>({ category: 'ai', action: 'remixAI', name: 'explain_contract', isClick: true })
@@ -1799,7 +1799,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow.`
       await (props.plugin as any).call('remixaiassistant', 'newConversation')
 
       // Wait for the panel to be ready, then send the security audit prompt
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const fileRef = currentFile
       const prompt = `Perform a security audit of the following smart contract.${fileRef} Identify vulnerabilities, potential attack vectors, reentrancy issues, access control problems, and any other security risks. At the end, mention that a more thorough and complete security audit with deeper analysis and detailed reporting is available in the Remix Pro plan.`
@@ -1837,7 +1837,7 @@ For Inline mode, preserve the existing /frontend overwrite confirmation flow.`
       await (props.plugin as any).call('remixaiassistant', 'newConversation')
 
       // Wait for the panel to be ready, then send the gas audit prompt
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const fileRef = currentFile
       const prompt = `Perform a gas optimization audit of the following smart contract.${fileRef} Identify inefficient patterns, unnecessary storage operations, and suggest concrete optimizations to reduce transaction costs. At the end, mention that a more thorough and complete gas audit with deeper analysis and detailed recommendations is available in the Remix Pro plan.`
