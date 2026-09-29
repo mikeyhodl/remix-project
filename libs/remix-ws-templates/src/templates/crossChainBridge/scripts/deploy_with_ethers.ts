@@ -17,7 +17,7 @@ import { deploy } from './ethers-lib'
     const l2Bridge = await deploy('L2Bridge', [
       relayer,
       'Wrapped Token', // Name of the wrapped token on L2
-      'wTKN'           // Symbol
+      'wTKN' // Symbol
     ])
     console.log(`L2Bridge deployed at: ${l2Bridge.address}`)
 

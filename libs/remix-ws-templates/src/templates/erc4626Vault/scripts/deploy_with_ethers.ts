@@ -16,8 +16,8 @@ import { deploy } from './ethers-lib'
     // Step 2: Deploy the ERC-4626 vault
     const vault = await deploy('ERC4626Vault', [
       MockToken.address, // underlying asset
-      'My Yield Vault',  // vault share token name
-      'mvUSDC'           // vault share token symbol
+      'My Yield Vault', // vault share token name
+      'mvUSDC' // vault share token symbol
     ])
     console.log(`ERC4626Vault deployed at: ${vault.address}`)
     console.log(`Share token: mvUSDC`)

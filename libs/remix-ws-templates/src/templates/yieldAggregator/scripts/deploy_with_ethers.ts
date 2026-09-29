@@ -11,8 +11,8 @@ import { deploy } from './ethers-lib'
     // 2. Deploy the YieldVault
     const vault = await deploy('YieldVault', [
       asset.address, // underlying asset
-      deployer,      // treasury (receives performance fees)
-      deployer       // keeper (authorized to call harvest)
+      deployer, // treasury (receives performance fees)
+      deployer // keeper (authorized to call harvest)
     ])
     console.log(`YieldVault deployed at: ${vault.address}`)
 

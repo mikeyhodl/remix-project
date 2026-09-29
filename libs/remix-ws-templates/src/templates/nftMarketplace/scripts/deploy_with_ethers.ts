@@ -7,9 +7,9 @@ import { deploy } from './ethers-lib'
     // 1. Deploy an NFT collection
     const nft = await deploy('MintableNFT', [
       'My NFT Collection', // name
-      'MNC',               // symbol
-      deployer,            // royalty recipient
-      500                  // 5% royalty (500 bps)
+      'MNC', // symbol
+      deployer, // royalty recipient
+      500 // 5% royalty (500 bps)
     ])
     console.log(`MintableNFT deployed at: ${nft.address}`)
 

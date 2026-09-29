@@ -9,9 +9,9 @@ import { deploy } from './ethers-lib'
     // 2. Deploy the Timelock
     // minDelay = 172800 (2 days), proposers/executors set after Governor is deployed
     const timelock = await deploy('DAOTimelock', [
-      172800,    // 2-day timelock delay (seconds)
-      [],        // proposers (will add Governor after)
-      [],        // executors (will add Governor or address(0))
+      172800, // 2-day timelock delay (seconds)
+      [], // proposers (will add Governor after)
+      [], // executors (will add Governor or address(0))
       '0x0000000000000000000000000000000000000000' // admin (will be revoked)
     ])
     console.log(`DAOTimelock deployed at: ${timelock.address}`)
