@@ -1,4 +1,5 @@
 import { deploy } from './ethers-lib'
+import { ethers } from 'ethers'
 
 (async () => {
   try {
@@ -20,7 +21,7 @@ import { deploy } from './ethers-lib'
     console.log(`  → Interact with BoxV1 via proxy address`)
 
     console.log('\n=== UUPS Proxy Pattern ===')
-    const [signer] = await (new (require('ethers').providers.Web3Provider)(web3Provider)).listAccounts()
+    const [signer] = await (new (ethers.providers.Web3Provider)(web3Provider)).listAccounts()
     const counterV1 = await deploy('CounterV1', [])
     console.log(`CounterV1 (implementation) deployed at: ${counterV1.address}`)
 

@@ -1,4 +1,5 @@
 import { deploy } from './ethers-lib'
+import { ethers } from 'ethers'
 
 (async () => {
   try {
@@ -7,7 +8,7 @@ import { deploy } from './ethers-lib'
     console.log(`SimpleAccountFactory deployed at: ${factory.address}`)
 
     // 2. Deploy a Verifying Paymaster (owner acts as verifier initially)
-    const [signer] = await (new (require('ethers').providers.Web3Provider)(web3Provider)).listAccounts()
+    const [signer] = await (new (ethers.providers.Web3Provider)(web3Provider)).listAccounts()
     const paymaster = await deploy('VerifyingPaymaster', [signer])
     console.log(`VerifyingPaymaster deployed at: ${paymaster.address}`)
 

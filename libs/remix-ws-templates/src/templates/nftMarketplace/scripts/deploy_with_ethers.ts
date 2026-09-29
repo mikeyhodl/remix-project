@@ -1,8 +1,9 @@
 import { deploy } from './ethers-lib'
+import { ethers } from 'ethers'
 
 (async () => {
   try {
-    const [deployer] = await (new (require('ethers').providers.Web3Provider)(web3Provider)).listAccounts()
+    const [deployer] = await (new (ethers.providers.Web3Provider)(web3Provider)).listAccounts()
 
     // 1. Deploy an NFT collection
     const nft = await deploy('MintableNFT', [

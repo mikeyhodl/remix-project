@@ -1,8 +1,9 @@
 import { deploy } from './ethers-lib'
+import { ethers } from 'ethers'
 
 (async () => {
   try {
-    const [relayer] = await (new (require('ethers').providers.Web3Provider)(web3Provider)).listAccounts()
+    const [relayer] = await (new (ethers.providers.Web3Provider)(web3Provider)).listAccounts()
 
     // ── L1 Side ──────────────────────────────────────────────────────────────
     // Deploy a mock ERC-20 token (the "native" token on L1)
